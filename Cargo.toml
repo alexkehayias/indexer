@@ -1,0 +1,8 @@
+[package]
+name = "indexer"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+orgize = "0.10.0-alpha.10"
+tantivy = "0.22.0"

@@ -4,6 +4,14 @@ WIP personal indexer service.
 
 ## Running it
 
+Index notes:
+
 ```
-cargo run "search goes here"
+cargo run -- --path "/path/to/org/notes"
+```
+
+Search notes:
+
+```
+cargo run -- --query "testing"
 ```

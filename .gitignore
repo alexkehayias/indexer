@@ -1,3 +1,5 @@
 /target
 /.index
 /Cargo.lock
+/web-ui/node_modules
+/web-ui/src/output.css

@@ -4,6 +4,9 @@ version = "0.1.0"
 edition = "2021"
 
 [dependencies]
+axum = "0.7.5"
 clap = { version = "4.5.17", features = ["derive"] }
 orgize = "0.10.0-alpha.10"
+serde_json = "1.0.128"
 tantivy = "0.22.0"
+tokio = { version = "1.40.0", features = ["macros", "rt-multi-thread"] }

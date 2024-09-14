@@ -1,5 +1,6 @@
 use std::fs;
 use std::path::PathBuf;
+use std::collections::HashMap;
 
 use clap::Parser;
 
@@ -8,6 +9,14 @@ use tantivy::query::QueryParser;
 use tantivy::schema::*;
 use tantivy::{doc, Index, IndexWriter, ReloadPolicy};
 
+use axum::{
+    body::Body,
+    routing::get,
+    response::Json,
+    Router,
+};
+use axum::extract::Query;
+use serde_json::{Value, json};
 use orgize::ParseConfig;
 
 fn note_schema() -> Schema {
@@ -111,10 +120,41 @@ struct Args {
     /// Search notes with query
     #[arg(short, long)]
     query: Option<String>,
+
+    /// Run the server
+    #[arg(short, long, action)]
+    serve: bool,
+
+    /// Set the server host address
+    #[arg(long, default_value="1111")]
+    port: String,
 }
 
 
-fn main() -> tantivy::Result<()> {
+// Fulltext search of all notes
+async fn search(Query(params): Query<HashMap<String, String>>) -> Json<Value> {
+    let resp = json!({
+        "query": params.get("query"),
+        "results": vec!(""),
+    });
+    Json(resp)
+}
+
+
+async fn serve(port: String) {
+    let app = Router::new()
+        .route("/notes/search", get(search));
+
+    let listener = tokio::net::TcpListener::bind(format!("127.0.0.1:{}", port))
+        .await
+        .unwrap();
+
+    println!("Server started. Listening on {}", listener.local_addr().unwrap());
+    axum::serve(listener, app).await.unwrap();
+}
+
+#[tokio::main]
+async fn main() -> tantivy::Result<()> {
     let args = Args::parse();
 
     let schema = note_schema();
@@ -148,6 +188,10 @@ fn main() -> tantivy::Result<()> {
             let retrieved_doc: TantivyDocument = searcher.doc(doc_address)?;
             println!("{}", retrieved_doc.to_json(&schema));
         }
+    }
+
+    if args.serve {
+        serve(args.port).await;
     }
 
     Ok(())

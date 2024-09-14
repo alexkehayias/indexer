@@ -44,11 +44,26 @@ fn index_note(
     let id_value = props.get("ID").expect("Missing org-id").to_string();
     let title_value = p.title().expect("No title found");
     let body_value = p.document().raw();
-    let tags_all: Vec<String> = p.keywords().map(|s| s.raw()).collect();
-    let tags_value = tags_all.join(",");
+    let filetags: Vec<Vec<String>> = p.keywords()
+        .filter_map(|k| match k.key().to_string().as_str() {
+            "FILETAGS" => Some(k.value()
+                               .to_string()
+                               .trim()
+                               .split(" ")
+                               .map(|s| s.to_string())
+                               .collect()),
+           _ => None
+        })
+        .collect();
 
-    // TODO: Replace this macro with the builder so that we can add
-    // multiple keywords
+    // For now, tags are a comma separated string which should
+    // allow it to still be searchable
+    let tags_value = if filetags.is_empty() {
+        String::new()
+    } else {
+        filetags[0].to_owned().join(",")
+    };
+
     index_writer.add_document(doc!(
         id => id_value,
         title => title_value,

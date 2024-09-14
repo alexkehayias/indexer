@@ -15,3 +15,15 @@ Search notes:
 ```
 cargo run -- --query "testing"
 ```
+
+Run the server:
+
+```
+cargo run -- --serve --port 1111
+```
+
+Search notes using the server:
+
+```
+http://localhost:1111/notes/search?query=test
+```

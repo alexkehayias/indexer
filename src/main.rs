@@ -152,17 +152,20 @@ struct AppState {
 #[derive(Debug, Deserialize)]
 struct SetLatest {
     id: String,
+    title: String,
 }
 
 async fn kv_get(State(state): State<SharedState>) -> Json<Value> {
     let resp = json!({
-        "id": state.read().unwrap().latest_selection.get("id")
+        "id": state.read().unwrap().latest_selection.get("id"),
+        "title": state.read().unwrap().latest_selection.get("title"),
     });
     Json(resp)
 }
 
 async fn kv_set(State(state): State<SharedState>, Json(data): Json<SetLatest>) {
     state.write().unwrap().latest_selection.insert(String::from("id"), data.id);
+    state.write().unwrap().latest_selection.insert(String::from("title"), data.title);
 }
 
 // Fulltext search of all notes

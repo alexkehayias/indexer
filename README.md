@@ -27,3 +27,17 @@ Search notes using the server:
 ```
 http://localhost:1111/notes/search?query=test
 ```
+
+## Docker
+
+Build the image:
+
+```
+docker build -t "indexer:latest" .
+```
+
+Run a container:
+
+```
+docker run -p 2222:2222 -d indexer:latest
+```

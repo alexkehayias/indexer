@@ -1,7 +1,9 @@
+use std::env;
 use std::fs;
 use std::path::PathBuf;
 use std::collections::HashMap;
 use std::sync::{Arc, RwLock};
+use std::process::Command;
 
 use clap::Parser;
 
@@ -205,10 +207,20 @@ async fn search(Query(params): Query<HashMap<String, String>>) -> Json<Value> {
     Json(resp)
 }
 
+// Clone a repo if it doesn't already exist
+fn maybe_clone_repo(url: String) {
+    Command::new("sh")
+        .arg("-c")
+        .arg(format!("git clone {}", url))
+        .output()
+        .expect("failed to execute process");
+}
 
 // Build the index for all notes
 async fn index_notes() -> Json<Value> {
-    // TODO: Wire this up to the notes git repo
+    let repo_url = env::var("INDEXER_NOTES_REPO_URL").expect("Missing env var INDEXER_NOTES_REPO_URL");
+    maybe_clone_repo(repo_url);
+
     let notes_path = "./notes";
     let schema = note_schema();
     let index_path = tantivy::directory::MmapDirectory::open("./.index").expect("Index not found");
@@ -227,7 +239,7 @@ async fn index_notes() -> Json<Value> {
     Json(resp)
 }
 
-
+// Run the server
 async fn serve(host: String, port: String) {
     let shared_state = SharedState::default();
     let cors = CorsLayer::permissive();

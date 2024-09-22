@@ -11,7 +11,7 @@ use tantivy::schema::*;
 use tantivy::{doc, Index, IndexWriter, ReloadPolicy};
 
 use axum::{
-    routing::get,
+    routing::{get, post},
     response::Json,
     Router,
     extract::State,
@@ -206,6 +206,28 @@ async fn search(Query(params): Query<HashMap<String, String>>) -> Json<Value> {
 }
 
 
+// Build the index for all notes
+async fn index_notes() -> Json<Value> {
+    // TODO: Wire this up to the notes git repo
+    let notes_path = "./notes";
+    let schema = note_schema();
+    let index_path = tantivy::directory::MmapDirectory::open("./.index").expect("Index not found");
+    let idx = Index::open_or_create(index_path, schema.clone()).expect("Unable to open or create index");
+    let mut index_writer: IndexWriter = idx.writer(50_000_000).expect("Index writer failed to initialize");
+
+    for note in notes(notes_path) {
+        let _ = index_note(&mut index_writer, &schema, note);
+    }
+
+    index_writer.commit().expect("Index write failed");
+
+    let resp = json!({
+        "success": true,
+    });
+    Json(resp)
+}
+
+
 async fn serve(host: String, port: String) {
     let shared_state = SharedState::default();
     let cors = CorsLayer::permissive();
@@ -216,6 +238,8 @@ async fn serve(host: String, port: String) {
         .route("/notes/search", get(search))
         // Storage for selected search hits
         .route("/notes/search/latest", get(kv_get).post(kv_set))
+        // Search API endpoint
+        .route("/notes/index", post(index_notes))
         // Static server of assets in ./web-ui
         .nest_service("/", serve_dir.clone())
         .layer(TraceLayer::new_for_http())

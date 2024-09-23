@@ -41,3 +41,10 @@ Run a container:
 ```
 docker run -p 2222:2222 -d indexer:latest
 ```
+
+## Running on Dokku
+
+1. In the `dokku` server, create the app
+2. Add environment variables for `INDEXER_NOTES_REPO_URL`
+3. On local, add remote `git remote add dokku dokku@<dokku-host>:indexer`
+4. Push to build and start `git push dokku main`

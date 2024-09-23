@@ -208,10 +208,10 @@ async fn search(Query(params): Query<HashMap<String, String>>) -> Json<Value> {
 }
 
 // Clone a repo if it doesn't already exist
-fn maybe_clone_repo(url: String) {
+fn maybe_clone_repo(url: String, deploy_key_path: String) {
     let git_clone = Command::new("sh")
         .arg("-c")
-        .arg(format!("git clone {}", url))
+        .arg(format!("GIT_SSH_COMMAND='ssh -i {} -o IdentitiesOnly=yes' git clone {}", deploy_key_path, url))
         .output()
         .expect("failed to execute process");
 
@@ -223,7 +223,8 @@ fn maybe_clone_repo(url: String) {
 // Build the index for all notes
 async fn index_notes() -> Json<Value> {
     let repo_url = env::var("INDEXER_NOTES_REPO_URL").expect("Missing env var INDEXER_NOTES_REPO_URL");
-    maybe_clone_repo(repo_url);
+    let deploy_key_path = env::var("INDEXER_NOTES_DEPLOY_KEY_PATH").expect("Missing env var INDEXER_NOTES_REPO_URL");
+    maybe_clone_repo(repo_url, deploy_key_path);
 
     let notes_path = "./notes";
     let schema = note_schema();

@@ -33,6 +33,7 @@ fn note_schema() -> Schema {
     schema_builder.add_text_field("title", TEXT | STORED);
     schema_builder.add_text_field("tags", TEXT | STORED);
     schema_builder.add_text_field("body", TEXT);
+    schema_builder.add_text_field("file_name", TEXT);
     schema_builder.build()
 }
 
@@ -49,6 +50,7 @@ fn index_note(
     let title = schema.get_field("title")?;
     let body = schema.get_field("body")?;
     let tags = schema.get_field("tags")?;
+    let file_name = schema.get_field("file_name")?;
 
     // Parse the file from the path
     let content = fs::read_to_string(&path)?;
@@ -57,8 +59,10 @@ fn index_note(
     };
     let p = config.parse(&content);
 
-    let props = p.document().properties().expect("Missing property drawer");
+    let props = p.document().properties().expect("Missing property
+drawer");
     let id_value = props.get("ID").expect("Missing org-id").to_string();
+    let file_name_value = path.file_name().unwrap().to_string_lossy().into_owned();
     let title_value = p.title().expect("No title found");
     let body_value = p.document().raw();
     let filetags: Vec<Vec<String>> = p.keywords()
@@ -85,6 +89,7 @@ fn index_note(
         id => id_value,
         title => title_value,
         body => body_value,
+        file_name => file_name_value,
         tags => tags_value,
     ))?;
 

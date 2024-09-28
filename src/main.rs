@@ -44,7 +44,7 @@ fn index_note(
     schema: &Schema,
     path: PathBuf,
 ) -> tantivy::Result<()> {
-    println!("Indexing note: {}", &path.display());
+    // println!("Indexing note: {}", &path.display());
 
     let id = schema.get_field("id")?;
     let title = schema.get_field("title")?;
@@ -244,15 +244,15 @@ fn maybe_pull_and_reset_repo(deploy_key_path: String) {
 
 // Build the index for all notes
 async fn index_notes() -> Json<Value> {
-    let deploy_key_path = env::var("INDEXER_NOTES_DEPLOY_KEY_PATH").expect("Missing env var INDEXER_NOTES_REPO_URL");
+    let deploy_key_path = env::var("INDEXER_NOTES_DEPLOY_KEY_PATH").expect("Missing env var INDEXER_NOTES_DEPLOY_KEY_PATH");
     maybe_pull_and_reset_repo(deploy_key_path);
 
     let index_path = "./.index";
-    fs::remove_dir_all("./.index").expect("Failed to remove index directory");
+    fs::remove_dir_all(index_path).expect("Failed to remove index directory");
     fs::create_dir(index_path).expect("Failed to recreate index directory");
-    let schema = note_schema();
 
     let index_path = tantivy::directory::MmapDirectory::open(index_path).expect("Index not found");
+    let schema = note_schema();
     let idx = Index::open_or_create(index_path, schema.clone()).expect("Unable to open or create index");
     let mut index_writer: IndexWriter = idx.writer(50_000_000).expect("Index writer failed to initialize");
 

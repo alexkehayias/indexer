@@ -229,14 +229,34 @@ fn maybe_clone_repo(url: String, deploy_key_path: String) {
     println!("stdout: {}\nstderr: {}", stdout, stderr);
 }
 
+// Pull and reset to origin main branch
+fn maybe_pull_and_reset_repo(deploy_key_path: String) {
+    let git_clone = Command::new("sh")
+        .arg("-c")
+        .arg(format!("GIT_SSH_COMMAND='ssh -i {} -o IdentitiesOnly=yes' cd ./notes && git fetch origin && git reset --hard origin/main", deploy_key_path))
+        .output()
+        .expect("failed to execute process");
+
+    let stdout = std::str::from_utf8(&git_clone.stdout).expect("Failed to parse stdout");
+    let stderr = std::str::from_utf8(&git_clone.stderr).expect("Failed to parse stderr");
+    println!("stdout: {}\nstderr: {}", stdout, stderr);
+}
+
 // Build the index for all notes
 async fn index_notes() -> Json<Value> {
-    let notes_path = "./notes";
+    let deploy_key_path = env::var("INDEXER_NOTES_DEPLOY_KEY_PATH").expect("Missing env var INDEXER_NOTES_REPO_URL");
+    maybe_pull_and_reset_repo(deploy_key_path);
+
+    let index_path = "./.index";
+    fs::remove_dir_all("./.index").expect("Failed to remove index directory");
+    fs::create_dir(index_path).expect("Failed to recreate index directory");
     let schema = note_schema();
-    let index_path = tantivy::directory::MmapDirectory::open("./.index").expect("Index not found");
+
+    let index_path = tantivy::directory::MmapDirectory::open(index_path).expect("Index not found");
     let idx = Index::open_or_create(index_path, schema.clone()).expect("Unable to open or create index");
     let mut index_writer: IndexWriter = idx.writer(50_000_000).expect("Index writer failed to initialize");
 
+    let notes_path = "./notes";
     for note in notes(notes_path) {
         let _ = index_note(&mut index_writer, &schema, note);
     }
@@ -313,15 +333,15 @@ async fn main() -> tantivy::Result<()> {
         }
     }
 
-    if args.serve {
-        if args.init {
-            // Clone the notes repo and index it
-            let repo_url = env::var("INDEXER_NOTES_REPO_URL").expect("Missing env var INDEXER_NOTES_REPO_URL");
-            let deploy_key_path = env::var("INDEXER_NOTES_DEPLOY_KEY_PATH").expect("Missing env var INDEXER_NOTES_REPO_URL");
-            maybe_clone_repo(repo_url, deploy_key_path);
-            let _res = index_notes().await;
-        }
+    if args.init {
+        // Clone the notes repo and index it
+        let repo_url = env::var("INDEXER_NOTES_REPO_URL").expect("Missing env var INDEXER_NOTES_REPO_URL");
+        let deploy_key_path = env::var("INDEXER_NOTES_DEPLOY_KEY_PATH").expect("Missing env var INDEXER_NOTES_REPO_URL");
+        maybe_clone_repo(repo_url, deploy_key_path);
+        let _res = index_notes().await;
+    }
 
+    if args.serve {
         serve(args.host, args.port).await;
     }
 

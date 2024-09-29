@@ -1,9 +1,4 @@
-use std::collections::HashMap;
-use std::env;
-use std::fs;
-use std::path::PathBuf;
 use std::process::Command;
-use std::sync::{Arc, RwLock};
 
 use clap::Parser;
 
@@ -12,25 +7,9 @@ use tantivy::query::QueryParser;
 use tantivy::schema::*;
 use tantivy::{Index, IndexWriter, ReloadPolicy};
 
-use axum::extract::Query;
-use axum::{
-    extract::State,
-    response::Json,
-    routing::{get, post},
-    Router,
-};
-use orgize::ParseConfig;
-use serde::Deserialize;
-use serde_json::{json, Value};
-use tower_http::cors::CorsLayer;
-use tower_http::services::ServeDir;
-use tower_http::trace::TraceLayer;
-use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
-
 mod schema;
 use schema::note_schema;
 mod search;
-use search::search_notes;
 mod server;
 mod indexing;
 mod source;
@@ -120,7 +99,7 @@ async fn main() -> tantivy::Result<()> {
     //     let deploy_key_path = env::var("INDEXER_NOTES_DEPLOY_KEY_PATH")
     //         .expect("Missing env var INDEXER_NOTES_REPO_URL");
     //     maybe_clone_repo(repo_url, deploy_key_path);
-    //     let _res = index_notes().await;
+    //     let _res = server::index_notes().await;
     // }
 
     if args.serve {

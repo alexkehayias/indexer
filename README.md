@@ -4,16 +4,22 @@ WIP personal indexer service.
 
 ## Running it
 
-Index notes:
+Initialize index:
 
 ```
-cargo run -- --path "/path/to/org/notes"
+cargo run -- --index
 ```
 
 Search notes:
 
 ```
 cargo run -- --query "testing"
+```
+
+Re-index:
+
+```
+cargo run -- --reindex
 ```
 
 Run the server:

@@ -18,12 +18,12 @@ use axum::{
     Router,
     extract::State,
 };
+use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
 use tower_http::cors::CorsLayer;
 use tower_http::trace::TraceLayer;
 use tower_http::services::ServeDir;
 use axum::extract::Query;
 use serde::Deserialize;
-
 use serde_json::{Value, json};
 use orgize::ParseConfig;
 
@@ -233,7 +233,7 @@ fn maybe_clone_repo(url: String, deploy_key_path: String) {
 fn maybe_pull_and_reset_repo(deploy_key_path: String) {
     let git_clone = Command::new("sh")
         .arg("-c")
-        .arg(format!("GIT_SSH_COMMAND='ssh -i {} -o IdentitiesOnly=yes' cd ./notes && git fetch origin && git reset --hard origin/main", deploy_key_path))
+        .arg(format!("cd ./notes && GIT_SSH_COMMAND='ssh -i {} -o IdentitiesOnly=yes' git fetch origin && git reset --hard origin/main", deploy_key_path))
         .output()
         .expect("failed to execute process");
 
@@ -271,6 +271,21 @@ async fn index_notes() -> Json<Value> {
 
 // Run the server
 async fn serve(host: String, port: String) {
+    tracing_subscriber::registry()
+        .with(
+            tracing_subscriber::EnvFilter::try_from_default_env().unwrap_or_else(|_| {
+                // axum logs rejections from built-in extractors with the `axum::rejection`
+                // target, at `TRACE` level. `axum::rejection=trace` enables showing those events
+                format!(
+                    "{}=debug,tower_http=debug,axum::rejection=trace",
+                    env!("CARGO_CRATE_NAME")
+                )
+                .into()
+            }),
+        )
+        .with(tracing_subscriber::fmt::layer())
+        .init();
+
     let shared_state = SharedState::default();
     let cors = CorsLayer::permissive();
     let serve_dir = ServeDir::new("./web-ui/src");
@@ -292,7 +307,8 @@ async fn serve(host: String, port: String) {
         .await
         .unwrap();
 
-    println!("Server started. Listening on {}", listener.local_addr().unwrap());
+    tracing::debug!("Server started. Listening on {}", listener.local_addr().unwrap());
+
     axum::serve(listener, app).await.unwrap();
 }
 

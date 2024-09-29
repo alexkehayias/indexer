@@ -1,10 +1,10 @@
+use super::schema::note_schema;
+use super::source::notes;
+use orgize::ParseConfig;
 use std::fs;
 use std::path::PathBuf;
 use tantivy::schema::*;
 use tantivy::{doc, Index, IndexWriter};
-use orgize::ParseConfig;
-use super::source::notes;
-use super::schema::note_schema;
 
 // There is no such thing as updates in tantivy so this function will
 // produce duplicates if called repeatedly
@@ -88,5 +88,5 @@ pub fn index_notes_all() {
         let _ = index_note(&mut index_writer, &schema, note);
     }
 
-index_writer.commit().expect("Index write failed");
+    index_writer.commit().expect("Index write failed");
 }

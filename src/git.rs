@@ -4,7 +4,10 @@ use std::process::Command;
 pub fn maybe_clone_repo(url: String, deploy_key_path: String) {
     let git_clone = Command::new("sh")
         .arg("-c")
-        .arg(format!("GIT_SSH_COMMAND='ssh -i {} -o IdentitiesOnly=yes' git clone {}", deploy_key_path, url))
+        .arg(format!(
+            "GIT_SSH_COMMAND='ssh -i {} -o IdentitiesOnly=yes' git clone {}",
+            deploy_key_path, url
+        ))
         .output()
         .expect("failed to execute process");
 

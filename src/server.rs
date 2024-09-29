@@ -5,9 +5,6 @@ use std::path::PathBuf;
 use std::process::Command;
 use std::sync::{Arc, RwLock};
 
-use clap::Parser;
-
-use tantivy::schema::*;
 use tantivy::{doc, Index, IndexWriter};
 
 use axum::extract::Query;
@@ -17,7 +14,6 @@ use axum::{
     routing::{get, post},
     Router,
 };
-use orgize::ParseConfig;
 use serde::Deserialize;
 use serde_json::{json, Value};
 use tower_http::cors::CorsLayer;
@@ -27,95 +23,8 @@ use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
 
 use super::schema::note_schema;
 use super::search::search_notes;
-
-// There is no such thing as updates in tantivy so this function will
-// produce duplicates if called repeatedly
-fn index_note(
-    index_writer: &mut IndexWriter,
-    schema: &Schema,
-    path: PathBuf,
-) -> tantivy::Result<()> {
-    tracing::debug!("Indexing note: {}", &path.display());
-
-    let id = schema.get_field("id")?;
-    let title = schema.get_field("title")?;
-    let body = schema.get_field("body")?;
-    let tags = schema.get_field("tags")?;
-    let file_name = schema.get_field("file_name")?;
-
-    // Parse the file from the path
-    let content = fs::read_to_string(&path)?;
-    let config = ParseConfig {
-        ..Default::default()
-    };
-    let p = config.parse(&content);
-
-    let props = p.document().properties().expect(
-        "Missing property
-drawer",
-    );
-    let id_value = props.get("ID").expect("Missing org-id").to_string();
-    let file_name_value = path.file_name().unwrap().to_string_lossy().into_owned();
-    let title_value = p.title().expect("No title found");
-    let body_value = p.document().raw();
-    let filetags: Vec<Vec<String>> = p
-        .keywords()
-        .filter_map(|k| match k.key().to_string().as_str() {
-            "FILETAGS" => Some(
-                k.value()
-                    .to_string()
-                    .trim()
-                    .split(" ")
-                    .map(|s| s.to_string())
-                    .collect(),
-            ),
-            _ => None,
-        })
-        .collect();
-
-    // For now, tags are a comma separated string which should
-    // allow it to still be searchable
-    let tags_value = if filetags.is_empty() {
-        String::new()
-    } else {
-        filetags[0].to_owned().join(",")
-    };
-
-    index_writer.add_document(doc!(
-        id => id_value,
-        title => title_value,
-        body => body_value,
-        file_name => file_name_value,
-        tags => tags_value,
-    ))?;
-
-    Ok(())
-}
-
-// Get first level files in the directory, does not follow sub directories
-fn notes(path: &str) -> Vec<PathBuf> {
-    let Ok(entries) = fs::read_dir(path) else {
-        return vec![];
-    };
-
-    // TODO: make this recursive if there is more than one directory of notes
-    entries
-        .flatten()
-        .flat_map(|entry| {
-            let Ok(meta) = entry.metadata() else {
-                return vec![];
-            };
-            // Skip directories and non org files
-            let path = entry.path();
-            let ext = path.extension().unwrap_or_default();
-            let name = path.file_name().unwrap_or_default();
-            if meta.is_file() && ext == "org" && name != "config.org" && name != "capture.org" {
-                return vec![entry.path()];
-            }
-            vec![]
-        })
-        .collect()
-}
+use super::indexing::index_note;
+use super::source::notes;
 
 type SharedState = Arc<RwLock<AppState>>;
 

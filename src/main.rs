@@ -44,7 +44,7 @@ fn index_note(
     schema: &Schema,
     path: PathBuf,
 ) -> tantivy::Result<()> {
-    // println!("Indexing note: {}", &path.display());
+    tracing::debug!("Indexing note: {}", &path.display());
 
     let id = schema.get_field("id")?;
     let title = schema.get_field("title")?;
@@ -226,7 +226,7 @@ fn maybe_clone_repo(url: String, deploy_key_path: String) {
 
     let stdout = std::str::from_utf8(&git_clone.stdout).expect("Failed to parse stdout");
     let stderr = std::str::from_utf8(&git_clone.stderr).expect("Failed to parse stderr");
-    println!("stdout: {}\nstderr: {}", stdout, stderr);
+    tracing::debug!("stdout: {}\nstderr: {}", stdout, stderr);
 }
 
 // Pull and reset to origin main branch
@@ -239,7 +239,7 @@ fn maybe_pull_and_reset_repo(deploy_key_path: String) {
 
     let stdout = std::str::from_utf8(&git_clone.stdout).expect("Failed to parse stdout");
     let stderr = std::str::from_utf8(&git_clone.stderr).expect("Failed to parse stderr");
-    println!("stdout: {}\nstderr: {}", stdout, stderr);
+    tracing::debug!("stdout: {}\nstderr: {}", stdout, stderr);
 }
 
 // Build the index for all notes

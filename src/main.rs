@@ -1,9 +1,9 @@
+use std::collections::HashMap;
 use std::env;
 use std::fs;
 use std::path::PathBuf;
-use std::collections::HashMap;
-use std::sync::{Arc, RwLock};
 use std::process::Command;
+use std::sync::{Arc, RwLock};
 
 use clap::Parser;
 
@@ -12,27 +12,26 @@ use tantivy::query::QueryParser;
 use tantivy::schema::*;
 use tantivy::{doc, Index, IndexWriter, ReloadPolicy};
 
-use axum::{
-    routing::{get, post},
-    response::Json,
-    Router,
-    extract::State,
-};
-use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
-use tower_http::cors::CorsLayer;
-use tower_http::trace::TraceLayer;
-use tower_http::services::ServeDir;
 use axum::extract::Query;
-use serde::Deserialize;
-use serde_json::{Value, json};
+use axum::{
+    extract::State,
+    response::Json,
+    routing::{get, post},
+    Router,
+};
 use orgize::ParseConfig;
+use serde::Deserialize;
+use serde_json::{json, Value};
+use tower_http::cors::CorsLayer;
+use tower_http::services::ServeDir;
+use tower_http::trace::TraceLayer;
+use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
 
 mod schema;
 use schema::note_schema;
 
 mod search;
 use search::search_notes;
-
 
 // There is no such thing as updates in tantivy so this function will
 // produce duplicates if called repeatedly
@@ -56,21 +55,26 @@ fn index_note(
     };
     let p = config.parse(&content);
 
-    let props = p.document().properties().expect("Missing property
-drawer");
+    let props = p.document().properties().expect(
+        "Missing property
+drawer",
+    );
     let id_value = props.get("ID").expect("Missing org-id").to_string();
     let file_name_value = path.file_name().unwrap().to_string_lossy().into_owned();
     let title_value = p.title().expect("No title found");
     let body_value = p.document().raw();
-    let filetags: Vec<Vec<String>> = p.keywords()
+    let filetags: Vec<Vec<String>> = p
+        .keywords()
         .filter_map(|k| match k.key().to_string().as_str() {
-            "FILETAGS" => Some(k.value()
-                               .to_string()
-                               .trim()
-                               .split(" ")
-                               .map(|s| s.to_string())
-                               .collect()),
-           _ => None
+            "FILETAGS" => Some(
+                k.value()
+                    .to_string()
+                    .trim()
+                    .split(" ")
+                    .map(|s| s.to_string())
+                    .collect(),
+            ),
+            _ => None,
         })
         .collect();
 
@@ -138,14 +142,13 @@ struct Args {
     serve: bool,
 
     /// Set the server host address
-    #[arg(long, default_value="127.0.0.1")]
+    #[arg(long, default_value = "127.0.0.1")]
     host: String,
 
     /// Set the server port
-    #[arg(long, default_value="1111")]
+    #[arg(long, default_value = "1111")]
     port: String,
 }
-
 
 type SharedState = Arc<RwLock<AppState>>;
 
@@ -172,9 +175,21 @@ async fn kv_get(State(state): State<SharedState>) -> Json<Value> {
 }
 
 async fn kv_set(State(state): State<SharedState>, Json(data): Json<SetLatest>) {
-    state.write().unwrap().latest_selection.insert(String::from("id"), data.id);
-    state.write().unwrap().latest_selection.insert(String::from("file_name"), data.file_name);
-    state.write().unwrap().latest_selection.insert(String::from("title"), data.title);
+    state
+        .write()
+        .unwrap()
+        .latest_selection
+        .insert(String::from("id"), data.id);
+    state
+        .write()
+        .unwrap()
+        .latest_selection
+        .insert(String::from("file_name"), data.file_name);
+    state
+        .write()
+        .unwrap()
+        .latest_selection
+        .insert(String::from("title"), data.title);
 }
 
 // Fulltext search of all notes
@@ -196,7 +211,10 @@ async fn search(Query(params): Query<HashMap<String, String>>) -> Json<Value> {
 fn maybe_clone_repo(url: String, deploy_key_path: String) {
     let git_clone = Command::new("sh")
         .arg("-c")
-        .arg(format!("GIT_SSH_COMMAND='ssh -i {} -o IdentitiesOnly=yes' git clone {}", deploy_key_path, url))
+        .arg(format!(
+            "GIT_SSH_COMMAND='ssh -i {} -o IdentitiesOnly=yes' git clone {}",
+            deploy_key_path, url
+        ))
         .output()
         .expect("failed to execute process");
 
@@ -220,7 +238,8 @@ fn maybe_pull_and_reset_repo(deploy_key_path: String) {
 
 // Build the index for all notes
 async fn index_notes() -> Json<Value> {
-    let deploy_key_path = env::var("INDEXER_NOTES_DEPLOY_KEY_PATH").expect("Missing env var INDEXER_NOTES_DEPLOY_KEY_PATH");
+    let deploy_key_path = env::var("INDEXER_NOTES_DEPLOY_KEY_PATH")
+        .expect("Missing env var INDEXER_NOTES_DEPLOY_KEY_PATH");
     maybe_pull_and_reset_repo(deploy_key_path);
 
     let index_path = "./.index";
@@ -229,8 +248,11 @@ async fn index_notes() -> Json<Value> {
 
     let index_path = tantivy::directory::MmapDirectory::open(index_path).expect("Index not found");
     let schema = note_schema();
-    let idx = Index::open_or_create(index_path, schema.clone()).expect("Unable to open or create index");
-    let mut index_writer: IndexWriter = idx.writer(50_000_000).expect("Index writer failed to initialize");
+    let idx =
+        Index::open_or_create(index_path, schema.clone()).expect("Unable to open or create index");
+    let mut index_writer: IndexWriter = idx
+        .writer(50_000_000)
+        .expect("Index writer failed to initialize");
 
     let notes_path = "./notes";
     for note in notes(notes_path) {
@@ -283,7 +305,10 @@ async fn serve(host: String, port: String) {
         .await
         .unwrap();
 
-    tracing::debug!("Server started. Listening on {}", listener.local_addr().unwrap());
+    tracing::debug!(
+        "Server started. Listening on {}",
+        listener.local_addr().unwrap()
+    );
 
     axum::serve(listener, app).await.unwrap();
 }
@@ -327,8 +352,10 @@ async fn main() -> tantivy::Result<()> {
 
     if args.init {
         // Clone the notes repo and index it
-        let repo_url = env::var("INDEXER_NOTES_REPO_URL").expect("Missing env var INDEXER_NOTES_REPO_URL");
-        let deploy_key_path = env::var("INDEXER_NOTES_DEPLOY_KEY_PATH").expect("Missing env var INDEXER_NOTES_REPO_URL");
+        let repo_url =
+            env::var("INDEXER_NOTES_REPO_URL").expect("Missing env var INDEXER_NOTES_REPO_URL");
+        let deploy_key_path = env::var("INDEXER_NOTES_DEPLOY_KEY_PATH")
+            .expect("Missing env var INDEXER_NOTES_REPO_URL");
         maybe_clone_repo(repo_url, deploy_key_path);
         let _res = index_notes().await;
     }

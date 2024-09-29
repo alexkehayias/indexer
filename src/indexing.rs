@@ -1,8 +1,10 @@
 use std::fs;
 use std::path::PathBuf;
 use tantivy::schema::*;
-use tantivy::{doc, IndexWriter};
+use tantivy::{doc, Index, IndexWriter};
 use orgize::ParseConfig;
+use super::source::notes;
+use super::schema::note_schema;
 
 // There is no such thing as updates in tantivy so this function will
 // produce duplicates if called repeatedly
@@ -66,4 +68,25 @@ drawer",
     ))?;
 
     Ok(())
+}
+
+pub fn index_notes_all() {
+    let notes_path = "./notes";
+    let index_path = "./.index";
+    fs::remove_dir_all(index_path).expect("Failed to remove index directory");
+    fs::create_dir(index_path).expect("Failed to recreate index directory");
+
+    let index_path = tantivy::directory::MmapDirectory::open(index_path).expect("Index not found");
+    let schema = note_schema();
+    let idx =
+        Index::open_or_create(index_path, schema.clone()).expect("Unable to open or create index");
+    let mut index_writer: IndexWriter = idx
+        .writer(50_000_000)
+        .expect("Index writer failed to initialize");
+
+    for note in notes(notes_path) {
+        let _ = index_note(&mut index_writer, &schema, note);
+    }
+
+index_writer.commit().expect("Index write failed");
 }

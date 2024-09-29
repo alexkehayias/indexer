@@ -1,4 +1,4 @@
-use std::process::Command;
+use std::env;
 
 use clap::Parser;
 
@@ -12,8 +12,10 @@ use schema::note_schema;
 mod search;
 mod server;
 mod indexing;
+use indexing::index_notes_all;
 mod source;
 mod git;
+use git::maybe_clone_repo;
 
 #[derive(Parser, Debug)]
 #[command(version, about, long_about = None)]
@@ -80,15 +82,15 @@ async fn main() -> tantivy::Result<()> {
         }
     }
 
-    // if args.init {
-    //     // Clone the notes repo and index it
-    //     let repo_url =
-    //         env::var("INDEXER_NOTES_REPO_URL").expect("Missing env var INDEXER_NOTES_REPO_URL");
-    //     let deploy_key_path = env::var("INDEXER_NOTES_DEPLOY_KEY_PATH")
-    //         .expect("Missing env var INDEXER_NOTES_REPO_URL");
-    //     maybe_clone_repo(repo_url, deploy_key_path);
-    //     let _res = server::index_notes().await;
-    // }
+    if args.init {
+        // Clone the notes repo and index it
+        let repo_url =
+            env::var("INDEXER_NOTES_REPO_URL").expect("Missing env var INDEXER_NOTES_REPO_URL");
+        let deploy_key_path = env::var("INDEXER_NOTES_DEPLOY_KEY_PATH")
+            .expect("Missing env var INDEXER_NOTES_REPO_URL");
+        maybe_clone_repo(repo_url, deploy_key_path);
+        index_notes_all();
+    }
 
     if args.serve {
         server::serve(args.host, args.port).await;

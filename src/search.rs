@@ -6,7 +6,7 @@ use tantivy::{Index, ReloadPolicy};
 use super::schema::note_schema;
 
 // Fulltext search of all notes
-pub fn search_notes(query: &String) -> Vec<NamedFieldDocument> {
+pub fn search_notes(query: &str) -> Vec<NamedFieldDocument> {
     let schema = note_schema();
     let index_path = tantivy::directory::MmapDirectory::open("./.index").expect("Index not found");
     let idx =

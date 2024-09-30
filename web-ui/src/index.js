@@ -26,10 +26,12 @@
         resultList.classList.remove("hidden");
 
         const hits = data.results.map((r) => {
+          // Create a list item for each hit
           const hit = document.createElement("li");
           hit.classList.add(...[
             "group",
             "flex",
+            "justify-between",
             "cursor-default",
             "select-none",
             "items-center",
@@ -39,9 +41,43 @@
             "hover:cursor-pointer",
           ]);
           hit.innerText = r.title;
+
+          // Add in each tag
+          // Tags are a comma separated string so we need to check if
+          // there is an empty string to determine if there are any tags
+          // to render
+          if (r.tags[0]) {
+            const tagContainer = document.createElement("div");
+            tagContainer.classList.add(...["flex", "flex-row"]);
+            r.tags[0].split(",").forEach((tag) => {
+              const tagDiv = document.createElement("div");
+              tagDiv.classList.add(...[
+                "bg-gray-200",
+                "text-gray-800",
+                "text-xs",
+                "px-2",
+                "py-1",
+                "rounded-full",
+                "mr-2",
+              ]);
+              tagDiv.innerText = `#${tag}`;
+              tagContainer.appendChild(tagDiv);
+            });
+            hit.appendChild(tagContainer);
+          }
+
           hit.addEventListener("click", async (clickEvent) => {
             console.log(`Clicked result with id ${r.id}`);
+
+            // Unselect all other hits
+            hits.forEach((hit) => {
+              hit.classList.remove(...["bg-indigo-700", "text-white"]);
+            });
+
+            // Highlight the selected hit
             hit.classList.add(...["bg-indigo-700", "text-white"]);
+
+            // Store the selected hit in the search session
             const resp = await fetch(
               `/notes/search/latest`,
               {

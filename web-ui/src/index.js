@@ -5,11 +5,13 @@
 
   const handleSearch = async (val) => {
     try {
+      // Auto hide results from journal entries
+      const query = `-title:journal ${val.trim()}`
       const headers = new Headers();
       headers.append("Content-Type", "application/json");
 
       const response = await fetch(
-        `/notes/search?query=${val.trim()}`,
+        `/notes/search?query=${query}`,
         {
           method: "GET",
           headers,

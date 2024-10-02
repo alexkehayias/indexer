@@ -73,11 +73,11 @@
 
             // Unselect all other hits
             hits.forEach((hit) => {
-              hit.classList.remove(...["bg-indigo-700", "text-white"]);
+              hit.classList.remove(...["bg-blue-700", "text-white"]);
             });
 
             // Highlight the selected hit
-            hit.classList.add(...["bg-indigo-700", "text-white"]);
+            hit.classList.add(...["bg-blue-700", "text-white"]);
 
             // Store the selected hit in the search session
             const resp = await fetch(

@@ -88,3 +88,87 @@ pub fn index_notes_all(index_path: &str, notes_path: &str) {
 
     index_writer.commit().expect("Index write failed");
 }
+
+
+use rusqlite::{ffi::sqlite3_auto_extension, Connection, Result};
+use sqlite_vec::sqlite3_vec_init;
+use zerocopy::AsBytes;
+use fastembed::{TextEmbedding, InitOptions, EmbeddingModel};
+
+/// Index each note's embeddings
+/// Target model has N tokens or roughly a M sized context window
+///
+/// Algorithm:
+/// 1. If the note text is less than N chars, embed the whole thing
+/// 2. Otherwise, split the text into N chars using semantic chunks
+/// 3. Calculate the embeddings for each chunk
+/// 4. Store the embedding vector in the sqlite database
+/// 5. Include metadata about the source of the chunk for further
+/// retrieval and to avoid duplicating rows
+pub fn index_notes_vector_all(index_path: &str, notes_path: &str) -> Result<()> {
+    unsafe {
+        sqlite3_auto_extension(Some(std::mem::transmute(sqlite3_vec_init as *const ())));
+    }
+
+    // TODO: Change this to persistent file
+    let db = Connection::open_in_memory()?;
+    let v: Vec<f32> = vec![0.1, 0.2, 0.3];
+
+    // TODO: generate these from inputted text
+    let items: Vec<(usize, Vec<f32>)> = vec![
+        (1, vec![0.1, 0.1, 0.1, 0.1]),
+        (2, vec![0.2, 0.2, 0.2, 0.2]),
+        (3, vec![0.3, 0.3, 0.3, 0.3]),
+        (4, vec![0.4, 0.4, 0.4, 0.4]),
+        (5, vec![0.5, 0.5, 0.5, 0.5]),
+    ];
+    println!("{x}");
+
+    // TODO: Move this to initialization
+    db.execute(
+        "CREATE VIRTUAL TABLE vec_items USING vec0(embedding float[4])",
+        [],
+    )?;
+    let mut stmt = db.prepare("INSERT INTO vec_items(rowid, embedding) VALUES (?, ?)")?;
+    for item in items {
+        stmt.execute(rusqlite::params![item.0, item.1.as_bytes()])?;
+    }
+
+    // TODO: Move this to a similarity search function
+    let query: Vec<f32> = vec![0.3, 0.3, 0.3, 0.3];
+    let result: Vec<(i64, f64)> = db
+        .prepare(
+            r"
+          SELECT
+            rowid,
+            distance
+          FROM vec_items
+          WHERE embedding MATCH ?1
+          ORDER BY distance
+          LIMIT 3
+        ",
+        )?
+        .query_map([query.as_bytes()], |r| Ok((r.get(0)?, r.get(1)?)))?
+        .collect::<Result<Vec<_>, _>>()?;
+    println!("{:?}", result);
+
+    let model = TextEmbedding::try_new(
+        InitOptions::new(EmbeddingModel::AllMiniLML6V2).with_show_download_progress(true),
+    ).unwrap();
+
+    let documents = vec![
+        "passage: Hello, World!",
+        "query: Hello, World!",
+        "passage: This is an example passage.",
+        // You can leave out the prefix but it's recommended
+        "fastembed-rs is licensed under Apache  2.0"
+    ];
+
+    // Generate embeddings with the default batch size, 256
+    let embeddings = model.embed(documents, None).unwrap();
+
+    println!("Embeddings length: {}", embeddings.len());
+    println!("Embedding dimension: {}", embeddings[0].len());
+
+    Ok(())
+}

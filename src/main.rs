@@ -13,7 +13,7 @@ use schema::note_schema;
 mod indexing;
 mod search;
 mod server;
-use indexing::index_notes_all;
+use indexing::{index_notes_all, index_notes_vector_all};
 mod git;
 mod source;
 use git::{maybe_clone_repo, maybe_pull_and_reset_repo};
@@ -55,12 +55,12 @@ async fn main() -> tantivy::Result<()> {
 
     if args.reindex {
         // Clone the notes repo and index it
-        let repo_url =
-            env::var("INDEXER_NOTES_REPO_URL").expect("Missing env var INDEXER_NOTES_REPO_URL");
-        let deploy_key_path = env::var("INDEXER_NOTES_DEPLOY_KEY_PATH")
-            .expect("Missing env var INDEXER_NOTES_REPO_URL");
-        maybe_pull_and_reset_repo(&repo_url, deploy_key_path);
-        index_notes_all(index_path, notes_path);
+        // let repo_url =
+        //     env::var("INDEXER_NOTES_REPO_URL").expect("Missing env var INDEXER_NOTES_REPO_URL");
+        // let deploy_key_path = env::var("INDEXER_NOTES_DEPLOY_KEY_PATH")
+        //     .expect("Missing env var INDEXER_NOTES_REPO_URL");
+        // maybe_pull_and_reset_repo(&repo_url, deploy_key_path);
+        index_notes_vector_all(index_path, notes_path);
     }
 
     if let Some(query) = args.query {

@@ -60,7 +60,7 @@ async fn main() -> tantivy::Result<()> {
         // let deploy_key_path = env::var("INDEXER_NOTES_DEPLOY_KEY_PATH")
         //     .expect("Missing env var INDEXER_NOTES_REPO_URL");
         // maybe_pull_and_reset_repo(&repo_url, deploy_key_path);
-        index_notes_vector_all(index_path, notes_path);
+        index_notes_vector_all(index_path, notes_path).unwrap();
     }
 
     if let Some(query) = args.query {

@@ -9,12 +9,14 @@ clap = { version = "4.5.17", features = ["derive"] }
 fastembed = "4.1.0"
 http = "1.1.0"
 orgize = "0.10.0-alpha.10"
+rand = "0.8.5"
 rusqlite = { version = "0.32.1", features = ["bundled", "load_extension"] }
 serde = "1.0.210"
 serde_json = "1.0.128"
 sqlite-vec = "0.1.3"
 tantivy = "0.22.0"
-text-splitter = "0.16.1"
+text-splitter = { version = "0.16.1", features = ["tiktoken-rs"] }
+tiktoken-rs = "0.5.9"
 tokio = { version = "1.40.0", features = ["macros", "rt-multi-thread"] }
 tower-http = { version = "0.5.0", features = ["trace", "cors", "fs"] }
 tracing = "0.1"

@@ -94,6 +94,10 @@ use rusqlite::{ffi::sqlite3_auto_extension, Connection, Result};
 use sqlite_vec::sqlite3_vec_init;
 use zerocopy::AsBytes;
 use fastembed::{TextEmbedding, InitOptions, EmbeddingModel};
+use text_splitter::{ChunkConfig, TextSplitter};
+// Can also use anything else that implements the ChunkSizer
+// trait from the text_splitter crate.
+use tiktoken_rs::cl100k_base;
 
 /// Index each note's embeddings
 /// Target model has N tokens or roughly a M sized context window
@@ -104,7 +108,7 @@ use fastembed::{TextEmbedding, InitOptions, EmbeddingModel};
 /// 3. Calculate the embeddings for each chunk
 /// 4. Store the embedding vector in the sqlite database
 /// 5. Include metadata about the source of the chunk for further
-/// retrieval and to avoid duplicating rows
+///    retrieval and to avoid duplicating rows
 pub fn index_notes_vector_all(index_path: &str, notes_path: &str) -> Result<()> {
     unsafe {
         sqlite3_auto_extension(Some(std::mem::transmute(sqlite3_vec_init as *const ())));
@@ -112,30 +116,52 @@ pub fn index_notes_vector_all(index_path: &str, notes_path: &str) -> Result<()> 
 
     // TODO: Change this to persistent file
     let db = Connection::open_in_memory()?;
-    let v: Vec<f32> = vec![0.1, 0.2, 0.3];
 
-    // TODO: generate these from inputted text
-    let items: Vec<(usize, Vec<f32>)> = vec![
-        (1, vec![0.1, 0.1, 0.1, 0.1]),
-        (2, vec![0.2, 0.2, 0.2, 0.2]),
-        (3, vec![0.3, 0.3, 0.3, 0.3]),
-        (4, vec![0.4, 0.4, 0.4, 0.4]),
-        (5, vec![0.5, 0.5, 0.5, 0.5]),
-    ];
-    println!("{x}");
+    let embeddings_model = TextEmbedding::try_new(
+        InitOptions::new(EmbeddingModel::BGESmallENV15).with_show_download_progress(true),
+    ).unwrap();
 
-    // TODO: Move this to initialization
+
+    let tokenizer = cl100k_base().unwrap();
+    // Targeting Llama 3.2 with a context window of 128k tokens means
+    // we can stuff around 100 documents
+    let max_tokens = 1280;
+    let splitter = TextSplitter::new(ChunkConfig::new(max_tokens).with_sizer(tokenizer));
+
+    // let mut accum = Vec::new();
+    let mut counter = 0;
+
     db.execute(
-        "CREATE VIRTUAL TABLE vec_items USING vec0(embedding float[4])",
+        "CREATE VIRTUAL TABLE vec_items USING vec0(embedding float[384])",
         [],
     )?;
     let mut stmt = db.prepare("INSERT INTO vec_items(rowid, embedding) VALUES (?, ?)")?;
-    for item in items {
-        stmt.execute(rusqlite::params![item.0, item.1.as_bytes()])?;
+
+    for p in notes(notes_path).iter() {
+        // Read the file content into a String
+        let content = fs::read_to_string(p)
+            .unwrap_or_else(|_| panic!("Failed to read note {}", &p.display()));
+
+        // Assume that chunks returns an iterator of &str
+        let mut accum = Vec::new();
+        for chunk in splitter.chunks(content.as_str()) {
+            // Convert the &str chunk into an owned String
+            accum.push(chunk.to_string());
+        }
+        println!("Generating embeddings for note {}", &p.display());
+        let items = embeddings_model.embed(accum, None).expect("Failed to generate embeddings");
+        for item in items {
+            // TODO: Row ID can only be an integer so need to be able
+            // to go from a unique row ID to the note ID.
+            counter += 1;
+            let id = counter;
+            stmt.execute(rusqlite::params![id, item.as_bytes()])?;
+        }
     }
 
     // TODO: Move this to a similarity search function
-    let query: Vec<f32> = vec![0.3, 0.3, 0.3, 0.3];
+    let query_vector = embeddings_model.embed(vec!["indexer"], None).unwrap();
+    let query = query_vector[0].clone();
     let result: Vec<(i64, f64)> = db
         .prepare(
             r"

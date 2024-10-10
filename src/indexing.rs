@@ -5,6 +5,12 @@ use std::fs;
 use std::path::PathBuf;
 use tantivy::schema::*;
 use tantivy::{doc, Index, IndexWriter};
+use rusqlite::{ffi::sqlite3_auto_extension, Connection, Result};
+use sqlite_vec::sqlite3_vec_init;
+use zerocopy::AsBytes;
+use fastembed::{TextEmbedding, InitOptions, EmbeddingModel};
+use text_splitter::{ChunkConfig, TextSplitter};
+use tiktoken_rs::cl100k_base;
 
 // There is no such thing as updates in tantivy so this function will
 // produce duplicates if called repeatedly
@@ -89,22 +95,12 @@ pub fn index_notes_all(index_path: &str, notes_path: &str) {
     index_writer.commit().expect("Index write failed");
 }
 
-
-use rusqlite::{ffi::sqlite3_auto_extension, Connection, Result};
-use sqlite_vec::sqlite3_vec_init;
-use zerocopy::AsBytes;
-use fastembed::{TextEmbedding, InitOptions, EmbeddingModel};
-use text_splitter::{ChunkConfig, TextSplitter};
-// Can also use anything else that implements the ChunkSizer
-// trait from the text_splitter crate.
-use tiktoken_rs::cl100k_base;
-
 /// Index each note's embeddings
 /// Target model has N tokens or roughly a M sized context window
 ///
 /// Algorithm:
-/// 1. If the note text is less than N chars, embed the whole thing
-/// 2. Otherwise, split the text into N chars using semantic chunks
+/// 1. If the note text is less than N tokens, embed the whole thing
+/// 2. Otherwise, split the text into N tokens
 /// 3. Calculate the embeddings for each chunk
 /// 4. Store the embedding vector in the sqlite database
 /// 5. Include metadata about the source of the chunk for further
@@ -128,16 +124,30 @@ pub fn index_notes_vector_all(index_path: &str, notes_path: &str) -> Result<()> 
     let max_tokens = 1280;
     let splitter = TextSplitter::new(ChunkConfig::new(max_tokens).with_sizer(tokenizer));
 
-    // let mut accum = Vec::new();
     let mut counter = 0;
 
+    // TODO: Move this to an init function
+    // Create a metadata table that has a foreign key to the
+    // embeddings virtual table. This will be used to coordinate
+    // upserts and hydrating the notes
+    db.execute(
+        r"CREATE TABLE note_meta (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    org_id TEXT NOT NULL,
+    file_name TEXT NOT NULL,
+    vec_id INTEGER,
+    FOREIGN KEY (vec_id) REFERENCES vec_items(rowid)
+);",
+        [],
+    )?;
     db.execute(
         "CREATE VIRTUAL TABLE vec_items USING vec0(embedding float[384])",
         [],
     )?;
-    let mut stmt = db.prepare("INSERT INTO vec_items(rowid, embedding) VALUES (?, ?)")?;
 
-    for p in notes(notes_path).iter() {
+    // Generate embeddings and store it in the DB
+    let mut stmt = db.prepare("INSERT INTO vec_items(rowid, embedding) VALUES (?, ?)")?;
+    for p in notes(notes_path)[0..10].iter() {
         // Read the file content into a String
         let content = fs::read_to_string(p)
             .unwrap_or_else(|_| panic!("Failed to read note {}", &p.display()));
@@ -158,43 +168,6 @@ pub fn index_notes_vector_all(index_path: &str, notes_path: &str) -> Result<()> 
             stmt.execute(rusqlite::params![id, item.as_bytes()])?;
         }
     }
-
-    // TODO: Move this to a similarity search function
-    let query_vector = embeddings_model.embed(vec!["indexer"], None).unwrap();
-    let query = query_vector[0].clone();
-    let result: Vec<(i64, f64)> = db
-        .prepare(
-            r"
-          SELECT
-            rowid,
-            distance
-          FROM vec_items
-          WHERE embedding MATCH ?1
-          ORDER BY distance
-          LIMIT 3
-        ",
-        )?
-        .query_map([query.as_bytes()], |r| Ok((r.get(0)?, r.get(1)?)))?
-        .collect::<Result<Vec<_>, _>>()?;
-    println!("{:?}", result);
-
-    let model = TextEmbedding::try_new(
-        InitOptions::new(EmbeddingModel::AllMiniLML6V2).with_show_download_progress(true),
-    ).unwrap();
-
-    let documents = vec![
-        "passage: Hello, World!",
-        "query: Hello, World!",
-        "passage: This is an example passage.",
-        // You can leave out the prefix but it's recommended
-        "fastembed-rs is licensed under Apache  2.0"
-    ];
-
-    // Generate embeddings with the default batch size, 256
-    let embeddings = model.embed(documents, None).unwrap();
-
-    println!("Embeddings length: {}", embeddings.len());
-    println!("Embedding dimension: {}", embeddings[0].len());
 
     Ok(())
 }

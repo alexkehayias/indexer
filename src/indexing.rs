@@ -1,16 +1,16 @@
 use super::schema::note_schema;
 use super::source::notes;
+use fastembed::{EmbeddingModel, InitOptions, TextEmbedding};
 use orgize::ParseConfig;
+use rusqlite::{ffi::sqlite3_auto_extension, Connection, Result};
+use sqlite_vec::sqlite3_vec_init;
 use std::fs;
 use std::path::PathBuf;
 use tantivy::schema::*;
 use tantivy::{doc, Index, IndexWriter};
-use rusqlite::{ffi::sqlite3_auto_extension, Connection, Result};
-use sqlite_vec::sqlite3_vec_init;
-use zerocopy::AsBytes;
-use fastembed::{TextEmbedding, InitOptions, EmbeddingModel};
 use text_splitter::{ChunkConfig, TextSplitter};
 use tiktoken_rs::cl100k_base;
+use zerocopy::AsBytes;
 
 // There is no such thing as updates in tantivy so this function will
 // produce duplicates if called repeatedly
@@ -115,8 +115,8 @@ pub fn index_notes_vector_all(index_path: &str, notes_path: &str) -> Result<()> 
 
     let embeddings_model = TextEmbedding::try_new(
         InitOptions::new(EmbeddingModel::BGESmallENV15).with_show_download_progress(true),
-    ).unwrap();
-
+    )
+    .unwrap();
 
     let tokenizer = cl100k_base().unwrap();
     // Targeting Llama 3.2 with a context window of 128k tokens means
@@ -159,7 +159,9 @@ pub fn index_notes_vector_all(index_path: &str, notes_path: &str) -> Result<()> 
             accum.push(chunk.to_string());
         }
         println!("Generating embeddings for note {}", &p.display());
-        let items = embeddings_model.embed(accum, None).expect("Failed to generate embeddings");
+        let items = embeddings_model
+            .embed(accum, None)
+            .expect("Failed to generate embeddings");
         for item in items {
             // TODO: Row ID can only be an integer so need to be able
             // to go from a unique row ID to the note ID.

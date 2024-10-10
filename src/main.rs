@@ -1,5 +1,5 @@
-use std::fs;
 use std::env;
+use std::fs;
 
 use clap::Parser;
 
@@ -55,12 +55,12 @@ async fn main() -> tantivy::Result<()> {
 
     if args.reindex {
         // Clone the notes repo and index it
-        // let repo_url =
-        //     env::var("INDEXER_NOTES_REPO_URL").expect("Missing env var INDEXER_NOTES_REPO_URL");
-        // let deploy_key_path = env::var("INDEXER_NOTES_DEPLOY_KEY_PATH")
-        //     .expect("Missing env var INDEXER_NOTES_REPO_URL");
-        // maybe_pull_and_reset_repo(&repo_url, deploy_key_path);
-        index_notes_vector_all(index_path, notes_path).unwrap();
+        let repo_url =
+            env::var("INDEXER_NOTES_REPO_URL").expect("Missing env var INDEXER_NOTES_REPO_URL");
+        let deploy_key_path = env::var("INDEXER_NOTES_DEPLOY_KEY_PATH")
+            .expect("Missing env var INDEXER_NOTES_REPO_URL");
+        maybe_pull_and_reset_repo(&repo_url, deploy_key_path);
+        index_notes_vector_all(index_path, notes_path).expect("Failed to vector index notes");
     }
 
     if let Some(query) = args.query {
@@ -87,7 +87,8 @@ async fn main() -> tantivy::Result<()> {
 
     if args.init {
         // Create the index directory if it doesn't already exist
-        fs::create_dir(index_path).unwrap_or_else(|err| println!("Ignoring index directory create failed: {}", err));
+        fs::create_dir(index_path)
+            .unwrap_or_else(|err| println!("Ignoring index directory create failed: {}", err));
 
         // Clone the notes repo and index it
         let repo_url =

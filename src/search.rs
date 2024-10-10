@@ -3,9 +3,9 @@ use tantivy::query::QueryParser;
 use tantivy::schema::*;
 use tantivy::{Index, ReloadPolicy};
 
+use fastembed::{EmbeddingModel, InitOptions, TextEmbedding};
 use rusqlite::{Connection, Result};
 use zerocopy::AsBytes;
-use fastembed::{TextEmbedding, InitOptions, EmbeddingModel};
 
 use super::schema::note_schema;
 
@@ -49,7 +49,8 @@ fn search_similar_notes(query: &str) -> Result<()> {
 
     let embeddings_model = TextEmbedding::try_new(
         InitOptions::new(EmbeddingModel::BGESmallENV15).with_show_download_progress(true),
-    ).unwrap();
+    )
+    .unwrap();
     let query_vector = embeddings_model.embed(vec![query], None).unwrap();
     let query = query_vector[0].clone();
     let result: Vec<(i64, f64)> = db

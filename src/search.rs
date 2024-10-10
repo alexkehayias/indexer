@@ -3,6 +3,10 @@ use tantivy::query::QueryParser;
 use tantivy::schema::*;
 use tantivy::{Index, ReloadPolicy};
 
+use rusqlite::{Connection, Result};
+use zerocopy::AsBytes;
+use fastembed::{TextEmbedding, InitOptions, EmbeddingModel};
+
 use super::schema::note_schema;
 
 // Fulltext search of all notes
@@ -38,4 +42,31 @@ pub fn search_notes(query: &str) -> Vec<NamedFieldDocument> {
                 .to_named_doc(&schema)
         })
         .collect()
+}
+
+fn search_similar_notes(query: &str) -> Result<()> {
+    let db = Connection::open_in_memory()?;
+
+    let embeddings_model = TextEmbedding::try_new(
+        InitOptions::new(EmbeddingModel::BGESmallENV15).with_show_download_progress(true),
+    ).unwrap();
+    let query_vector = embeddings_model.embed(vec![query], None).unwrap();
+    let query = query_vector[0].clone();
+    let result: Vec<(i64, f64)> = db
+        .prepare(
+            r"
+          SELECT
+            rowid,
+            distance
+          FROM vec_items
+          JOIN note_meta on rowid=note_meta.vec_id
+          WHERE embedding MATCH ? AND k = 3
+          ORDER BY distance
+          LIMIT 3
+        ",
+        )?
+        .query_map([query.as_bytes()], |r| Ok((r.get(0)?, r.get(1)?)))?
+        .collect::<Result<Vec<_>, _>>()?;
+    println!("{:?}", result);
+    Ok(())
 }

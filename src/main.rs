@@ -15,8 +15,11 @@ mod search;
 mod server;
 use indexing::{index_notes_all, index_notes_vector_all};
 mod git;
-mod source;
 use git::{maybe_clone_repo, maybe_pull_and_reset_repo};
+mod source;
+mod db;
+use db::vector_db;
+
 
 #[derive(Parser, Debug)]
 #[command(version, about, long_about = None)]
@@ -52,15 +55,35 @@ async fn main() -> tantivy::Result<()> {
 
     let index_path = "./.index";
     let notes_path = "./notes";
+    let vec_db_path = "./db/vec_db.sqlite";
+
+    if args.init {
+        fs::create_dir(vec_db_path)
+            .unwrap_or_else(|err| println!("Ignoring vector DB create failed: {}", err));
+
+        // // Create the index directory if it doesn't already exist
+        // fs::create_dir(index_path)
+        //     .unwrap_or_else(|err| println!("Ignoring index directory create failed: {}", err));
+
+        // // Clone the notes repo and index it
+        // let repo_url =
+        //     env::var("INDEXER_NOTES_REPO_URL").expect("Missing env var INDEXER_NOTES_REPO_URL");
+        // let deploy_key_path = env::var("INDEXER_NOTES_DEPLOY_KEY_PATH")
+        //     .expect("Missing env var INDEXER_NOTES_REPO_URL");
+        // maybe_clone_repo(repo_url, deploy_key_path);
+        // index_notes_all(index_path, notes_path);
+    }
+
 
     if args.reindex {
         // Clone the notes repo and index it
-        let repo_url =
-            env::var("INDEXER_NOTES_REPO_URL").expect("Missing env var INDEXER_NOTES_REPO_URL");
-        let deploy_key_path = env::var("INDEXER_NOTES_DEPLOY_KEY_PATH")
-            .expect("Missing env var INDEXER_NOTES_REPO_URL");
-        maybe_pull_and_reset_repo(&repo_url, deploy_key_path);
-        index_notes_vector_all(index_path, notes_path).expect("Failed to vector index notes");
+        // let repo_url =
+        //     env::var("INDEXER_NOTES_REPO_URL").expect("Missing env var INDEXER_NOTES_REPO_URL");
+        // let deploy_key_path = env::var("INDEXER_NOTES_DEPLOY_KEY_PATH")
+        //     .expect("Missing env var INDEXER_NOTES_REPO_URL");
+        // maybe_pull_and_reset_repo(&repo_url, deploy_key_path);
+        let mut db = vector_db(vec_db_path);
+        index_notes_vector_all(&mut db, notes_path).expect("Failed to vector index notes");
     }
 
     if let Some(query) = args.query {
@@ -83,20 +106,6 @@ async fn main() -> tantivy::Result<()> {
             let retrieved_doc: TantivyDocument = searcher.doc(doc_address)?;
             println!("{}", retrieved_doc.to_json(&schema));
         }
-    }
-
-    if args.init {
-        // Create the index directory if it doesn't already exist
-        fs::create_dir(index_path)
-            .unwrap_or_else(|err| println!("Ignoring index directory create failed: {}", err));
-
-        // Clone the notes repo and index it
-        let repo_url =
-            env::var("INDEXER_NOTES_REPO_URL").expect("Missing env var INDEXER_NOTES_REPO_URL");
-        let deploy_key_path = env::var("INDEXER_NOTES_DEPLOY_KEY_PATH")
-            .expect("Missing env var INDEXER_NOTES_REPO_URL");
-        maybe_clone_repo(repo_url, deploy_key_path);
-        index_notes_all(index_path, notes_path);
     }
 
     if args.serve {

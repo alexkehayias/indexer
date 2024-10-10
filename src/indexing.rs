@@ -105,13 +105,13 @@ pub fn index_notes_all(index_path: &str, notes_path: &str) {
 /// 4. Store the embedding vector in the sqlite database
 /// 5. Include metadata about the source of the chunk for further
 ///    retrieval and to avoid duplicating rows
-pub fn index_notes_vector_all(index_path: &str, notes_path: &str) -> Result<()> {
+pub fn index_notes_vector_all(db: &mut Connection, notes_path: &str) -> Result<()> {
     unsafe {
         sqlite3_auto_extension(Some(std::mem::transmute(sqlite3_vec_init as *const ())));
     }
 
-    // TODO: Change this to persistent file
-    let db = Connection::open_in_memory()?;
+    // TODO: Pass this into the function
+    let db = Connection::open("./db/vec_db.sqlite").expect("Failed to connect to the vector DB");
 
     let embeddings_model = TextEmbedding::try_new(
         InitOptions::new(EmbeddingModel::BGESmallENV15).with_show_download_progress(true),

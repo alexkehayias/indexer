@@ -88,7 +88,7 @@ async fn index_notes() -> Json<Value> {
         .expect("Missing env var INDEXER_NOTES_DEPLOY_KEY_PATH");
     maybe_pull_and_reset_repo(notes_path, deploy_key_path);
 
-    index_notes_all(notes_path, index_path);
+    index_notes_all(index_path, notes_path);
 
     let resp = json!({
         "success": true,

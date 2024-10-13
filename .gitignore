@@ -3,4 +3,5 @@
 /Cargo.lock
 /web-ui/node_modules
 /notes
+/db
 /.fastembed_cache

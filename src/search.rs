@@ -3,6 +3,10 @@ use tantivy::query::QueryParser;
 use tantivy::schema::*;
 use tantivy::{Index, ReloadPolicy};
 
+use fastembed::{EmbeddingModel, InitOptions, TextEmbedding};
+use rusqlite::{Connection, Result};
+use zerocopy::AsBytes;
+
 use super::schema::note_schema;
 
 // Fulltext search of all notes
@@ -38,4 +42,32 @@ pub fn search_notes(query: &str) -> Vec<NamedFieldDocument> {
                 .to_named_doc(&schema)
         })
         .collect()
+}
+
+/// Returns the note ID and similarity distance for the query. Results
+/// are ordered by ascending distance because sqlite-vec only supports
+/// ascending distance.
+pub fn search_similar_notes(db: &Connection, query: &str) -> Result<Vec<(String, f64)>> {
+    let embeddings_model = TextEmbedding::try_new(
+        InitOptions::new(EmbeddingModel::BGESmallENV15).with_show_download_progress(true),
+    )
+    .unwrap();
+    let query_vector = embeddings_model.embed(vec![query], None).unwrap();
+    let q = query_vector[0].clone();
+    let result: Vec<(String, f64)> = db
+        .prepare(
+            r"
+          SELECT
+            note_meta.id,
+            distance
+          FROM vec_items
+          JOIN note_meta on note_meta_id=note_meta.id
+          WHERE embedding MATCH ? AND k = 3
+          ORDER BY distance
+          LIMIT 3
+        ",
+        )?
+        .query_map([q.as_bytes()], |r| Ok((r.get(0)?, r.get(1)?)))?
+        .collect::<Result<Vec<_>, _>>()?;
+    Ok(result)
 }

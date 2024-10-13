@@ -2,17 +2,12 @@ use std::env;
 use std::fs;
 
 use clap::Parser;
-
-use search::search_similar_notes;
-use tantivy::collector::TopDocs;
-use tantivy::query::QueryParser;
-use tantivy::schema::*;
-use tantivy::{Index, ReloadPolicy};
+use serde_json::json;
 
 mod schema;
-use schema::note_schema;
 mod indexing;
 mod search;
+use search::{search_notes, search_similar_notes};
 mod server;
 use indexing::{index_notes_all, index_notes_vector_all};
 mod git;
@@ -94,25 +89,20 @@ async fn main() -> tantivy::Result<()> {
     }
 
     if let Some(query) = args.query {
-        let schema = note_schema();
-        let index_dir = tantivy::directory::MmapDirectory::open(index_path)?;
-        let idx = Index::open_or_create(index_dir, schema.clone())?;
-        let reader = idx
-            .reader_builder()
-            .reload_policy(ReloadPolicy::OnCommitWithDelay)
-            .try_into()?;
-        let searcher = reader.searcher();
-        let title = schema.get_field("title").unwrap();
-        let body = schema.get_field("body").unwrap();
-        let query_parser = QueryParser::for_index(&idx, vec![title, body]);
+        let fts_results = search_notes(&query);
+        println!("{}", json!({
+            "query": query,
+            "type": "fts",
+            "results": fts_results,
+        }));
 
-        let query = query_parser.parse_query(&query)?;
-
-        let top_docs = searcher.search(&query, &TopDocs::with_limit(10))?;
-        for (_score, doc_address) in top_docs {
-            let retrieved_doc: TantivyDocument = searcher.doc(doc_address)?;
-            println!("{}", retrieved_doc.to_json(&schema));
-        }
+        let db = vector_db(vec_db_path).expect("Failed to connect to db");
+        let vec_results = search_similar_notes(&db, &query).unwrap();
+        println!("{}", json!({
+            "query": query,
+            "type": "vec",
+            "results": vec_results,
+        }));
     }
 
     if args.serve {

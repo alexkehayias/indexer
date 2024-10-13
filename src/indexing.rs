@@ -116,14 +116,25 @@ pub fn index_notes_vector_all(db: &mut Connection, notes_path: &str) -> Result<(
     let max_tokens = 1280;
     let splitter = TextSplitter::new(ChunkConfig::new(max_tokens).with_sizer(tokenizer));
 
-    let mut counter = 0;
-
     // Generate embeddings and store it in the DB
-    let mut stmt = db.prepare("INSERT INTO vec_items(rowid, embedding) VALUES (?, ?)")?;
-    for p in notes(notes_path)[0..10].iter() {
+    let mut note_meta_stmt = db.prepare("REPLACE INTO note_meta(id) VALUES (?)")?;
+    let mut embedding_stmt = db.prepare("INSERT OR REPLACE INTO vec_items(note_meta_id, embedding) VALUES (?, ?)")?;
+    let mut embedding_update_stmt = db.prepare("UPDATE vec_items set embedding = ? WHERE note_meta_id = ?")?;
+    for p in notes(notes_path).iter() {
+        // Note IDs are unique by the filename
+        let id = p.file_name()
+            .expect("No file name found")
+            .to_str()
+            .expect("Failed to convert file name to string");
+
+        // Update the note meta table
+        note_meta_stmt.execute(rusqlite::params![id]).expect("Note meta upsert failed");
+
         // Read the file content into a String
         let content = fs::read_to_string(p)
             .unwrap_or_else(|_| panic!("Failed to read note {}", &p.display()));
+
+        // TODO: Add note to metadata table if it'snot there already
 
         // Assume that chunks returns an iterator of &str
         let mut accum = Vec::new();
@@ -136,11 +147,12 @@ pub fn index_notes_vector_all(db: &mut Connection, notes_path: &str) -> Result<(
             .embed(accum, None)
             .expect("Failed to generate embeddings");
         for item in items {
-            // TODO: Row ID can only be an integer so need to be able
-            // to go from a unique row ID to the note ID.
-            counter += 1;
-            let id = counter;
-            stmt.execute(rusqlite::params![id, item.as_bytes()])?;
+            // Upserts are not currently supported by sqlite for
+            // virtual tables like the vector embeddings table so this
+            // attempts to insert a new row and then falls back to an
+            // update statement.
+            embedding_stmt.execute(rusqlite::params![id, item.as_bytes()])
+                .unwrap_or_else(|_| embedding_update_stmt.execute(rusqlite::params![item.as_bytes(), id]).expect("Update failed"));
         }
     }
 

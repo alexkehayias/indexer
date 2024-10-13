@@ -18,7 +18,7 @@ mod git;
 use git::{maybe_clone_repo, maybe_pull_and_reset_repo};
 mod source;
 mod db;
-use db::vector_db;
+use db::{migrate_db, vector_db};
 
 
 #[derive(Parser, Debug)]
@@ -55,11 +55,14 @@ async fn main() -> tantivy::Result<()> {
 
     let index_path = "./.index";
     let notes_path = "./notes";
-    let vec_db_path = "./db/vec_db.sqlite";
+    let vec_db_path = "./db";
 
     if args.init {
         fs::create_dir(vec_db_path)
             .unwrap_or_else(|err| println!("Ignoring vector DB create failed: {}", err));
+
+        let db = vector_db(vec_db_path).expect("Failed to connect to db");
+        migrate_db(&db).expect("DB migration failed");
 
         // // Create the index directory if it doesn't already exist
         // fs::create_dir(index_path)
@@ -82,7 +85,7 @@ async fn main() -> tantivy::Result<()> {
         // let deploy_key_path = env::var("INDEXER_NOTES_DEPLOY_KEY_PATH")
         //     .expect("Missing env var INDEXER_NOTES_REPO_URL");
         // maybe_pull_and_reset_repo(&repo_url, deploy_key_path);
-        let mut db = vector_db(vec_db_path);
+        let mut db = vector_db(vec_db_path).expect("Failed to connect to db");
         index_notes_vector_all(&mut db, notes_path).expect("Failed to vector index notes");
     }
 

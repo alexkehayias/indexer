@@ -2,8 +2,7 @@ use super::schema::note_schema;
 use super::source::notes;
 use fastembed::{EmbeddingModel, InitOptions, TextEmbedding};
 use orgize::ParseConfig;
-use rusqlite::{ffi::sqlite3_auto_extension, Connection, Result};
-use sqlite_vec::sqlite3_vec_init;
+use rusqlite::{Connection, Result};
 use std::fs;
 use std::path::PathBuf;
 use tantivy::schema::*;
@@ -106,13 +105,6 @@ pub fn index_notes_all(index_path: &str, notes_path: &str) {
 /// 5. Include metadata about the source of the chunk for further
 ///    retrieval and to avoid duplicating rows
 pub fn index_notes_vector_all(db: &mut Connection, notes_path: &str) -> Result<()> {
-    unsafe {
-        sqlite3_auto_extension(Some(std::mem::transmute(sqlite3_vec_init as *const ())));
-    }
-
-    // TODO: Pass this into the function
-    let db = Connection::open("./db/vec_db.sqlite").expect("Failed to connect to the vector DB");
-
     let embeddings_model = TextEmbedding::try_new(
         InitOptions::new(EmbeddingModel::BGESmallENV15).with_show_download_progress(true),
     )
@@ -125,25 +117,6 @@ pub fn index_notes_vector_all(db: &mut Connection, notes_path: &str) -> Result<(
     let splitter = TextSplitter::new(ChunkConfig::new(max_tokens).with_sizer(tokenizer));
 
     let mut counter = 0;
-
-    // TODO: Move this to an init function
-    // Create a metadata table that has a foreign key to the
-    // embeddings virtual table. This will be used to coordinate
-    // upserts and hydrating the notes
-    db.execute(
-        r"CREATE TABLE note_meta (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    org_id TEXT NOT NULL,
-    file_name TEXT NOT NULL,
-    vec_id INTEGER,
-    FOREIGN KEY (vec_id) REFERENCES vec_items(rowid)
-);",
-        [],
-    )?;
-    db.execute(
-        "CREATE VIRTUAL TABLE vec_items USING vec0(embedding float[384])",
-        [],
-    )?;
 
     // Generate embeddings and store it in the DB
     let mut stmt = db.prepare("INSERT INTO vec_items(rowid, embedding) VALUES (?, ?)")?;

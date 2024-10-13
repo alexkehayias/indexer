@@ -1,7 +1,6 @@
 use rusqlite::{ffi::sqlite3_auto_extension, Connection, Result};
 use sqlite_vec::sqlite3_vec_init;
 
-
 pub fn migrate_db(db: &Connection) -> Result<()> {
     // Create a metadata table that has a foreign key to the
     // embeddings virtual table. This will be used to coordinate

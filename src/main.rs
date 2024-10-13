@@ -17,10 +17,9 @@ mod server;
 use indexing::{index_notes_all, index_notes_vector_all};
 mod git;
 use git::{maybe_clone_repo, maybe_pull_and_reset_repo};
-mod source;
 mod db;
+mod source;
 use db::{migrate_db, vector_db};
-
 
 #[derive(Parser, Debug)]
 #[command(version, about, long_about = None)]

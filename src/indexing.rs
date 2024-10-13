@@ -118,17 +118,22 @@ pub fn index_notes_vector_all(db: &mut Connection, notes_path: &str) -> Result<(
 
     // Generate embeddings and store it in the DB
     let mut note_meta_stmt = db.prepare("REPLACE INTO note_meta(id) VALUES (?)")?;
-    let mut embedding_stmt = db.prepare("INSERT OR REPLACE INTO vec_items(note_meta_id, embedding) VALUES (?, ?)")?;
-    let mut embedding_update_stmt = db.prepare("UPDATE vec_items set embedding = ? WHERE note_meta_id = ?")?;
+    let mut embedding_stmt =
+        db.prepare("INSERT OR REPLACE INTO vec_items(note_meta_id, embedding) VALUES (?, ?)")?;
+    let mut embedding_update_stmt =
+        db.prepare("UPDATE vec_items set embedding = ? WHERE note_meta_id = ?")?;
     for p in notes(notes_path).iter() {
         // Note IDs are unique by the filename
-        let id = p.file_name()
+        let id = p
+            .file_name()
             .expect("No file name found")
             .to_str()
             .expect("Failed to convert file name to string");
 
         // Update the note meta table
-        note_meta_stmt.execute(rusqlite::params![id]).expect("Note meta upsert failed");
+        note_meta_stmt
+            .execute(rusqlite::params![id])
+            .expect("Note meta upsert failed");
 
         // Read the file content into a String
         let content = fs::read_to_string(p)
@@ -151,8 +156,13 @@ pub fn index_notes_vector_all(db: &mut Connection, notes_path: &str) -> Result<(
             // virtual tables like the vector embeddings table so this
             // attempts to insert a new row and then falls back to an
             // update statement.
-            embedding_stmt.execute(rusqlite::params![id, item.as_bytes()])
-                .unwrap_or_else(|_| embedding_update_stmt.execute(rusqlite::params![item.as_bytes(), id]).expect("Update failed"));
+            embedding_stmt
+                .execute(rusqlite::params![id, item.as_bytes()])
+                .unwrap_or_else(|_| {
+                    embedding_update_stmt
+                        .execute(rusqlite::params![item.as_bytes(), id])
+                        .expect("Update failed")
+                });
         }
     }
 

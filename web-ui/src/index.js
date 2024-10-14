@@ -48,10 +48,10 @@
           // Tags are a comma separated string so we need to check if
           // there is an empty string to determine if there are any tags
           // to render
-          if (r.tags[0]) {
+          if (r.tags) {
             const tagContainer = document.createElement("div");
             tagContainer.classList.add(...["flex", "flex-row"]);
-            r.tags[0].split(",").forEach((tag) => {
+            r.tags.split(",").forEach((tag) => {
               const tagDiv = document.createElement("div");
               tagDiv.classList.add(...[
                 "bg-gray-200",

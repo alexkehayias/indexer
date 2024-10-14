@@ -69,17 +69,23 @@ pub fn search_notes(query: &str) -> Vec<FullTextSearchHit> {
         .collect()
 }
 
+#[derive(Serialize)]
+pub struct SemanticSearchHit {
+    score: f64,
+    file_name: String,
+}
+
 /// Returns the note ID and similarity distance for the query. Results
 /// are ordered by ascending distance because sqlite-vec only supports
 /// ascending distance.
-pub fn search_similar_notes(db: &Connection, query: &str) -> Result<Vec<(String, f64)>> {
+pub fn search_similar_notes(db: &Connection, query: &str) -> Result<Vec<SemanticSearchHit>> {
     let embeddings_model = TextEmbedding::try_new(
         InitOptions::new(EmbeddingModel::BGESmallENV15).with_show_download_progress(true),
     )
     .unwrap();
     let query_vector = embeddings_model.embed(vec![query], None).unwrap();
     let q = query_vector[0].clone();
-    let result: Vec<(String, f64)> = db
+    let result: Vec<SemanticSearchHit> = db
         .prepare(
             r"
           SELECT
@@ -92,7 +98,10 @@ pub fn search_similar_notes(db: &Connection, query: &str) -> Result<Vec<(String,
           LIMIT 10
         ",
         )?
-        .query_map([q.as_bytes()], |r| Ok((r.get(0)?, r.get(1)?)))?
-        .collect::<Result<Vec<_>, _>>()?;
+        .query_map(
+            [q.as_bytes()],
+            |r| Ok(SemanticSearchHit { file_name: r.get(0)?, score: r.get(1)?})
+        )?
+        .collect::<Result<Vec<SemanticSearchHit>, _>>()?;
     Ok(result)
 }

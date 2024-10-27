@@ -20,8 +20,7 @@ pub struct FullTextSearchHit {
 }
 
 
-// Fulltext search of all notes
-pub fn search_notes(query: &str) -> Vec<FullTextSearchHit> {
+fn fulltext_search(query: &str) -> Vec<FullTextSearchHit> {
     let schema = note_schema();
     let index_path = tantivy::directory::MmapDirectory::open("./.index").expect("Index not found");
     let idx =
@@ -69,6 +68,7 @@ pub fn search_notes(query: &str) -> Vec<FullTextSearchHit> {
         .collect()
 }
 
+
 #[derive(Serialize)]
 pub struct SemanticSearchHit {
     score: f64,
@@ -104,4 +104,9 @@ pub fn search_similar_notes(db: &Connection, query: &str) -> Result<Vec<Semantic
         )?
         .collect::<Result<Vec<SemanticSearchHit>, _>>()?;
     Ok(result)
+}
+
+// Fulltext search of all notes
+pub fn search_notes(_db: &Connection, query: &str, _include_similarity: bool) -> Vec<FullTextSearchHit> {
+    fulltext_search(query)
 }

@@ -15,7 +15,7 @@ struct Note {
     id: String,
     title: String,
     body: String,
-    tags: String,
+    tags: Option<String>,
 }
 
 /// Parse the content into a `Note`
@@ -50,9 +50,9 @@ drawer",
     // For now, tags are a comma separated string which should
     // allow it to still be searchable
     let tags = if filetags.is_empty() {
-        String::new()
+        None
     } else {
-        filetags[0].to_owned().join(",")
+        Some(filetags[0].to_owned().join(","))
     };
 
     Note {
@@ -83,13 +83,18 @@ pub fn index_note(
     let file_name_value = path.file_name().unwrap().to_string_lossy().into_owned();
     let note = parse_note(&content);
 
-    index_writer.add_document(doc!(
+    let mut doc = doc!(
         id => note.id,
         title => note.title,
         body => note.body,
         file_name => file_name_value,
-        tags => note.tags,
-    ))?;
+    );
+
+    // This needs to be done outside of the `doc!` macro
+    if let Some(t) = note.tags {
+        doc.add_text(tags, t);
+    }
+    index_writer.add_document(doc)?;
 
     Ok(())
 }
@@ -144,6 +149,8 @@ pub fn index_notes_vector_all(db: &mut Connection, notes_path: &str) -> Result<(
     let mut embedding_update_stmt =
         db.prepare("UPDATE vec_items set embedding = ? WHERE note_meta_id = ?")?;
     for p in notes(notes_path).iter() {
+        tracing::debug!("Vector indexing note: {}", &p.display());
+
         let content = fs::read_to_string(p).unwrap();
         let note = parse_note(&content);
 

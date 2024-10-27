@@ -90,26 +90,26 @@ async fn main() -> tantivy::Result<()> {
 
     if let Some(query) = args.query {
         let db = vector_db(vec_db_path).expect("Failed to connect to db");
-        let fts_results = search_notes(&db, &query, false);
+        let fts_results = search_notes(&db, &query, true);
         println!(
             "{}",
             json!({
                 "query": query,
-                "type": "fts",
+                "type": "full_text",
                 "results": fts_results,
             })
         );
 
-        let db = vector_db(vec_db_path).expect("Failed to connect to db");
-        let vec_results = search_similar_notes(&db, &query).unwrap();
-        println!(
-            "{}",
-            json!({
-                "query": query,
-                "type": "vec",
-                "results": vec_results,
-            })
-        );
+        // let db = vector_db(vec_db_path).expect("Failed to connect to db");
+        // let vec_results = search_similar_notes(&db, &query).unwrap();
+        // println!(
+        //     "{}",
+        //     json!({
+        //         "query": query,
+        //         "type": "similarity",
+        //         "results": vec_results,
+        //     })
+        // );
     }
 
     if args.serve {

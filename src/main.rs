@@ -4,8 +4,8 @@ use std::fs;
 use clap::Parser;
 use serde_json::json;
 
-mod schema;
 mod indexing;
+mod schema;
 mod search;
 use search::{search_notes, search_similar_notes};
 mod server;
@@ -91,19 +91,25 @@ async fn main() -> tantivy::Result<()> {
     if let Some(query) = args.query {
         let db = vector_db(vec_db_path).expect("Failed to connect to db");
         let fts_results = search_notes(&db, &query, false);
-        println!("{}", json!({
-            "query": query,
-            "type": "fts",
-            "results": fts_results,
-        }));
+        println!(
+            "{}",
+            json!({
+                "query": query,
+                "type": "fts",
+                "results": fts_results,
+            })
+        );
 
         let db = vector_db(vec_db_path).expect("Failed to connect to db");
         let vec_results = search_similar_notes(&db, &query).unwrap();
-        println!("{}", json!({
-            "query": query,
-            "type": "vec",
-            "results": vec_results,
-        }));
+        println!(
+            "{}",
+            json!({
+                "query": query,
+                "type": "vec",
+                "results": vec_results,
+            })
+        );
     }
 
     if args.serve {

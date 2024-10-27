@@ -7,7 +7,11 @@ pub fn migrate_db(db: &Connection) -> Result<()> {
     // upserts and hydrating the notes
     db.execute(
         r"CREATE TABLE IF NOT EXISTS note_meta (
-    id TEXT PRIMARY KEY
+    id TEXT PRIMARY KEY,
+    file_name TEXT,
+    title TEXT,
+    tags TEXT NULLABLE,
+    body TEXT
 );",
         [],
     )?;

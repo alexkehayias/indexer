@@ -1,6 +1,6 @@
 use std::collections::HashMap;
 use std::env;
-use std::sync::{Arc, RwLock, Mutex};
+use std::sync::{Arc, Mutex, RwLock};
 
 use tantivy::doc;
 
@@ -26,7 +26,6 @@ use super::git::maybe_pull_and_reset_repo;
 use super::search::search_notes;
 
 type SharedState = Arc<RwLock<AppState>>;
-
 
 struct AppState {
     // Stores the latest search hit selected by the user
@@ -80,12 +79,15 @@ async fn kv_set(State(state): State<SharedState>, Json(data): Json<SetLatest>) {
 // Fulltext search of all notes
 async fn search(
     State(state): State<SharedState>,
-    Query(params): Query<HashMap<String, String>>
+    Query(params): Query<HashMap<String, String>>,
 ) -> Json<Value> {
     let query = params.get("query");
     let results = if let Some(query) = query {
         let shared_state = state.read().unwrap();
-        let db = shared_state.db.lock().expect("Failed to get db connection from app state");
+        let db = shared_state
+            .db
+            .lock()
+            .expect("Failed to get db connection from app state");
         let include_similarity = params.contains_key("similarity");
         search_notes(&db, query, include_similarity)
     } else {

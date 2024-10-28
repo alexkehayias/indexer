@@ -7,7 +7,7 @@ use serde_json::json;
 mod indexing;
 mod schema;
 mod search;
-use search::{search_notes, search_similar_notes};
+use search::search_notes;
 mod server;
 use indexing::{index_notes_all, index_notes_vector_all};
 mod git;
@@ -99,17 +99,6 @@ async fn main() -> tantivy::Result<()> {
                 "results": fts_results,
             })
         );
-
-        // let db = vector_db(vec_db_path).expect("Failed to connect to db");
-        // let vec_results = search_similar_notes(&db, &query).unwrap();
-        // println!(
-        //     "{}",
-        //     json!({
-        //         "query": query,
-        //         "type": "similarity",
-        //         "results": vec_results,
-        //     })
-        // );
     }
 
     if args.serve {

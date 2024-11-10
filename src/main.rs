@@ -48,20 +48,21 @@ struct Args {
 async fn main() -> tantivy::Result<()> {
     let args = Args::parse();
 
-    let index_path = "./.index";
-    let notes_path = "./notes";
-    let vec_db_path = "./db";
+    let storage_path = env::var("INDEXER_STORAGE_PATH").unwrap_or("./".to_string());
+    let index_path = format!("{}/index", storage_path);
+    let notes_path = format!("{}/notes", storage_path);
+    let vec_db_path = format!("{}/db", storage_path);
 
     if args.init {
         // Initialize the vector DB
-        fs::create_dir(vec_db_path)
+        fs::create_dir_all(&vec_db_path)
             .unwrap_or_else(|err| println!("Ignoring vector DB create failed: {}", err));
 
-        let db = vector_db(vec_db_path).expect("Failed to connect to db");
+        let db = vector_db(&vec_db_path).expect("Failed to connect to db");
         migrate_db(&db).expect("DB migration failed");
 
         // Create the index directory if it doesn't already exist
-        fs::create_dir(index_path)
+        fs::create_dir_all(&index_path)
             .unwrap_or_else(|err| println!("Ignoring index directory create failed: {}", err));
 
         // Clone the notes repo and index it
@@ -69,28 +70,26 @@ async fn main() -> tantivy::Result<()> {
             env::var("INDEXER_NOTES_REPO_URL").expect("Missing env var INDEXER_NOTES_REPO_URL");
         let deploy_key_path = env::var("INDEXER_NOTES_DEPLOY_KEY_PATH")
             .expect("Missing env var INDEXER_NOTES_REPO_URL");
-        maybe_clone_repo(repo_url, deploy_key_path);
+        maybe_clone_repo(&deploy_key_path, &repo_url, &notes_path);
     }
 
     if args.index {
         // Clone the notes repo
-        let repo_url =
-            env::var("INDEXER_NOTES_REPO_URL").expect("Missing env var INDEXER_NOTES_REPO_URL");
         let deploy_key_path = env::var("INDEXER_NOTES_DEPLOY_KEY_PATH")
             .expect("Missing env var INDEXER_NOTES_REPO_URL");
-        maybe_pull_and_reset_repo(&repo_url, deploy_key_path);
+        maybe_pull_and_reset_repo(&deploy_key_path, &notes_path);
 
         // Index for full text search
-        index_notes_all(index_path, notes_path);
+        index_notes_all(&index_path, &notes_path);
 
         // Index for vector search
-        let mut db = vector_db(vec_db_path).expect("Failed to connect to db");
-        index_notes_vector_all(&mut db, notes_path).expect("Failed to vector index notes");
+        let mut db = vector_db(&vec_db_path).expect("Failed to connect to db");
+        index_notes_vector_all(&mut db, &notes_path).expect("Failed to vector index notes");
     }
 
     if let Some(query) = args.query {
-        let db = vector_db(vec_db_path).expect("Failed to connect to db");
-        let fts_results = search_notes(index_path, &db, &query, true);
+        let db = vector_db(&vec_db_path).expect("Failed to connect to db");
+        let fts_results = search_notes(&index_path, &db, &query, true);
         println!(
             "{}",
             json!({
@@ -102,7 +101,7 @@ async fn main() -> tantivy::Result<()> {
     }
 
     if args.serve {
-        server::serve(args.host, args.port).await;
+        server::serve(args.host, args.port, notes_path, index_path, vec_db_path).await;
     }
 
     Ok(())

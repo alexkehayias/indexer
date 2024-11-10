@@ -28,9 +28,9 @@ pub struct SearchHit {
     tags: Option<String>,
 }
 
-fn fulltext_search(query: &str) -> Vec<SearchHit> {
+fn fulltext_search(index_path: &str, query: &str) -> Vec<SearchHit> {
     let schema = note_schema();
-    let index_path = tantivy::directory::MmapDirectory::open("./.index").expect("Index not found");
+    let index_path = tantivy::directory::MmapDirectory::open(index_path).expect("Index not found");
     let idx =
         Index::open_or_create(index_path, schema.clone()).expect("Unable to open or create index");
     let title = schema.get_field("title").unwrap();
@@ -141,18 +141,19 @@ pub fn search_similar_notes(db: &Connection, query: &str) -> Result<Vec<SearchHi
 // to the end of the list of results. This way, if there is a keyword
 // search miss, there may be semantically similar results.
 pub fn search_notes(
+    index_path: &str,
     db: &Connection,
     query: &str,
     include_similarity: bool,
 ) -> Vec<SearchHit> {
     if include_similarity {
-        let mut result = fulltext_search(query);
+        let mut result = fulltext_search(index_path, query);
         let mut vec_search_result = search_similar_notes(db, query).unwrap_or_default();
 
         // Combine the results, dedupe, then sort by score
         result.append(&mut vec_search_result);
         result.into_iter().unique_by(|i| i.id.clone()).collect()
     } else {
-        fulltext_search(query)
+        fulltext_search(index_path, query)
     }
 }

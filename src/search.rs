@@ -1,11 +1,11 @@
+use fastembed::{EmbeddingModel, InitOptions, TextEmbedding};
+use itertools::Itertools;
+use rusqlite::{Connection, Result};
 use serde::Serialize;
 use tantivy::collector::TopDocs;
 use tantivy::query::QueryParser;
 use tantivy::schema::*;
 use tantivy::{Index, ReloadPolicy};
-use itertools::Itertools;
-use fastembed::{EmbeddingModel, InitOptions, TextEmbedding};
-use rusqlite::{Connection, Result};
 use zerocopy::AsBytes;
 
 use super::schema::note_schema;
@@ -71,13 +71,9 @@ fn fulltext_search(index_path: &str, query: &str) -> Vec<SearchHit> {
                 .as_str()
                 .unwrap()
                 .to_string();
-            let tags_val = doc.get("tags").map(|v| {
-                v[0]
-                    .as_ref()
-                    .as_str()
-                    .unwrap()
-                    .to_string()
-            });
+            let tags_val = doc
+                .get("tags")
+                .map(|v| v[0].as_ref().as_str().unwrap().to_string());
 
             let file_name_val = doc.get("file_name").unwrap()[0]
                 .as_ref()
@@ -130,7 +126,7 @@ pub fn search_similar_notes(db: &Connection, query: &str) -> Result<Vec<SearchHi
                 file_name: r.get(1)?,
                 title: r.get(2)?,
                 tags: r.get(3)?,
-                score: r.get(4)?
+                score: r.get(4)?,
             })
         })?
         .collect::<Result<Vec<SearchHit>, _>>()?;

@@ -1,6 +1,6 @@
-use std::fs;
 use std::collections::HashMap;
 use std::env;
+use std::fs;
 use std::sync::{Arc, Mutex, RwLock};
 
 use axum::response::Html;
@@ -8,11 +8,12 @@ use tantivy::doc;
 
 use axum::extract::Query;
 use axum::{
-    extract::{State, Path},
+    extract::{Path, State},
     response::Json,
     routing::{get, post},
     Router,
 };
+use orgize::ParseConfig;
 use rusqlite::Connection;
 use serde::Deserialize;
 use serde_json::{json, Value};
@@ -20,7 +21,6 @@ use tower_http::cors::CorsLayer;
 use tower_http::services::ServeDir;
 use tower_http::trace::TraceLayer;
 use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
-use orgize::ParseConfig;
 
 use crate::indexing::index_notes_all;
 
@@ -47,7 +47,7 @@ impl AppState {
         Self {
             latest_selection: HashMap::new(),
             db: Mutex::new(db),
-            config
+            config,
         }
     }
 }
@@ -98,11 +98,12 @@ async fn search(
         let db = shared_state
             .db
             .lock()
-        // Ignoring any previous panics since we are trying to get the
-        // db connection and it's probably fine
+            // Ignoring any previous panics since we are trying to get the
+            // db connection and it's probably fine
             .unwrap_or_else(|e| e.into_inner());
 
-        let include_similarity = params.contains_key("include_similarity") && params.get("include_similarity").unwrap() == "true";
+        let include_similarity = params.contains_key("include_similarity")
+            && params.get("include_similarity").unwrap() == "true";
         search_notes(index_path, &db, query, include_similarity)
     } else {
         Vec::new()
@@ -117,7 +118,10 @@ async fn search(
 
 // Build the index for all notes
 async fn index_notes(State(state): State<SharedState>) -> Json<Value> {
-    let AppConfig {index_path, notes_path} = &state.read().expect("Failed to read state").config;
+    let AppConfig {
+        index_path,
+        notes_path,
+    } = &state.read().expect("Failed to read state").config;
     let deploy_key_path = env::var("INDEXER_NOTES_DEPLOY_KEY_PATH")
         .expect("Missing env var INDEXER_NOTES_DEPLOY_KEY_PATH");
     maybe_pull_and_reset_repo(&deploy_key_path, notes_path);
@@ -135,7 +139,7 @@ async fn index_notes(State(state): State<SharedState>) -> Json<Value> {
 async fn view_note(
     State(state): State<SharedState>,
     // This is the org-id of the note
-    Path(id): Path<String>
+    Path(id): Path<String>,
 ) -> Html<String> {
     let shared_state = state.read().expect("Unable to read share state");
     let notes_path = &shared_state.config.notes_path;
@@ -185,7 +189,13 @@ async fn view_note(
 }
 
 // Run the server
-pub async fn serve(host: String, port: String, notes_path: String, index_path: String, vec_db_path: String) {
+pub async fn serve(
+    host: String,
+    port: String,
+    notes_path: String,
+    index_path: String,
+    vec_db_path: String,
+) {
     tracing_subscriber::registry()
         .with(
             tracing_subscriber::EnvFilter::try_from_default_env().unwrap_or_else(|_| {
@@ -204,7 +214,7 @@ pub async fn serve(host: String, port: String, notes_path: String, index_path: S
     let db = vector_db(&vec_db_path).expect("Failed to connect to db");
     let app_config = AppConfig {
         notes_path,
-        index_path
+        index_path,
     };
     let app_state = AppState::new(db, app_config);
     let shared_state = SharedState::new(RwLock::new(app_state));
@@ -218,7 +228,7 @@ pub async fn serve(host: String, port: String, notes_path: String, index_path: S
         .route("/notes/search/latest", get(kv_get).post(kv_set))
         // Index content endpoint
         .route("/notes/index", post(index_notes))
-    // Static server of assets in ./web-ui
+        // Static server of assets in ./web-ui
         .route("/notes/:id/view", get(view_note))
         // Static server of assets in ./web-ui
         .nest_service("/", serve_dir.clone())

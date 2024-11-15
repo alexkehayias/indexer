@@ -3,7 +3,7 @@
   const resultList = document.getElementById("results");
   const emptyState = document.getElementById("empty-state");
 
-  const handleSearch = async (includeSimilarity, val) => {
+  const handleSearch = async (includeSimilarity, viewSelected, val) => {
     try {
       // Auto hide results from journal entries
       const query = `-title:journal ${val.trim()}`
@@ -100,6 +100,12 @@
             } else {
               console.log(`Updated latest hit to ${r.id}`)
             }
+
+            // Redirect to view the note
+            if (viewSelected) {
+              window.location.href = `/notes/${r.id}/view`;
+              return;
+            }
           })
           return hit;
         })
@@ -117,9 +123,11 @@
   const urlParams = new URLSearchParams(window.location.search);
   const initQuery = urlParams.get("query");
   const includeSimilarity = urlParams.get("include_similarity") === "true";
+  const viewSelected = urlParams.get("view_selected") === "true";
+
   if (initQuery) {
     searchInput.value = initQuery;
-    handleSearch(includeSimilarity, initQuery);
+    handleSearch(includeSimilarity, viewSelected, initQuery);
   }
 
   // Handle search as you type
@@ -127,7 +135,7 @@
     const val = e.target.value;
 
     if (val) {
-      await handleSearch(includeSimilarity, val);
+      await handleSearch(includeSimilarity, viewSelected, val);
     }
   });
 })();

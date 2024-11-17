@@ -28,3 +28,25 @@ pub fn maybe_pull_and_reset_repo(deploy_key_path: &str, path: &str) {
     let stderr = std::str::from_utf8(&git_clone.stderr).expect("Failed to parse stderr");
     tracing::debug!("stdout: {}\nstderr: {}", stdout, stderr);
 }
+
+// Return a list of files that have changed between local and origin
+pub fn diff_files(deploy_key_path: &str, path: &str) -> Vec<String> {
+    let command = Command::new("sh")
+        .arg("-c")
+        .arg(format!(
+            "cd {} && GIT_SSH_COMMAND='ssh -i {} -o IdentitiesOnly=yes' git diff --name-only HEAD..origin/main | grep -vF -e \"$(git ls-files)\"",
+            path,
+            deploy_key_path
+        ))
+        .output()
+        .expect("failed to execute process");
+
+    let stdout = std::str::from_utf8(&command.stdout).expect("Failed to parse stdout");
+    let stderr = std::str::from_utf8(&command.stderr).expect("Failed to parse stderr");
+
+    if !stderr.is_empty() {
+        tracing::error!("Git diff failed: {}", stderr);
+    }
+
+    stdout.split("\n").map(|s| s.to_string()).collect()
+}

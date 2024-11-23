@@ -32,7 +32,7 @@ use crate::indexing::index_notes_all;
 use crate::indexing::index_note_vector;
 
 use super::db::vector_db;
-use super::git::{maybe_pull_and_reset_repo, diff_files};
+use super::git::{maybe_pull_and_reset_repo, diff_last_commit_files};
 use super::search::search_notes;
 
 type SharedState = Arc<RwLock<AppState>>;
@@ -134,11 +134,11 @@ async fn index_notes(State(state): State<SharedState>) -> Json<Value> {
     let deploy_key_path = env::var("INDEXER_NOTES_DEPLOY_KEY_PATH")
         .expect("Missing env var INDEXER_NOTES_DEPLOY_KEY_PATH");
 
-    // See what's changed
-    let diff = diff_files(&deploy_key_path, notes_path);
-
     // Pull the latest from origin
     maybe_pull_and_reset_repo(&deploy_key_path, notes_path);
+
+    // See what's changed
+    let diff = diff_last_commit_files(&deploy_key_path, notes_path);
 
     // Update full text search index
     index_notes_all(index_path, notes_path);
@@ -159,7 +159,14 @@ async fn index_notes(State(state): State<SharedState>) -> Json<Value> {
     for f in diff {
         // Filter out non-note files
         if f.ends_with(".org") {
-            index_note_vector(&mut db, &embeddings_model, &splitter, &f).expect("Vector indexing failed");
+            // Filter out special org files
+            let exclusions = ["capture.org".to_string(), "intro.org".to_string(), "config.org".to_string()];
+            if exclusions.contains(&f) {
+
+                continue;
+            }
+            let note_path = format!("{}/{}", notes_path, f);
+            index_note_vector(&mut db, &embeddings_model, &splitter, &note_path).expect("Vector indexing failed");
         }
     }
 

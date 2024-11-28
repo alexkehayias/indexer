@@ -54,13 +54,8 @@ async fn main() -> tantivy::Result<()> {
     if !args.serve {
         tracing_subscriber::registry()
             .with(
-                tracing_subscriber::EnvFilter::try_from_default_env().unwrap_or_else(|_| {
-                    format!(
-                        "{}=debug",
-                        env!("CARGO_CRATE_NAME")
-                    )
-                        .into()
-                }),
+                tracing_subscriber::EnvFilter::try_from_default_env()
+                    .unwrap_or_else(|_| format!("{}=debug", env!("CARGO_CRATE_NAME")).into()),
             )
             .with(tracing_subscriber::fmt::layer())
             .init();
@@ -119,7 +114,14 @@ async fn main() -> tantivy::Result<()> {
     }
 
     if args.serve {
-        server::serve(args.host, args.port, notes_path.clone(), index_path, vec_db_path).await;
+        server::serve(
+            args.host,
+            args.port,
+            notes_path.clone(),
+            index_path,
+            vec_db_path,
+        )
+        .await;
     }
 
     Ok(())

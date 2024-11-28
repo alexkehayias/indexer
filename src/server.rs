@@ -28,11 +28,11 @@ use tower_http::services::ServeDir;
 use tower_http::trace::TraceLayer;
 use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
 
-use crate::indexing::index_notes_all;
 use crate::indexing::index_note_vector;
+use crate::indexing::index_notes_all;
 
 use super::db::vector_db;
-use super::git::{maybe_pull_and_reset_repo, diff_last_commit_files};
+use super::git::{diff_last_commit_files, maybe_pull_and_reset_repo};
 use super::search::search_notes;
 
 type SharedState = Arc<RwLock<AppState>>;
@@ -67,7 +67,12 @@ impl AppState {
 }
 
 async fn kv_get(State(state): State<SharedState>) -> Json<Option<Value>> {
-    if let Some(LastSelection {id, file_name, title}) = &state.read().unwrap().latest_selection {
+    if let Some(LastSelection {
+        id,
+        file_name,
+        title,
+    }) = &state.read().unwrap().latest_selection
+    {
         let resp = json!({
             "id": id,
             "file_name": file_name,
@@ -121,7 +126,8 @@ async fn search(
 async fn index_notes(State(state): State<SharedState>) -> Json<Value> {
     let shared_state = state.read().expect("Unable to read share state");
 
-    let mut db = shared_state.db
+    let mut db = shared_state
+        .db
         .lock()
         // Ignoring any previous panics since we are trying to get the
         // db connection and it's probably fine
@@ -147,7 +153,7 @@ async fn index_notes(State(state): State<SharedState>) -> Json<Value> {
     let embeddings_model = TextEmbedding::try_new(
         InitOptions::new(EmbeddingModel::BGESmallENV15).with_show_download_progress(true),
     )
-        .unwrap();
+    .unwrap();
 
     // TODO: Move this into a helper function since it's needed in
     // multiple places in the codebase
@@ -160,13 +166,17 @@ async fn index_notes(State(state): State<SharedState>) -> Json<Value> {
         // Filter out non-note files
         if f.ends_with(".org") {
             // Filter out special org files
-            let exclusions = ["capture.org".to_string(), "intro.org".to_string(), "config.org".to_string()];
+            let exclusions = [
+                "capture.org".to_string(),
+                "intro.org".to_string(),
+                "config.org".to_string(),
+            ];
             if exclusions.contains(&f) {
-
                 continue;
             }
             let note_path = format!("{}/{}", notes_path, f);
-            index_note_vector(&mut db, &embeddings_model, &splitter, &note_path).expect("Vector indexing failed");
+            index_note_vector(&mut db, &embeddings_model, &splitter, &note_path)
+                .expect("Vector indexing failed");
         }
     }
 

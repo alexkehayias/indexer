@@ -6,7 +6,7 @@
   const handleSearch = async (includeSimilarity, viewSelected, val) => {
     try {
       // Auto hide results from journal entries
-      const query = `-title:journal ${val.trim()}`
+      const query = `-title:journal ${encodeURIComponent(val.trim())}`
       const headers = new Headers();
       headers.append("Content-Type", "application/json");
 

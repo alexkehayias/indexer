@@ -13,25 +13,25 @@ cargo run -- --init
 Search notes:
 
 ```
-cargo run -- --query "testing"
+cargo run -- query --term "testing" --vector
 ```
 
 Index or re-index:
 
 ```
-cargo run -- --index
+cargo run -- index --all
 ```
 
 Run the server:
 
 ```
-cargo run -- --serve --port 1111
+cargo run -- serve --port 2222
 ```
 
 Search notes using the server:
 
 ```
-http://localhost:1111/notes/search?query=test
+http://localhost:2222/notes/search?query=test&include_similarity=true
 ```
 
 ## Docker

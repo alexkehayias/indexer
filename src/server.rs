@@ -98,6 +98,9 @@ async fn search(
     Query(params): Query<HashMap<String, String>>,
 ) -> Json<Value> {
     let query = params.get("query");
+    let include_body = params.contains_key("include_body")
+        && params.get("include_body").unwrap() == "true";
+
     let results = if let Some(query) = query {
         let shared_state = state.read().unwrap();
         let index_path = &shared_state.config.index_path;
@@ -110,7 +113,7 @@ async fn search(
 
         let include_similarity = params.contains_key("include_similarity")
             && params.get("include_similarity").unwrap() == "true";
-        search_notes(index_path, &db, query, include_similarity)
+        search_notes(index_path, &db, include_similarity, include_body, query)
     } else {
         Vec::new()
     };
@@ -278,7 +281,7 @@ pub async fn serve(
         .route("/notes/search/latest", get(kv_get).post(kv_set))
         // Index content endpoint
         .route("/notes/index", post(index_notes))
-        // Static server of assets in ./web-ui
+        // View a specific note
         .route("/notes/:id/view", get(view_note))
         // Static server of assets in ./web-ui
         .nest_service("/", serve_dir.clone())

@@ -28,9 +28,10 @@ pub struct SearchHit {
     tags: Option<String>,
     is_task: bool,
     task_status: Option<String>,
+    body: Option<String>,
 }
 
-fn fulltext_search(index_path: &str, query: &str) -> Vec<SearchHit> {
+fn fulltext_search(index_path: &str, include_body: bool, query: &str) -> Vec<SearchHit> {
     let schema = note_schema();
     let index_path = tantivy::directory::MmapDirectory::open(index_path).expect("Index not found");
     let idx =
@@ -90,6 +91,11 @@ fn fulltext_search(index_path: &str, query: &str) -> Vec<SearchHit> {
                 .as_str()
                 .unwrap()
                 .to_string();
+            let body_val = doc.get("body").unwrap()[0]
+                .as_ref()
+                .as_str()
+                .unwrap()
+                .to_string();
             SearchHit {
                 id: id_val,
                 r#type: SearchHitType::FullText,
@@ -99,6 +105,7 @@ fn fulltext_search(index_path: &str, query: &str) -> Vec<SearchHit> {
                 file_name: file_name_val,
                 is_task: doc_type_val == "task",
                 task_status: status_val,
+                body: if include_body {Some(body_val)} else {None}
             }
         })
         .collect()
@@ -107,7 +114,7 @@ fn fulltext_search(index_path: &str, query: &str) -> Vec<SearchHit> {
 /// Returns the note ID and similarity distance for the query. Results
 /// are ordered by ascending distance because sqlite-vec only supports
 /// ascending distance.
-pub fn search_similar_notes(db: &Connection, query: &str) -> Result<Vec<SearchHit>> {
+pub fn search_similar_notes(db: &Connection, include_body: bool, query: &str) -> Result<Vec<SearchHit>> {
     let embeddings_model = TextEmbedding::try_new(
         InitOptions::new(EmbeddingModel::BGESmallENV15).with_show_download_progress(true),
     )
@@ -122,6 +129,7 @@ pub fn search_similar_notes(db: &Connection, query: &str) -> Result<Vec<SearchHi
             note_meta.file_name,
             note_meta.title,
             note_meta.tags,
+            note_meta.body,
             distance
           FROM vec_items
           JOIN note_meta on note_meta_id=note_meta.id
@@ -138,7 +146,8 @@ pub fn search_similar_notes(db: &Connection, query: &str) -> Result<Vec<SearchHi
                 file_name: r.get(1)?,
                 title: r.get(2)?,
                 tags: r.get(3)?,
-                score: r.get(4)?,
+                body: if include_body { Some(r.get(4)?)} else { None },
+                score: r.get(5)?,
                 // TODO: update this once task meta data is stored in
                 // the DB
                 is_task: false,
@@ -156,18 +165,19 @@ pub fn search_similar_notes(db: &Connection, query: &str) -> Result<Vec<SearchHi
 pub fn search_notes(
     index_path: &str,
     db: &Connection,
-    query: &str,
     include_similarity: bool,
+    include_body: bool,
+    query: &str,
 ) -> Vec<SearchHit> {
     if include_similarity {
-        let mut result = fulltext_search(index_path, query);
+        let mut result = fulltext_search(index_path, include_body, query);
         let similarity_query = query.replace("-title:journal ", "");
-        let mut vec_search_result = search_similar_notes(db, &similarity_query).unwrap_or_default();
+        let mut vec_search_result = search_similar_notes(db, include_body, &similarity_query).unwrap_or_default();
 
         // Combine the results, dedupe, then sort by score
         result.append(&mut vec_search_result);
         result.into_iter().unique_by(|i| i.id.clone()).collect()
     } else {
-        fulltext_search(index_path, query)
+        fulltext_search(index_path, include_body, query)
     }
 }

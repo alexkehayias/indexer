@@ -23,9 +23,9 @@ struct Task {
     body: String,
     status: String,
     tags: Option<String>,
-    // TODO: Change to a date
+    #[allow(dead_code)]
     scheduled: Option<String>,
-    // TODO: Change to a date
+    #[allow(dead_code)]
     deadline: Option<String>,
 }
 

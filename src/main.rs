@@ -11,7 +11,7 @@ mod schema;
 mod search;
 use search::search_notes;
 mod server;
-use indexing::{index_notes_all, index_notes_vector_all};
+use indexing::index_all;
 mod git;
 use git::{maybe_clone_repo, maybe_pull_and_reset_repo};
 mod db;
@@ -123,24 +123,27 @@ async fn main() -> Result<()> {
                 .expect("Missing env var INDEXER_NOTES_REPO_URL");
             maybe_pull_and_reset_repo(&deploy_key_path, &notes_path);
 
-            if full_text {
-                // Index for full text search
-                index_notes_all(&index_path, &notes_path);
-            }
-            if vector {
-                // Index for vector search
-                let mut db = vector_db(&vec_db_path).expect("Failed to connect to db");
-                index_notes_vector_all(&mut db, &notes_path).expect("Failed to vector index notes");
-            }
+            let mut db = vector_db(&vec_db_path).expect("Failed to connect to db");
+            index_all(&mut db, &index_path, &notes_path, None).expect("Indexing failed");
 
-            if all {
-                // Index for full text search
-                index_notes_all(&index_path, &notes_path);
+            // if full_text {
+            //     // Index for full text search
+            //     index_notes_all(&index_path, &notes_path);
+            // }
+            // if vector {
+            //     // Index for vector search
+            //     let mut db = vector_db(&vec_db_path).expect("Failed to connect to db");
+            //     index_notes_vector_all(&mut db, &notes_path).expect("Failed to vector index notes");
+            // }
 
-                // Index for vector search
-                let mut db = vector_db(&vec_db_path).expect("Failed to connect to db");
-                index_notes_vector_all(&mut db, &notes_path).expect("Failed to vector index notes");
-            }
+            // if all {
+            //     // Index for full text search
+            //     index_notes_all(&index_path, &notes_path);
+
+            //     // Index for vector search
+            //     let mut db = vector_db(&vec_db_path).expect("Failed to connect to db");
+            //     index_notes_vector_all(&mut db, &notes_path).expect("Failed to vector index notes");
+            // }
         }
         Some(Command::Query { term, vector }) => {
             let db = vector_db(&vec_db_path).expect("Failed to connect to db");

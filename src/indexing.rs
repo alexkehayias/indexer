@@ -93,7 +93,7 @@ drawer",
         .document()
         .headlines()
         .filter_map(|i| -> Option<Task> {
-            if i.todo_type().is_some() {
+            if let Some(status) = i.todo_keyword().map(|j| j.to_string()) {
                 let task_title = i.title_raw().trim().to_string();
 
                 // Tasks sometimes don't have an org-id. These tasks are ignored.
@@ -118,10 +118,6 @@ drawer",
                 plain_text.render(i.syntax());
                 let task_body = plain_text.finish();
 
-                let status = i
-                    .todo_keyword()
-                    .map(|j| j.to_string())
-                    .expect("Task missing status");
                 let tag_string = i
                     .tags()
                     .map(|j| j.to_string())

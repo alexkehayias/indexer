@@ -159,9 +159,6 @@ drawer",
                     scheduled,
                     deadline,
                 };
-
-                tracing::debug!("Found task {} {}", task.status, task.title);
-
                 return Some(task);
             }
             None
@@ -348,14 +345,6 @@ pub fn index_all(db: &mut Connection, index_dir_path: &str, notes_dir_path: &str
     let max_tokens = 1280;
     let splitter = TextSplitter::new(ChunkConfig::new(max_tokens).with_sizer(tokenizer));
 
-    let index_path = tantivy::directory::MmapDirectory::open(index_dir_path).expect("Index not found");
-    let schema = note_schema();
-    let idx =
-        Index::open_or_create(index_path, schema.clone()).expect("Unable to open or create index");
-    let mut index_writer: IndexWriter = idx
-        .writer(50_000_000)
-        .expect("Index writer failed to initialize");
-
     let note_paths: Vec<PathBuf>= if let Some(path_bufs) = paths {
         // Only index the specified notes
         note_filter(notes_dir_path, path_bufs)
@@ -382,10 +371,18 @@ pub fn index_all(db: &mut Connection, index_dir_path: &str, notes_dir_path: &str
 
     // HACK: Always rebuild the entire fulltext search index
     // remove this once incremental fts indexing is implemented
-    for p in notes(notes_dir_path).iter() {
-        fs::remove_dir_all(index_dir_path).expect("Failed to remove index directory");
-        fs::create_dir(index_dir_path).expect("Failed to recreate index directory");
+    let index_path = tantivy::directory::MmapDirectory::open(index_dir_path).expect("Index not found");
+    let schema = note_schema();
+    let idx =
+        Index::open_or_create(index_path, schema.clone()).expect("Unable to open or create index");
+    let mut index_writer: IndexWriter = idx
+        .writer(50_000_000)
+        .expect("Index writer failed to initialize");
 
+    fs::remove_dir_all(index_dir_path).expect("Failed to remove index directory");
+    fs::create_dir(index_dir_path).expect("Failed to recreate index directory");
+
+    for p in notes(notes_dir_path).iter() {
         let file_name = p.to_str().unwrap();
         let content = fs::read_to_string(file_name).unwrap();
         let note = parse_note(&content);

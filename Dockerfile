@@ -3,8 +3,16 @@ FROM rust:bookworm AS builder
 
 WORKDIR /
 
+## Cache rust dependencies
+## https://stackoverflow.com/questions/58473606/cache-rust-dependencies-with-docker-build
+RUN mkdir ./src && echo 'fn main() { println!("Dummy!"); }' > ./src/main.rs
+COPY ./Cargo.toml .
+RUN cargo build --release
+
+## Actually build the app
+RUN rm -rf ./src
 COPY ./src ./src
-COPY ./Cargo.toml ./Cargo.toml
+RUN touch -a -m ./src/main.rs
 RUN cargo build --release
 
 # Run stage

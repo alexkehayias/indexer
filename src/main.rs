@@ -1,10 +1,10 @@
 use std::env;
 use std::fs;
 
+use anyhow::{anyhow, Result};
 use clap::{Parser, Subcommand};
 use serde_json::json;
 use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
-use anyhow::{anyhow, Result};
 
 mod indexing;
 mod schema;
@@ -18,7 +18,6 @@ mod db;
 mod source;
 use db::{migrate_db, vector_db};
 mod export;
-
 
 #[derive(Subcommand)]
 enum Command {
@@ -58,7 +57,6 @@ struct Cli {
     /// Clone notes from version control
     #[arg(long, action)]
     init: bool,
-
 }
 
 #[tokio::main]
@@ -95,18 +93,17 @@ async fn main() -> Result<()> {
     // matches just as you would the top level cmd
     match args.command {
         Some(Command::Serve { host, port }) => {
-            server::serve(
-                host,
-                port,
-                notes_path.clone(),
-                index_path,
-                vec_db_path,
-            )
-                .await;
+            server::serve(host, port, notes_path.clone(), index_path, vec_db_path).await;
         }
-        Some(Command::Index { all, full_text, vector }) => {
+        Some(Command::Index {
+            all,
+            full_text,
+            vector,
+        }) => {
             if !all && !full_text && !vector {
-                return Err(anyhow!("Missing value for index \"all\", \"full-text\", and/or \"vector\""));
+                return Err(anyhow!(
+                    "Missing value for index \"all\", \"full-text\", and/or \"vector\""
+                ));
             }
             // If using the CLI only and not the webserver, set up tracing to
             // output to stdout and stderr
@@ -124,26 +121,22 @@ async fn main() -> Result<()> {
             maybe_pull_and_reset_repo(&deploy_key_path, &notes_path);
 
             let mut db = vector_db(&vec_db_path).expect("Failed to connect to db");
-            index_all(&mut db, &index_path, &notes_path, None).expect("Indexing failed");
 
-            // if full_text {
-            //     // Index for full text search
-            //     index_notes_all(&index_path, &notes_path);
-            // }
-            // if vector {
-            //     // Index for vector search
-            //     let mut db = vector_db(&vec_db_path).expect("Failed to connect to db");
-            //     index_notes_vector_all(&mut db, &notes_path).expect("Failed to vector index notes");
-            // }
+            if full_text {
+                // Index for full text search
+                index_all(&mut db, &index_path, &notes_path, true, false, None)
+                    .expect("Indexing failed");
+            }
+            if vector {
+                // Index for vector search
+                index_all(&mut db, &index_path, &notes_path, false, true, None)
+                    .expect("Indexing failed");
+            }
 
-            // if all {
-            //     // Index for full text search
-            //     index_notes_all(&index_path, &notes_path);
-
-            //     // Index for vector search
-            //     let mut db = vector_db(&vec_db_path).expect("Failed to connect to db");
-            //     index_notes_vector_all(&mut db, &notes_path).expect("Failed to vector index notes");
-            // }
+            if all {
+                index_all(&mut db, &index_path, &notes_path, true, true, None)
+                    .expect("Indexing failed");
+            }
         }
         Some(Command::Query { term, vector }) => {
             let db = vector_db(&vec_db_path).expect("Failed to connect to db");
@@ -155,10 +148,8 @@ async fn main() -> Result<()> {
                     "results": results,
                 })
             );
-
         }
-        None => {
-        }
+        None => {}
     }
 
     Ok(())

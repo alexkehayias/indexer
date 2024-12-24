@@ -1,8 +1,8 @@
-use std::path::PathBuf;
 use std::hash::{Hash, Hasher};
+use std::path::PathBuf;
 
 use super::schema::note_schema;
-use super::source::{notes, note_filter};
+use super::source::{note_filter, notes};
 use crate::export::PlainTextExport;
 use fastembed::{EmbeddingModel, InitOptions, TextEmbedding};
 use orgize::rowan::ast::AstNode;
@@ -107,7 +107,10 @@ drawer",
                 let task_properties = i.properties();
                 let id = if let Some(task_props) = task_properties {
                     // Properties might exist but the ID might be missing
-                    task_props.get("ID").map(|j| j.to_string()).unwrap_or(default_id)
+                    task_props
+                        .get("ID")
+                        .map(|j| j.to_string())
+                        .unwrap_or(default_id)
                 } else {
                     default_id
                 };
@@ -237,7 +240,7 @@ fn index_note_full_text(
     // Index each task
     for t in note_tasks.into_iter() {
         // Delete first to get upsert behavior
-        let task_term_id  = Term::from_field_text(id, &t.id);
+        let task_term_id = Term::from_field_text(id, &t.id);
         index_writer.delete_term(task_term_id);
 
         let task_type = DocType::Task.to_str();
@@ -257,7 +260,6 @@ fn index_note_full_text(
 
     Ok(())
 }
-
 
 /// Index the embeddings for the note
 /// Target model has N tokens or roughly a M sized context window
@@ -332,12 +334,18 @@ fn index_note_meta(db: &mut Connection, file_name: &str, note: &Note) -> Result<
     Ok(())
 }
 
-
 /// This is the primary function to call for indexing. Coordinates
 /// saving notes in the db, full text search index, and vector
 /// storage. This needs to be done in one to avoid parsing org mode
 /// notes many times for each index.
-pub fn index_all(db: &mut Connection, index_dir_path: &str, notes_dir_path: &str, paths: Option<Vec<PathBuf>>) -> Result<()> {
+pub fn index_all(
+    db: &mut Connection,
+    index_dir_path: &str,
+    notes_dir_path: &str,
+    index_full_text: bool,
+    index_vector: bool,
+    paths: Option<Vec<PathBuf>>,
+) -> Result<()> {
     let embeddings_model = TextEmbedding::try_new(
         InitOptions::new(EmbeddingModel::BGESmallENV15).with_show_download_progress(true),
     )
@@ -349,14 +357,15 @@ pub fn index_all(db: &mut Connection, index_dir_path: &str, notes_dir_path: &str
     let max_tokens = 1280;
     let splitter = TextSplitter::new(ChunkConfig::new(max_tokens).with_sizer(tokenizer));
 
-    let note_paths: Vec<PathBuf>= if let Some(path_bufs) = paths {
+    let note_paths: Vec<PathBuf> = if let Some(path_bufs) = paths {
         // Only index the specified notes
         note_filter(notes_dir_path, path_bufs)
     } else {
         notes(notes_dir_path)
     };
 
-    let index_path = tantivy::directory::MmapDirectory::open(index_dir_path).expect("Index not found");
+    let index_path =
+        tantivy::directory::MmapDirectory::open(index_dir_path).expect("Index not found");
     let schema = note_schema();
     let idx =
         Index::open_or_create(index_path, schema.clone()).expect("Unable to open or create index");
@@ -369,13 +378,17 @@ pub fn index_all(db: &mut Connection, index_dir_path: &str, notes_dir_path: &str
         let content = fs::read_to_string(file_name).unwrap();
         let note = parse_note(&content);
 
-        // This is order dependent because note meta must stay in sync
-        // with the other indexing schemes. Never run use the specific
-        // indexing functions independently or it will fall out of
-        // sync.
+        // Always update the meta DB otherwise it's possible for the
+        // other indices to diverge which will eventually break search
         index_note_meta(db, file_name, &note).expect("Upserting note meta failed");
-        index_note_vector(db, &embeddings_model, &splitter, file_name, &note).expect("Upserting note vector failed");
-        index_note_full_text(&mut index_writer, &schema, file_name, &note).expect("Updating full text search failed");
+        if index_vector {
+            index_note_vector(db, &embeddings_model, &splitter, file_name, &note)
+                .expect("Upserting note vector failed");
+        }
+        if index_full_text {
+            index_note_full_text(&mut index_writer, &schema, file_name, &note)
+                .expect("Updating full text search failed");
+        }
     }
 
     Ok(())

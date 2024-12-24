@@ -188,8 +188,7 @@ impl DocType {
     }
 }
 
-// There is no such thing as updates in tantivy so this function will
-// produce duplicates if called repeatedly
+// Deletes and then writes the document to the index
 fn index_note_full_text(
     index_writer: &mut IndexWriter,
     schema: &Schema,
@@ -198,7 +197,11 @@ fn index_note_full_text(
 ) -> tantivy::Result<()> {
     tracing::debug!("Indexing note: {}", file_name_value);
 
+    // Delete the document first to get upsert behavior
     let id = schema.get_field("id")?;
+    let term_id = Term::from_field_text(id, &note.id);
+    index_writer.delete_term(term_id);
+
     let r#type = schema.get_field("type")?;
     let title = schema.get_field("title")?;
     let body = schema.get_field("body")?;
@@ -231,11 +234,12 @@ fn index_note_full_text(
     }
     index_writer.add_document(doc)?;
 
-    // TODO: Maybe move this outside of this function or update this to
-    // handle upserting
-
     // Index each task
     for t in note_tasks.into_iter() {
+        // Delete first to get upsert behavior
+        let task_term_id  = Term::from_field_text(id, &t.id);
+        index_writer.delete_term(task_term_id);
+
         let task_type = DocType::Task.to_str();
         let mut doc = doc!(
             id => t.id,
@@ -348,12 +352,17 @@ pub fn index_all(db: &mut Connection, index_dir_path: &str, notes_dir_path: &str
     let note_paths: Vec<PathBuf>= if let Some(path_bufs) = paths {
         // Only index the specified notes
         note_filter(notes_dir_path, path_bufs)
-        // TODO: Rebuild the fts index but only vector index the supplied items
-        // maybe just make the fts index incremental too?
-        // index_writer.delete_term("ID of the document");
     } else {
         notes(notes_dir_path)
     };
+
+    let index_path = tantivy::directory::MmapDirectory::open(index_dir_path).expect("Index not found");
+    let schema = note_schema();
+    let idx =
+        Index::open_or_create(index_path, schema.clone()).expect("Unable to open or create index");
+    let mut index_writer: IndexWriter = idx
+        .writer(50_000_000)
+        .expect("Index writer failed to initialize");
 
     for p in note_paths.iter() {
         let file_name = p.to_str().unwrap();
@@ -366,27 +375,6 @@ pub fn index_all(db: &mut Connection, index_dir_path: &str, notes_dir_path: &str
         // sync.
         index_note_meta(db, file_name, &note).expect("Upserting note meta failed");
         index_note_vector(db, &embeddings_model, &splitter, file_name, &note).expect("Upserting note vector failed");
-        // index_note_full_text(&mut index_writer, &schema, file_name, &note).expect("Updating full text search failed");
-    }
-
-    // HACK: Always rebuild the entire fulltext search index
-    // remove this once incremental fts indexing is implemented
-    let index_path = tantivy::directory::MmapDirectory::open(index_dir_path).expect("Index not found");
-    let schema = note_schema();
-    let idx =
-        Index::open_or_create(index_path, schema.clone()).expect("Unable to open or create index");
-    let mut index_writer: IndexWriter = idx
-        .writer(50_000_000)
-        .expect("Index writer failed to initialize");
-
-    fs::remove_dir_all(index_dir_path).expect("Failed to remove index directory");
-    fs::create_dir(index_dir_path).expect("Failed to recreate index directory");
-
-    for p in notes(notes_dir_path).iter() {
-        let file_name = p.to_str().unwrap();
-        let content = fs::read_to_string(file_name).unwrap();
-        let note = parse_note(&content);
-
         index_note_full_text(&mut index_writer, &schema, file_name, &note).expect("Updating full text search failed");
     }
 

@@ -390,6 +390,7 @@ pub fn index_all(
                 .expect("Updating full text search failed");
         }
     }
+    index_writer.commit().expect("Full text search index failed to commit");
 
     Ok(())
 }

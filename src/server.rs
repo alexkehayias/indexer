@@ -89,6 +89,7 @@ async fn kv_set(State(state): State<SharedState>, Json(data): Json<LastSelection
 #[derive(Serialize)]
 struct SearchResult {
     id: String,
+    r#type: String,
     title: String,
     file_name: String,
     tags: Option<String>,
@@ -141,26 +142,28 @@ async fn search(
         .prepare(
             r"
           SELECT
-            note_meta.id,
-            note_meta.file_name,
-            note_meta.title,
-            note_meta.tags,
-            note_meta.body
+            id,
+            type,
+            file_name,
+            title,
+            tags,
+            body,
+            status
           FROM note_meta
           WHERE note_meta.id in (SELECT value from json_each(?))
         ",
         ).unwrap()
         .query_map([result_ids_str.as_bytes()], |r| {
+            let maybe_task_status: Option<String> = r.get(6)?;
             Ok(SearchResult {
                 id: r.get(0)?,
-                file_name: r.get(1)?,
-                title: r.get(2)?,
-                tags: r.get(3)?,
-                body: if include_body { Some(r.get(4)?) } else { None },
-                // TODO: update this once task meta data is stored in
-                // the DB
-                is_task: false,
-                task_status: None,
+                r#type: r.get(1)?,
+                file_name: r.get(2)?,
+                title: r.get(3)?,
+                tags: r.get(4)?,
+                body: if include_body { Some(r.get(5)?) } else { None },
+                is_task: maybe_task_status.is_some(),
+                task_status: maybe_task_status,
             })
         }).unwrap()
         .collect::<Result<Vec<SearchResult>, _>>()

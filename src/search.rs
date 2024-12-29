@@ -2,6 +2,7 @@ use fastembed::{EmbeddingModel, InitOptions, TextEmbedding};
 use itertools::Itertools;
 use rusqlite::{Connection, Result};
 use serde::Serialize;
+use serde_json::json;
 use tantivy::collector::TopDocs;
 use tantivy::query::QueryParser;
 use tantivy::schema::*;
@@ -117,6 +118,18 @@ pub fn search_similar_notes(
     Ok(result)
 }
 
+#[derive(Serialize)]
+pub struct SearchResult {
+    id: String,
+    r#type: String,
+    title: String,
+    file_name: String,
+    tags: Option<String>,
+    is_task: bool,
+    task_status: Option<String>,
+    body: String,
+}
+
 // Performs a full-text search of all notes for the given query. If
 // `include_similarity`, also includes vector search results appended
 // to the end of the list of results. This way, if there is a keyword
@@ -127,8 +140,8 @@ pub fn search_notes(
     include_similarity: bool,
     query: &str,
     limit: usize,
-) -> Vec<SearchHit> {
-    if include_similarity {
+) -> Vec<SearchResult> {
+    let search_hits = if include_similarity {
         let mut result = fulltext_search(index_path, query, limit);
         let similarity_query = query.replace("-title:journal ", "");
         let mut vec_search_result =
@@ -139,5 +152,45 @@ pub fn search_notes(
         result.into_iter().unique_by(|i| i.id.clone()).collect()
     } else {
         fulltext_search(index_path, query, limit)
-    }
+    };
+
+    // Search the db for the metadata and construct results
+    let result_ids: Vec<String> = search_hits.
+        iter()
+        .map(|i| i.id.clone()).collect();
+    let result_ids_serialized = json!(result_ids);
+    let result_ids_str = result_ids_serialized.to_string();
+
+    let results: Vec<SearchResult> = db
+        .prepare(
+            r"
+          SELECT
+            id,
+            type,
+            file_name,
+            title,
+            tags,
+            body,
+            status
+          FROM note_meta
+          WHERE note_meta.id in (SELECT value from json_each(?))
+        ",
+        ).unwrap()
+        .query_map([result_ids_str.as_bytes()], |r| {
+            let maybe_task_status: Option<String> = r.get(6)?;
+            Ok(SearchResult {
+                id: r.get(0)?,
+                r#type: r.get(1)?,
+                file_name: r.get(2)?,
+                title: r.get(3)?,
+                tags: r.get(4)?,
+                body: r.get(5)?,
+                is_task: maybe_task_status.is_some(),
+                task_status: maybe_task_status,
+            })
+        }).unwrap()
+        .collect::<Result<Vec<SearchResult>, _>>()
+        .unwrap();
+
+    results
 }

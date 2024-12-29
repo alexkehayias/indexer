@@ -27,7 +27,7 @@ use crate::indexing::index_all;
 
 use super::db::vector_db;
 use super::git::{diff_last_commit_files, maybe_pull_and_reset_repo};
-use super::search::search_notes;
+use super::search::{SearchResult, search_notes};
 
 type SharedState = Arc<RwLock<AppState>>;
 
@@ -87,18 +87,6 @@ async fn kv_set(State(state): State<SharedState>, Json(data): Json<LastSelection
 }
 
 #[derive(Serialize)]
-struct SearchResult {
-    id: String,
-    r#type: String,
-    title: String,
-    file_name: String,
-    tags: Option<String>,
-    is_task: bool,
-    task_status: Option<String>,
-    body: Option<String>,
-}
-
-#[derive(Serialize)]
 struct SearchResponse {
     query: Option<String>,
     results: Vec<SearchResult>
@@ -111,63 +99,22 @@ async fn search(
     Query(params): Query<HashMap<String, String>>,
 ) -> Json<SearchResponse> {
     let query = params.get("query");
-    let include_body =
-        params.contains_key("include_body") && params.get("include_body").unwrap() == "true";
-
     let shared_state = state.read().unwrap();
     let index_path = &shared_state.config.index_path;
+    // Ignoring any previous panics since we are trying to get the
+    // db connection and it's probably fine
     let db = shared_state
         .db
         .lock()
-    // Ignoring any previous panics since we are trying to get the
-    // db connection and it's probably fine
         .unwrap_or_else(|e| e.into_inner());
 
-    let search_hits = if let Some(query) = query {
+    let results = if let Some(query) = query {
         let include_similarity = params.contains_key("include_similarity")
             && params.get("include_similarity").unwrap() == "true";
         search_notes(index_path, &db, include_similarity, query, 20)
     } else {
         Vec::new()
     };
-
-    // Search the db for the metadata and construct results
-    let result_ids: Vec<String> = search_hits.
-        iter()
-        .map(|i| i.id.clone()).collect();
-    let result_ids_serialized = json!(result_ids);
-    let result_ids_str = result_ids_serialized.to_string();
-
-    let results: Vec<SearchResult> = db
-        .prepare(
-            r"
-          SELECT
-            id,
-            type,
-            file_name,
-            title,
-            tags,
-            body,
-            status
-          FROM note_meta
-          WHERE note_meta.id in (SELECT value from json_each(?))
-        ",
-        ).unwrap()
-        .query_map([result_ids_str.as_bytes()], |r| {
-            let maybe_task_status: Option<String> = r.get(6)?;
-            Ok(SearchResult {
-                id: r.get(0)?,
-                r#type: r.get(1)?,
-                file_name: r.get(2)?,
-                title: r.get(3)?,
-                tags: r.get(4)?,
-                body: if include_body { Some(r.get(5)?) } else { None },
-                is_task: maybe_task_status.is_some(),
-                task_status: maybe_task_status,
-            })
-        }).unwrap()
-        .collect::<Result<Vec<SearchResult>, _>>()
-        .unwrap();
 
     let resp = SearchResponse {
         query: query.map(|s| s.to_string()),

@@ -140,7 +140,7 @@ async fn main() -> Result<()> {
         }
         Some(Command::Query { term, vector }) => {
             let db = vector_db(&vec_db_path).expect("Failed to connect to db");
-            let results = search_notes(&index_path, &db, vector, false, &term, 20);
+            let results = search_notes(&index_path, &db, vector, &term, 20);
             println!(
                 "{}",
                 json!({

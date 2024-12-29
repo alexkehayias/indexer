@@ -16,7 +16,7 @@ use axum::{
 };
 use orgize::ParseConfig;
 use rusqlite::Connection;
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
 use tower_http::cors::CorsLayer;
 use tower_http::services::ServeDir;
@@ -86,36 +86,91 @@ async fn kv_set(State(state): State<SharedState>, Json(data): Json<LastSelection
     });
 }
 
+#[derive(Serialize)]
+struct SearchResult {
+    id: String,
+    title: String,
+    file_name: String,
+    tags: Option<String>,
+    is_task: bool,
+    task_status: Option<String>,
+    body: Option<String>,
+}
+
+#[derive(Serialize)]
+struct SearchResponse {
+    query: Option<String>,
+    results: Vec<SearchResult>
+}
+
+
 // Fulltext search of all notes
 async fn search(
     State(state): State<SharedState>,
     Query(params): Query<HashMap<String, String>>,
-) -> Json<Value> {
+) -> Json<SearchResponse> {
     let query = params.get("query");
     let include_body =
         params.contains_key("include_body") && params.get("include_body").unwrap() == "true";
 
-    let results = if let Some(query) = query {
-        let shared_state = state.read().unwrap();
-        let index_path = &shared_state.config.index_path;
-        let db = shared_state
-            .db
-            .lock()
-            // Ignoring any previous panics since we are trying to get the
-            // db connection and it's probably fine
-            .unwrap_or_else(|e| e.into_inner());
+    let shared_state = state.read().unwrap();
+    let index_path = &shared_state.config.index_path;
+    let db = shared_state
+        .db
+        .lock()
+    // Ignoring any previous panics since we are trying to get the
+    // db connection and it's probably fine
+        .unwrap_or_else(|e| e.into_inner());
 
+    let search_hits = if let Some(query) = query {
         let include_similarity = params.contains_key("include_similarity")
             && params.get("include_similarity").unwrap() == "true";
-        search_notes(index_path, &db, include_similarity, include_body, query, 20)
+        search_notes(index_path, &db, include_similarity, query, 20)
     } else {
         Vec::new()
     };
 
-    let resp = json!({
-        "query": query,
-        "results": results,
-    });
+    // Search the db for the metadata and construct results
+    let result_ids: Vec<String> = search_hits.
+        iter()
+        .map(|i| i.id.clone()).collect();
+    let result_ids_serialized = json!(result_ids);
+    let result_ids_str = result_ids_serialized.to_string();
+
+    let results: Vec<SearchResult> = db
+        .prepare(
+            r"
+          SELECT
+            note_meta.id,
+            note_meta.file_name,
+            note_meta.title,
+            note_meta.tags,
+            note_meta.body
+          FROM note_meta
+          WHERE note_meta.id in (SELECT value from json_each(?))
+        ",
+        ).unwrap()
+        .query_map([result_ids_str.as_bytes()], |r| {
+            Ok(SearchResult {
+                id: r.get(0)?,
+                file_name: r.get(1)?,
+                title: r.get(2)?,
+                tags: r.get(3)?,
+                body: if include_body { Some(r.get(4)?) } else { None },
+                // TODO: update this once task meta data is stored in
+                // the DB
+                is_task: false,
+                task_status: None,
+            })
+        }).unwrap()
+        .collect::<Result<Vec<SearchResult>, _>>()
+        .unwrap();
+
+    let resp = SearchResponse {
+        query: query.map(|s| s.to_string()),
+        results,
+    };
+
     Json(resp)
 }
 

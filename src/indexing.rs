@@ -320,16 +320,24 @@ fn index_note_meta(db: &mut Connection, file_name: &str, note: &Note) -> Result<
     let mut note_meta_stmt = db.prepare(
         "REPLACE INTO note_meta(id, file_name, title, tags, body) VALUES (?, ?, ?, ?, ?)",
     )?;
-    // TODO: Handle saving tasks
 
     // Update the note meta table
     note_meta_stmt
         // TODO: Don't hardcode the note path, save the file name instead
-        // TODO: Add task type and status
         .execute(rusqlite::params![
             note.id, file_name, note.title, note.tags, note.body
         ])
         .expect("Note meta upsert failed");
+
+    for t in note.tasks.iter() {
+        // TODO: Add task type and status
+        note_meta_stmt.execute(
+            rusqlite::params![
+                t.id, file_name, t.title, t.tags, t.body
+            ]
+        )
+        .expect("Note meta upsert failed for task");
+    }
 
     Ok(())
 }

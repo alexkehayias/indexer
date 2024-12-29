@@ -27,7 +27,7 @@ use crate::indexing::index_all;
 
 use super::db::vector_db;
 use super::git::{diff_last_commit_files, maybe_pull_and_reset_repo};
-use super::search::{SearchResult, search_notes};
+use super::search::{search_notes, SearchResult};
 
 type SharedState = Arc<RwLock<AppState>>;
 
@@ -89,9 +89,8 @@ async fn kv_set(State(state): State<SharedState>, Json(data): Json<LastSelection
 #[derive(Serialize)]
 struct SearchResponse {
     query: Option<String>,
-    results: Vec<SearchResult>
+    results: Vec<SearchResult>,
 }
-
 
 // Fulltext search of all notes
 async fn search(
@@ -103,10 +102,7 @@ async fn search(
     let index_path = &shared_state.config.index_path;
     // Ignoring any previous panics since we are trying to get the
     // db connection and it's probably fine
-    let db = shared_state
-        .db
-        .lock()
-        .unwrap_or_else(|e| e.into_inner());
+    let db = shared_state.db.lock().unwrap_or_else(|e| e.into_inner());
 
     let results = if let Some(query) = query {
         let include_similarity = params.contains_key("include_similarity")

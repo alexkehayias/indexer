@@ -21,7 +21,7 @@ mod export;
 
 #[derive(Subcommand)]
 enum Command {
-    /// Adds files to myapp
+    /// Run the API server
     Serve {
         /// Set the server host address
         #[arg(long, default_value = "127.0.0.1")]
@@ -31,6 +31,7 @@ enum Command {
         #[arg(long, default_value = "2222")]
         port: String,
     },
+    /// Index notes
     Index {
         #[arg(long, default_value = "false")]
         all: bool,
@@ -39,6 +40,7 @@ enum Command {
         #[arg(long, default_value = "false")]
         vector: bool,
     },
+    /// Query the search index
     Query {
         #[arg(long)]
         term: String,
@@ -51,7 +53,7 @@ enum Command {
 #[command(author, version, about, long_about = None)]
 #[command(propagate_version = true)]
 struct Cli {
-    /// Clone notes from version control
+    /// Initialize indices and clone notes from version control
     #[arg(long, action, default_value = "false")]
     init: bool,
 

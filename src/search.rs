@@ -26,11 +26,7 @@ pub struct SearchHit {
     pub score: f32,
 }
 
-fn fulltext_search(
-    index_path: &str,
-    query: &str,
-    limit: usize,
-) -> Vec<SearchHit> {
+fn fulltext_search(index_path: &str, query: &str, limit: usize) -> Vec<SearchHit> {
     let schema = note_schema();
     let index_path = tantivy::directory::MmapDirectory::open(index_path).expect("Index not found");
     let idx = Index::open(index_path).expect("Unable to open index");
@@ -78,11 +74,7 @@ fn fulltext_search(
 /// Returns the note ID and similarity distance for the query. Results
 /// are ordered by ascending distance because sqlite-vec only supports
 /// ascending distance.
-pub fn search_similar_notes(
-    db: &Connection,
-    query: &str,
-    limit: usize,
-) -> Result<Vec<SearchHit>> {
+pub fn search_similar_notes(db: &Connection, query: &str, limit: usize) -> Result<Vec<SearchHit>> {
     let embeddings_model = TextEmbedding::try_new(
         InitOptions::new(EmbeddingModel::BGESmallENV15).with_show_download_progress(true),
     )
@@ -155,9 +147,7 @@ pub fn search_notes(
     };
 
     // Search the db for the metadata and construct results
-    let result_ids: Vec<String> = search_hits.
-        iter()
-        .map(|i| i.id.clone()).collect();
+    let result_ids: Vec<String> = search_hits.iter().map(|i| i.id.clone()).collect();
     let result_ids_serialized = json!(result_ids);
     let result_ids_str = result_ids_serialized.to_string();
 
@@ -175,7 +165,8 @@ pub fn search_notes(
           FROM note_meta
           WHERE note_meta.id in (SELECT value from json_each(?))
         ",
-        ).unwrap()
+        )
+        .unwrap()
         .query_map([result_ids_str.as_bytes()], |r| {
             let maybe_task_status: Option<String> = r.get(6)?;
             Ok(SearchResult {
@@ -188,7 +179,8 @@ pub fn search_notes(
                 is_task: maybe_task_status.is_some(),
                 task_status: maybe_task_status,
             })
-        }).unwrap()
+        })
+        .unwrap()
         .collect::<Result<Vec<SearchResult>, _>>()
         .unwrap();
 

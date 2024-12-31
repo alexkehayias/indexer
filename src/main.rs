@@ -6,18 +6,11 @@ use clap::{Parser, Subcommand};
 use serde_json::json;
 use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
 
-mod indexing;
-mod schema;
-mod search;
-use search::search_notes;
-mod server;
-use indexing::index_all;
-mod git;
-use git::{maybe_clone_repo, maybe_pull_and_reset_repo};
-mod db;
-mod source;
-use db::{migrate_db, vector_db};
-mod export;
+use indexer::search::search_notes;
+use indexer::indexing::index_all;
+use indexer::git::{maybe_clone_repo, maybe_pull_and_reset_repo};
+use indexer::db::{migrate_db, vector_db};
+use indexer::server;
 
 #[derive(Subcommand)]
 enum Command {

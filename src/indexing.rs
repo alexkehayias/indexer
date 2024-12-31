@@ -3,7 +3,7 @@ use std::path::PathBuf;
 
 use super::schema::note_schema;
 use super::source::{note_filter, notes};
-use crate::export::PlainTextExport;
+use crate::export::MarkdownExport;
 use fastembed::{EmbeddingModel, InitOptions, TextEmbedding};
 use orgize::rowan::ast::AstNode;
 use orgize::ParseConfig;
@@ -117,7 +117,7 @@ drawer",
 
                 // Extract note body into markdown format This is
                 // useful since LLMs are typically tune for markdown
-                let mut plain_text = PlainTextExport::default();
+                let mut plain_text = MarkdownExport::default();
                 plain_text.render(i.syntax());
                 let task_body = plain_text.finish();
 

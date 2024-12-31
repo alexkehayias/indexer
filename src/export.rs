@@ -5,20 +5,21 @@ use orgize::export::{Container, Event, TraversalContext, Traverser};
 use orgize::{SyntaxElement, SyntaxNode};
 
 #[derive(Default)]
-pub struct PlainTextExport {
+pub struct MarkdownExport {
     output: String,
     inside_blockquote: bool,
 }
 
-impl PlainTextExport {
+impl MarkdownExport {
     /// Render syntax node to markdown string
     ///
     /// ```rust
-    /// use orgize::{Org, ast::Bold, export::PlainTextExport, rowan::ast::AstNode};
+    /// use orgize::{Org, ast::Bold, rowan::ast::AstNode};
+    /// use indexer::export::MarkdownExport;
     ///
     /// let org = Org::parse("* /hello/ *world*");
     /// let bold = org.first_node::<Bold>().unwrap();
-    /// let mut markdown = PlainTextExport::default();
+    /// let mut markdown = MarkdownExport::default();
     /// markdown.render(bold.syntax());
     /// assert_eq!(markdown.finish(), "**world**");
     /// ```
@@ -38,7 +39,7 @@ impl PlainTextExport {
     }
 }
 
-impl Traverser for PlainTextExport {
+impl Traverser for MarkdownExport {
     fn event(&mut self, event: Event, ctx: &mut TraversalContext) {
         match event {
             Event::Enter(Container::Drawer(_)) => {}

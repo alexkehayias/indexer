@@ -31,9 +31,9 @@ use super::search::{search_notes, SearchResult};
 
 type SharedState = Arc<RwLock<AppState>>;
 
-struct AppConfig {
-    notes_path: String,
-    index_path: String,
+pub struct AppConfig {
+    pub notes_path: String,
+    pub index_path: String,
 }
 
 #[derive(Debug, Deserialize)]
@@ -43,7 +43,7 @@ struct LastSelection {
     file_name: String,
 }
 
-struct AppState {
+pub struct AppState {
     // Stores the latest search hit selected by the user
     latest_selection: Option<LastSelection>,
     db: Mutex<Connection>,
@@ -51,7 +51,7 @@ struct AppState {
 }
 
 impl AppState {
-    fn new(db: Connection, config: AppConfig) -> Self {
+    pub fn new(db: Connection, config: AppConfig) -> Self {
         Self {
             latest_selection: None,
             db: Mutex::new(db),
@@ -214,6 +214,27 @@ async fn view_note(
     }
 }
 
+pub fn app(app_state: AppState) -> Router {
+    let shared_state = SharedState::new(RwLock::new(app_state));
+    let cors = CorsLayer::permissive();
+    let serve_dir = ServeDir::new("./web-ui/src");
+
+    Router::new()
+        // Search API endpoint
+        .route("/notes/search", get(search))
+        // Storage for selected search hits
+        .route("/notes/search/latest", get(kv_get).post(kv_set))
+        // Index content endpoint
+        .route("/notes/index", post(index_notes))
+        // View a specific note
+        .route("/notes/:id/view", get(view_note))
+        // Static server of assets in ./web-ui
+        .nest_service("/", serve_dir.clone())
+        .layer(TraceLayer::new_for_http())
+        .layer(cors)
+        .with_state(Arc::clone(&shared_state))
+}
+
 // Run the server
 pub async fn serve(
     host: String,
@@ -231,36 +252,18 @@ pub async fn serve(
                     "{}=debug,tower_http=debug,axum::rejection=trace",
                     env!("CARGO_CRATE_NAME")
                 )
-                .into()
+                    .into()
             }),
         )
         .with(tracing_subscriber::fmt::layer())
         .init();
-
     let db = vector_db(&vec_db_path).expect("Failed to connect to db");
     let app_config = AppConfig {
         notes_path,
         index_path,
     };
     let app_state = AppState::new(db, app_config);
-    let shared_state = SharedState::new(RwLock::new(app_state));
-    let cors = CorsLayer::permissive();
-    let serve_dir = ServeDir::new("./web-ui/src");
-
-    let app = Router::new()
-        // Search API endpoint
-        .route("/notes/search", get(search))
-        // Storage for selected search hits
-        .route("/notes/search/latest", get(kv_get).post(kv_set))
-        // Index content endpoint
-        .route("/notes/index", post(index_notes))
-        // View a specific note
-        .route("/notes/:id/view", get(view_note))
-        // Static server of assets in ./web-ui
-        .nest_service("/", serve_dir.clone())
-        .layer(TraceLayer::new_for_http())
-        .layer(cors)
-        .with_state(Arc::clone(&shared_state));
+    let app = app(app_state);
 
     let listener = tokio::net::TcpListener::bind(format!("{}:{}", host, port))
         .await

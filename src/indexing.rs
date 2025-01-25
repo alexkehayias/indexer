@@ -379,6 +379,7 @@ fn index_note_vector(
 /// should always be safe to query an index and then lookup the
 /// note(s) by ID.
 fn index_note_meta(db: &mut Connection, file_name: &str, note: &Note) -> Result<()> {
+
     let mut note_meta_stmt = db.prepare(
         "REPLACE INTO note_meta(id, type, file_name, title, tags, body) VALUES (?, ?, ?, ?, ?, ?)",
     )?;
@@ -458,11 +459,16 @@ pub fn index_all(
         .expect("Index writer failed to initialize");
 
     for p in note_paths.iter() {
-        let file_name = p.to_str().unwrap();
-        let content = fs::read_to_string(file_name).unwrap();
+        // Don't hardcode file paths as it might be different between
+        // local and server
+        let file_name = p.file_name().unwrap().to_str().unwrap();
+
+        // Only read and parse each note once
+        let content = fs::read_to_string(p)
+            .unwrap_or_else(|err| panic!("Error {} file: {:?}", err, p));
         let note = parse_note(&content);
 
-        // Always update the meta DB otherwise it's possible for the
+        // Always update the meta DB. Otherwise it's possible for the
         // other indices to diverge which will eventually break search
         index_note_meta(db, file_name, &note).expect("Upserting note meta failed");
         if index_vector {

@@ -254,7 +254,7 @@ pub async fn serve(
                     "{}=debug,tower_http=debug,axum::rejection=trace",
                     env!("CARGO_CRATE_NAME")
                 )
-                    .into()
+                .into()
             }),
         )
         .with(tracing_subscriber::fmt::layer())

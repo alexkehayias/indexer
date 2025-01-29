@@ -1,16 +1,20 @@
-use std::env;
-use std::fs;
-
 use anyhow::{anyhow, Result};
 use clap::{Parser, Subcommand};
+use rustyline::error::ReadlineError;
+use rustyline::DefaultEditor;
 use serde_json::json;
+use std::env;
+use std::fs;
 use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
 
-use indexer::search::search_notes;
-use indexer::indexing::index_all;
-use indexer::git::{maybe_clone_repo, maybe_pull_and_reset_repo};
 use indexer::db::{migrate_db, vector_db};
+use indexer::git::{maybe_clone_repo, maybe_pull_and_reset_repo};
+use indexer::indexing::index_all;
+use indexer::openai::{Message, Role, Function, Property, Parameters, ToolType, ToolCall};
+use indexer::search::search_notes;
 use indexer::server;
+use indexer::chat::chat;
+use indexer::tool::{NoteSearchProps, NoteSearchTool};
 
 #[derive(Subcommand)]
 enum Command {
@@ -40,6 +44,8 @@ enum Command {
         #[arg(long, default_value = "false")]
         vector: bool,
     },
+    /// Start a chat bot session
+    Chat {},
 }
 
 #[derive(Parser)]
@@ -143,6 +149,52 @@ async fn main() -> Result<()> {
                     "results": results,
                 })
             );
+        }
+        Some(Command::Chat {}) => {
+            let mut rl = DefaultEditor::new().expect("Editor failed");
+            let function = Function {
+                name: String::from("search_notes"),
+                description: String::from("Find notes the user has written about."),
+                parameters: Parameters {
+                    r#type: String::from("object"),
+                    properties: NoteSearchProps {
+                        query: Property {
+                            r#type: String::from("string"),
+                            description: String::from("The query to use for searching notes that should be short and optimized for search.")
+                        }
+                    },
+                    required: vec![String::from("query")],
+                    additional_properties: false,
+                },
+                strict: true,
+            };
+            let note_search_tool = NoteSearchTool {
+                r#type: ToolType::Function,
+                function,
+            };
+            let tools: Option<Vec<Box<dyn ToolCall>>> =
+                Some(vec![Box::new(note_search_tool)]);
+            // TODO: Window the list of history
+            let mut history = vec![Message::new(
+                Role::System,
+                "You are a helpful assistant.",
+            )];
+
+            loop {
+                let readline = rl.readline(">> ");
+                match readline {
+                    Ok(line) => {
+                        history.push(Message::new(Role::User, line.as_str()));
+                        chat(&mut history, &tools).await;
+                    }
+                    Err(ReadlineError::Interrupted) => break,
+                    Err(ReadlineError::Eof) => break,
+                    Err(err) => {
+                        println!("Error: {:?}", err);
+                        break;
+                    }
+                }
+            }
         }
         None => {}
     }

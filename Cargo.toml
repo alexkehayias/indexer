@@ -7,12 +7,16 @@ edition = "2021"
 anyhow = "1.0.93"
 axum = "0.7.5"
 clap = { version = "4.5.17", features = ["derive"] }
+erased-serde = "0.4.5"
 fastembed = "4.1.0"
+handlebars = "6.3.0"
 http = "1.1.0"
 itertools = "0.13.0"
 orgize = "0.10.0-alpha.10"
 rand = "0.8.5"
+reqwest = { version = "0.12.12", features = ["json"] }
 rusqlite = { version = "0.32.1", features = ["bundled", "load_extension"] }
+rustyline = "15.0.0"
 serde = "1.0.210"
 serde_json = "1.0.128"
 sqlite-vec = "0.1.3"

@@ -122,39 +122,40 @@ async fn search(
 
 // Build the index for all notes
 async fn index_notes(State(state): State<SharedState>) -> Json<Value> {
-    let shared_state = state.read().expect("Unable to read share state");
+    tokio::spawn(async move {
+        let shared_state = state.read().expect("Unable to read share state");
+        let mut db = shared_state
+            .db
+            .lock()
+            // Ignoring any previous panics since we are trying to get the
+            // db connection and it's probably fine
+            .unwrap_or_else(|e| e.into_inner());
 
-    let mut db = shared_state
-        .db
-        .lock()
-        // Ignoring any previous panics since we are trying to get the
-        // db connection and it's probably fine
-        .unwrap_or_else(|e| e.into_inner());
+        let AppConfig {
+            index_path,
+            notes_path,
+        } = &shared_state.config;
+        let deploy_key_path = env::var("INDEXER_NOTES_DEPLOY_KEY_PATH")
+            .expect("Missing env var INDEXER_NOTES_DEPLOY_KEY_PATH");
 
-    let AppConfig {
-        index_path,
-        notes_path,
-    } = &state.read().expect("Failed to read state").config;
-    let deploy_key_path = env::var("INDEXER_NOTES_DEPLOY_KEY_PATH")
-        .expect("Missing env var INDEXER_NOTES_DEPLOY_KEY_PATH");
+        // Pull the latest from origin
+        maybe_pull_and_reset_repo(&deploy_key_path, notes_path);
 
-    // Pull the latest from origin
-    maybe_pull_and_reset_repo(&deploy_key_path, notes_path);
+        // Determine which notes changed
+        let diff = diff_last_commit_files(&deploy_key_path, notes_path);
+        // NOTE: This assumes all notes are in one directory at the root
+        // of `notes_path`. This will not work if note files are in
+        // different directories!
+        let paths: Vec<PathBuf> = diff
+            .iter()
+            .map(|f| PathBuf::from(format!("{}/{}", notes_path, f)))
+            .collect();
+        let filter_paths = if paths.is_empty() { None } else { Some(paths) };
 
-    // Determine which notes changed
-    let diff = diff_last_commit_files(&deploy_key_path, notes_path);
-    // NOTE: This assumes all notes are in one directory at the root
-    // of `notes_path`. This will not work if note files are in
-    // different directories!
-    let paths: Vec<PathBuf> = diff
-        .iter()
-        .map(|f| PathBuf::from(format!("{}/{}", notes_path, f)))
-        .collect();
-    let filter_paths = if paths.is_empty() { None } else { Some(paths) };
-
-    // Re-index just the notes that changed
-    index_all(&mut db, index_path, notes_path, true, true, filter_paths)
-        .expect("Vector indexing failed");
+        // Re-index just the notes that changed
+        index_all(&mut db, index_path, notes_path, true, true, filter_paths)
+            .expect("Vector indexing failed");
+    });
 
     let resp = json!({
         "success": true,

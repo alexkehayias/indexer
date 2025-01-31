@@ -2,6 +2,7 @@
 mod tests {
     use std::env;
     use std::fs;
+    use std::path::PathBuf;
     use std::time::SystemTime;
 
     use anyhow::{Error, Result};
@@ -10,10 +11,12 @@ mod tests {
         http::{Request, StatusCode},
         Router,
     };
+    use indexer::db::migrate_db;
     use indexer::db::vector_db;
     use indexer::openai;
     use indexer::prompt::{self, Prompt};
     use indexer::server::{app, AppConfig, AppState};
+    use indexer::indexing::index_all;
     use serde::Serialize;
     use serde_json::json;
     use tower::util::ServiceExt;
@@ -44,8 +47,12 @@ mod tests {
         fs::create_dir_all(&index_path).expect("Failed to create index directory");
         fs::create_dir_all(&vec_db_path).expect("Failed to create db directory");
 
-        let db =
+        let mut db =
             vector_db(dir.join(&vec_db_path).to_str().unwrap()).expect("Failed to connect to db");
+        migrate_db(&db).expect("Failed to migrate db");
+
+        index_dummy_notes(&mut db, dir);
+
         let app_config = AppConfig {
             notes_path: notes_path.display().to_string(),
             index_path: index_path.display().to_string(),
@@ -54,12 +61,32 @@ mod tests {
         app(app_state)
     }
 
-    // fn index_dummy_notes() {
-        // This also creates the full text search index
-        // TODO: Create some dummy note files
-        //
-        // index_all()
-    // }
+    fn index_dummy_notes(db: &mut rusqlite::Connection, temp_dir: PathBuf) {
+        let index_dir = temp_dir.join("index");
+        let index_dir_path = index_dir.to_str().unwrap();
+        fs::create_dir_all(index_dir_path).expect("Failed to create directory");
+
+        let notes_dir = temp_dir.join("notes");
+        let notes_dir_path = notes_dir.to_str().unwrap();
+        fs::create_dir_all(notes_dir_path).expect("Failed to create directory");
+
+        let test_note_path = notes_dir.join("test.org");
+        let paths = vec![test_note_path.clone()];
+
+        fs::write(
+            test_note_path,
+            r#":PROPERTIES:
+:ID:       6A503659-15E4-4427-835F-7873F8FF8ECF
+:END:
+#+TITLE: this is a test
+#+DATE: 2025-01-28
+"#,
+        ).unwrap();
+
+        index_all(
+            db, index_dir_path, notes_dir_path, true, true, Some(paths)
+        ).unwrap();
+    }
 
     #[tokio::test]
     async fn it_serves_web_ui() {
@@ -76,23 +103,22 @@ mod tests {
         assert!(body.contains("input id=\"search\""));
     }
 
-    // #[tokio::test]
-    // async fn it_searches_full_text() {
-    //     let app = test_app();
-    //     index_dummy_notes();
+    #[tokio::test]
+    async fn it_searches_full_text() {
+        let app = test_app();
 
-    //     let response = app
-    //         .oneshot(
-    //             Request::builder()
-    //                 .uri("/notes/search?query=test")
-    //                 .body(Body::empty())
-    //                 .unwrap(),
-    //         )
-    //         .await
-    //         .unwrap();
+        let response = app
+            .oneshot(
+                Request::builder()
+                    .uri("/notes/search?query=test")
+                    .body(Body::empty())
+                    .unwrap(),
+            )
+            .await
+            .unwrap();
 
-    //     assert_eq!(response.status(), StatusCode::OK);
-    // }
+        assert_eq!(response.status(), StatusCode::OK);
+    }
 
     #[derive(Serialize)]
     pub struct DummyProps {

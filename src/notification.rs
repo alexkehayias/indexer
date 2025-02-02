@@ -1,4 +1,5 @@
-use std::{collections::HashMap, error::Error};
+use std::{collections::HashMap};
+use anyhow::Error;
 use serde::{Serialize, Deserialize};
 use web_push::{ContentEncoding, HyperWebPushClient, SubscriptionInfo, VapidSignatureBuilder, WebPushClient, WebPushMessageBuilder};
 
@@ -9,7 +10,7 @@ pub struct PushSubscription {
     pub keys: HashMap<String, String>,
 }
 
-pub async fn send_push_notification(vapid_private_pem_path: &str, subscription: &PushSubscription, payload: &str) -> Result<(), Box<dyn Error>> {
+pub async fn send_push_notification(vapid_private_pem_path: String, subscription: PushSubscription, payload: String) -> Result<(), Error> {
     // Extract keys from subscription
     let p256dh = subscription.keys.get("p256dh").expect("Missing p256dh key").clone();
     let auth = subscription.keys.get("auth").expect("Missing auth key").clone();

@@ -18,6 +18,7 @@ use orgize::ParseConfig;
 use rusqlite::Connection;
 use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
+use tokio::task::JoinSet;
 use tower_http::cors::CorsLayer;
 use tower_http::services::ServeDir;
 use tower_http::trace::TraceLayer;
@@ -240,15 +241,25 @@ async fn send_notification(
     State(state): State<SharedState>,
     Json(payload): Json<NotificationPayload>,
 ) -> Json<Value> {
-    // Cloning here to avoid a lint error that a mutex is being held
+    // Cloning here to avoid a compile error that a mutex is being held
     // across multiple calls to await. I don't know why this needs to
     // be cloned but :shrug:
     let subscriptions = state.read().expect("Unable to read share state").push_subscriptions.clone();
     let vapid_key_path = state.read().expect("Unable to read share state").config.vapid_key_path.clone();
 
-    for subscription in subscriptions {
-        send_push_notification(&vapid_key_path, &subscription, &payload.message).await.expect("Failed to send notification");
+    let mut tasks = JoinSet::new();
+
+    for subscription in subscriptions.into_iter() {
+        tasks.spawn(
+            send_push_notification(
+                vapid_key_path.clone(),
+                subscription,
+                payload.message.clone()
+            )
+        );
     }
+
+    tasks.join_all().await;
 
     let resp = json!({
         "success": true,

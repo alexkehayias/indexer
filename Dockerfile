@@ -29,6 +29,8 @@ COPY --from=builder /target/release/indexer /indexer
 COPY ./web-ui/src/index.html ./web-ui/src/index.html
 COPY ./web-ui/src/index.js ./web-ui/src/index.js
 COPY ./web-ui/src/output.css ./web-ui/src/output.css
+COPY ./web-ui/src/manifest.json ./web-ui/src/manifest.json
+COPY ./web-ui/src/service-worker.js ./web-ui/src/service-worker.js
 
 EXPOSE 2222
 

@@ -28,12 +28,15 @@ use crate::indexing::index_all;
 use super::db::vector_db;
 use super::git::{diff_last_commit_files, maybe_pull_and_reset_repo};
 use super::search::{search_notes, SearchResult};
+use super::notification::{PushSubscription, send_push_notification};
 
 type SharedState = Arc<RwLock<AppState>>;
 
 pub struct AppConfig {
     pub notes_path: String,
     pub index_path: String,
+    pub deploy_key_path: String,
+    pub vapid_key_path: String,
 }
 
 #[derive(Debug, Deserialize)]
@@ -46,6 +49,8 @@ struct LastSelection {
 pub struct AppState {
     // Stores the latest search hit selected by the user
     latest_selection: Option<LastSelection>,
+    // Stores the push subscriptions
+    push_subscriptions: Vec<PushSubscription>,
     db: Mutex<Connection>,
     config: AppConfig,
 }
@@ -54,6 +59,7 @@ impl AppState {
     pub fn new(db: Connection, config: AppConfig) -> Self {
         Self {
             latest_selection: None,
+            push_subscriptions: Vec::new(),
             db: Mutex::new(db),
             config,
         }
@@ -92,7 +98,14 @@ struct SearchResponse {
     results: Vec<SearchResult>,
 }
 
-// Fulltext search of all notes
+// Register a client for push notifications
+async fn push_subscription(
+    State(state): State<SharedState>,
+    Json(subscription): Json<PushSubscription>,
+) {
+    state.write().unwrap().push_subscriptions.push(subscription);
+}
+
 async fn search(
     State(state): State<SharedState>,
     Query(params): Query<HashMap<String, String>>,
@@ -134,15 +147,15 @@ async fn index_notes(State(state): State<SharedState>) -> Json<Value> {
         let AppConfig {
             index_path,
             notes_path,
+            deploy_key_path,
+            ..
         } = &shared_state.config;
-        let deploy_key_path = env::var("INDEXER_NOTES_DEPLOY_KEY_PATH")
-            .expect("Missing env var INDEXER_NOTES_DEPLOY_KEY_PATH");
 
         // Pull the latest from origin
-        maybe_pull_and_reset_repo(&deploy_key_path, notes_path);
+        maybe_pull_and_reset_repo(deploy_key_path, notes_path);
 
         // Determine which notes changed
-        let diff = diff_last_commit_files(&deploy_key_path, notes_path);
+        let diff = diff_last_commit_files(deploy_key_path, notes_path);
         // NOTE: This assumes all notes are in one directory at the root
         // of `notes_path`. This will not work if note files are in
         // different directories!
@@ -217,6 +230,32 @@ async fn view_note(
     }
 }
 
+#[derive(Deserialize)]
+struct NotificationPayload {
+    message: String,
+}
+
+// Endpoint to send push notification to all subscriptions
+async fn send_notification(
+    State(state): State<SharedState>,
+    Json(payload): Json<NotificationPayload>,
+) -> Json<Value> {
+    // Cloning here to avoid a lint error that a mutex is being held
+    // across multiple calls to await. I don't know why this needs to
+    // be cloned but :shrug:
+    let subscriptions = state.read().expect("Unable to read share state").push_subscriptions.clone();
+    let vapid_key_path = state.read().expect("Unable to read share state").config.vapid_key_path.clone();
+
+    for subscription in subscriptions {
+        send_push_notification(&vapid_key_path, &subscription, &payload.message).await.expect("Failed to send notification");
+    }
+
+    let resp = json!({
+        "success": true,
+    });
+    Json(resp)
+}
+
 pub fn app(app_state: AppState) -> Router {
     let shared_state = SharedState::new(RwLock::new(app_state));
     let cors = CorsLayer::permissive();
@@ -231,6 +270,9 @@ pub fn app(app_state: AppState) -> Router {
         .route("/notes/index", post(index_notes))
         // View a specific note
         .route("/notes/:id/view", get(view_note))
+        // Storage for push subscriptions
+        .route("/push/subscribe", post(push_subscription))
+        .route("/push/notification", post(send_notification))
         // Static server of assets in ./web-ui
         .nest_service("/", serve_dir.clone())
         .layer(TraceLayer::new_for_http())
@@ -245,6 +287,8 @@ pub async fn serve(
     notes_path: String,
     index_path: String,
     vec_db_path: String,
+    deploy_key_path: String,
+    vapid_key_path: String,
 ) {
     tracing_subscriber::registry()
         .with(
@@ -264,6 +308,8 @@ pub async fn serve(
     let app_config = AppConfig {
         notes_path,
         index_path,
+        deploy_key_path,
+        vapid_key_path,
     };
     let app_state = AppState::new(db, app_config);
     let app = app(app_state);

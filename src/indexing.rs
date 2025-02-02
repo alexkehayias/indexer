@@ -14,7 +14,7 @@ use tantivy::schema::*;
 use tantivy::{doc, Index, IndexWriter};
 use text_splitter::{ChunkConfig, TextSplitter};
 use tiktoken_rs::{cl100k_base, CoreBPE};
-use zerocopy::AsBytes;
+use zerocopy::IntoBytes;
 
 #[derive(Debug)]
 struct Task {

@@ -68,6 +68,10 @@ async fn main() -> Result<()> {
     let index_path = format!("{}/index", storage_path);
     let notes_path = format!("{}/notes", storage_path);
     let vec_db_path = format!("{}/db", storage_path);
+    let deploy_key_path = env::var("INDEXER_NOTES_DEPLOY_KEY_PATH")
+        .expect("Missing env var INDEXER_NOTES_REPO_URL");
+    let vapid_key_path = env::var("INDEXER_VAPID_KEY_PATH")
+        .expect("Missing env var INDEXER_VAPID_KEY_PATH");
 
     // Default command
     if args.init {
@@ -85,8 +89,6 @@ async fn main() -> Result<()> {
         // Clone the notes repo and index it
         let repo_url =
             env::var("INDEXER_NOTES_REPO_URL").expect("Missing env var INDEXER_NOTES_REPO_URL");
-        let deploy_key_path = env::var("INDEXER_NOTES_DEPLOY_KEY_PATH")
-            .expect("Missing env var INDEXER_NOTES_REPO_URL");
         maybe_clone_repo(&deploy_key_path, &repo_url, &notes_path);
     }
 
@@ -94,7 +96,7 @@ async fn main() -> Result<()> {
     // matches just as you would the top level cmd
     match args.command {
         Some(Command::Serve { host, port }) => {
-            server::serve(host, port, notes_path.clone(), index_path, vec_db_path).await;
+            server::serve(host, port, notes_path.clone(), index_path, vec_db_path, deploy_key_path, vapid_key_path).await;
         }
         Some(Command::Index {
             all,

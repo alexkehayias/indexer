@@ -194,37 +194,80 @@
     });
   }
 
-  // Request notification permission and subscribe for push notifications
-  if ('Notification' in window && navigator.serviceWorker) {
-    const askPermissionAndSubscribe = async () => {
+  // Function to detect mobile Safari
+  const isMobileSafari = () => {
+    return /iP(ad|hone|od).+Version\/[\d\.]+.*Safari/i.test(navigator.userAgent);
+  }
+
+  const subscribeToPushNotifications = async () => {
+    try {
+      const permission = await Notification.requestPermission();
+      if (permission !== 'granted') {
+        console.log('Notification permission not granted');
+        return;
+      }
+
+      // Subscribe to the Push service
+      const registration = await navigator.serviceWorker.ready;
+      const subscription = await registration.pushManager.subscribe({
+        userVisibleOnly: true,
+        applicationServerKey: 'BNKK9yweDqrtqTqUdHIhtne8YpfymNIsADbQt2ctFirKrgy1kaWu5mrPUG2F1GQAooQyVzqEa_4BnDIWzz7XRBc'
+      });
+
+      // Send subscription to server
+      await fetch('/push/subscribe', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(subscription)
+      });
+    } catch (error) {
+      console.error('Failed to subscribe the user: ', error);
+    }
+  }
+
+  // Show push notification permission button if on mobile Safari
+  if (isMobileSafari() && 'Notification' in window && navigator.serviceWorker) {
+    const permissionButton = document.createElement('button');
+    permissionButton.innerText = 'Enable Notifications';
+    permissionButton.classList.add(...[
+      "fixed",
+      "z-10",
+      "bottom-10",
+      "right-10",
+      "rounded-md",
+      "bg-white",
+      "px-2.5",
+      "py-1.5",
+      "text-sm",
+      "font-semibold",
+      "text-gray-900",
+      "shadow-sm",
+      "ring-1",
+      "ring-inset",
+      "ring-gray-300",
+      "hover:bg-gray-50",
+      "hover:cursor-pointer",
+    ]);
+
+    document.body.appendChild(permissionButton);
+
+    permissionButton.addEventListener('click', async function() {
       try {
-        // Request permission
         const permission = await Notification.requestPermission();
         if (permission !== 'granted') {
           console.log('Notification permission not granted');
           return;
         }
-
-        // Subscribe to the Push service
-        const registration = await navigator.serviceWorker.ready;
-        const subscription = await registration.pushManager.subscribe({
-          userVisibleOnly: true,
-          applicationServerKey: 'BNKK9yweDqrtqTqUdHIhtne8YpfymNIsADbQt2ctFirKrgy1kaWu5mrPUG2F1GQAooQyVzqEa_4BnDIWzz7XRBc'
-        });
-
-        // Send subscription to server
-        await fetch('/push/subscribe', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json'
-          },
-          body: JSON.stringify(subscription)
-        });
+        await subscribeToPushNotifications();
+        permissionButton.style.display = 'none';
       } catch (error) {
         console.error('Failed to subscribe the user: ', error);
       }
-    };
-
-    askPermissionAndSubscribe();
+    });
+  } else {
+    await subscribeToPushNotifications();
   }
+
 })();

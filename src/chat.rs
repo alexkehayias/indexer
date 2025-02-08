@@ -1,25 +1,23 @@
+use crate::openai::{completion, FunctionCall, FunctionCallFn, Message, Role, ToolCall};
 use serde_json::{json, Value};
-use crate::openai::{Message, Role, ToolCall, FunctionCall, FunctionCallFn, completion};
 
-
-fn handle_tool_calls(history: &mut Vec<Message>, tools: &Vec<Box<dyn ToolCall>>, tool_calls: &Vec<Value>) {
+fn handle_tool_calls(
+    history: &mut Vec<Message>,
+    tools: &Vec<Box<dyn ToolCall>>,
+    tool_calls: &Vec<Value>,
+) {
     // Handle each tool call
     for tool_call in tool_calls {
         let tool_call_id = &tool_call["id"].as_str().unwrap();
         let tool_call_function = &tool_call["function"];
-        let tool_call_args =
-            tool_call_function["arguments"].as_str().unwrap();
+        let tool_call_args = tool_call_function["arguments"].as_str().unwrap();
         let tool_call_name = tool_call_function["name"].as_str().unwrap();
 
         // Call the tool and get the next completion from the result
-        let tool_call_result = tools.iter()
+        let tool_call_result = tools
+            .iter()
             .find(|i| *i.function_name() == *tool_call_name)
-            .unwrap_or_else(|| {
-                panic!(
-                    "Received tool call that doesn't exist: {}",
-                    tool_call_name
-                )
-            })
+            .unwrap_or_else(|| panic!("Received tool call that doesn't exist: {}", tool_call_name))
             .call(tool_call_args);
         let tool_call_requests = vec![FunctionCall {
             function: FunctionCallFn {
@@ -29,14 +27,12 @@ fn handle_tool_calls(history: &mut Vec<Message>, tools: &Vec<Box<dyn ToolCall>>,
             id: tool_call_id.to_string(),
             r#type: String::from("function"),
         }];
-        history.push(Message::new_tool_call_request(
-            tool_call_requests,
-        ));
+        history.push(Message::new_tool_call_request(tool_call_requests));
         history.push(Message::new_tool_call_response(
             &tool_call_result,
             tool_call_id,
         ));
-    };
+    }
 }
 
 pub async fn chat(history: &mut Vec<Message>, tools: &Option<Vec<Box<dyn ToolCall>>>) {
@@ -58,9 +54,7 @@ pub async fn chat(history: &mut Vec<Message>, tools: &Option<Vec<Box<dyn ToolCal
             // If there wasn't a response, something went wrong
             let msg = resp["choices"][0]["message"]["content"]
                 .as_str()
-                .unwrap_or_else(|| {
-                    panic!("RESP: {:?}\n\nHISTORY: {:?}", resp, json!(history))
-                });
+                .unwrap_or_else(|| panic!("RESP: {:?}\n\nHISTORY: {:?}", resp, json!(history)));
             println!("{}", msg);
             history.push(Message::new(Role::Assistant, msg));
         } else {

@@ -1,8 +1,10 @@
-use std::{collections::HashMap};
 use anyhow::Error;
-use serde::{Serialize, Deserialize};
-use web_push::{ContentEncoding, HyperWebPushClient, SubscriptionInfo, VapidSignatureBuilder, WebPushClient, WebPushMessageBuilder};
-
+use serde::{Deserialize, Serialize};
+use std::collections::HashMap;
+use web_push::{
+    ContentEncoding, HyperWebPushClient, SubscriptionInfo, VapidSignatureBuilder, WebPushClient,
+    WebPushMessageBuilder,
+};
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct PushSubscription {
@@ -10,17 +12,25 @@ pub struct PushSubscription {
     pub keys: HashMap<String, String>,
 }
 
-pub async fn send_push_notification(vapid_private_pem_path: String, subscription: PushSubscription, payload: String) -> Result<(), Error> {
+pub async fn send_push_notification(
+    vapid_private_pem_path: String,
+    subscription: PushSubscription,
+    payload: String,
+) -> Result<(), Error> {
     // Extract keys from subscription
-    let p256dh = subscription.keys.get("p256dh").expect("Missing p256dh key").clone();
-    let auth = subscription.keys.get("auth").expect("Missing auth key").clone();
+    let p256dh = subscription
+        .keys
+        .get("p256dh")
+        .expect("Missing p256dh key")
+        .clone();
+    let auth = subscription
+        .keys
+        .get("auth")
+        .expect("Missing auth key")
+        .clone();
 
     // Create subscription info
-    let subscription_info = SubscriptionInfo::new(
-        subscription.endpoint.clone(),
-        p256dh,
-        auth,
-    );
+    let subscription_info = SubscriptionInfo::new(subscription.endpoint.clone(), p256dh, auth);
 
     // Read the VAPID signing material from the PEM file
     let file = std::fs::File::open(vapid_private_pem_path)?;

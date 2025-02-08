@@ -28,8 +28,8 @@ use crate::indexing::index_all;
 
 use super::db::vector_db;
 use super::git::{diff_last_commit_files, maybe_pull_and_reset_repo};
+use super::notification::{send_push_notification, PushSubscription};
 use super::search::{search_notes, SearchResult};
-use super::notification::{PushSubscription, send_push_notification};
 
 type SharedState = Arc<RwLock<AppState>>;
 
@@ -244,19 +244,26 @@ async fn send_notification(
     // Cloning here to avoid a compile error that a mutex is being held
     // across multiple calls to await. I don't know why this needs to
     // be cloned but :shrug:
-    let subscriptions = state.read().expect("Unable to read share state").push_subscriptions.clone();
-    let vapid_key_path = state.read().expect("Unable to read share state").config.vapid_key_path.clone();
+    let subscriptions = state
+        .read()
+        .expect("Unable to read share state")
+        .push_subscriptions
+        .clone();
+    let vapid_key_path = state
+        .read()
+        .expect("Unable to read share state")
+        .config
+        .vapid_key_path
+        .clone();
 
     let mut tasks = JoinSet::new();
 
     for subscription in subscriptions.into_iter() {
-        tasks.spawn(
-            send_push_notification(
-                vapid_key_path.clone(),
-                subscription,
-                payload.message.clone()
-            )
-        );
+        tasks.spawn(send_push_notification(
+            vapid_key_path.clone(),
+            subscription,
+            payload.message.clone(),
+        ));
     }
 
     tasks.join_all().await;

@@ -5,6 +5,7 @@ mod tests {
     use std::path::PathBuf;
     use std::time::SystemTime;
 
+    use serial_test::serial;
     use anyhow::{Error, Result};
     use axum::{
         body::Body,
@@ -26,6 +27,10 @@ mod tests {
         String::from_utf8(bytes.to_vec()).unwrap()
     }
 
+    /// Anything that uses this fixture can not be run in parallel due
+    /// to a lock held by `tantivy` during index writing so add a
+    /// `#[serial]` to the test function or run `cargo test --
+    /// --test-threads=1`.
     fn test_app() -> Router {
         // Create a unique directory for the test with a randomly
         // generated name using a timestamp to avoid collisions and
@@ -56,6 +61,8 @@ mod tests {
         let app_config = AppConfig {
             notes_path: notes_path.display().to_string(),
             index_path: index_path.display().to_string(),
+            deploy_key_path: String::from("test_deploy_key_path"),
+            vapid_key_path: String::from("test_vapid_key_path"),
         };
         let app_state = AppState::new(db, app_config);
         app(app_state)
@@ -89,6 +96,7 @@ mod tests {
     }
 
     #[tokio::test]
+    #[serial]
     async fn it_serves_web_ui() {
         let app = test_app();
 
@@ -104,6 +112,7 @@ mod tests {
     }
 
     #[tokio::test]
+    #[serial]
     async fn it_searches_full_text() {
         let app = test_app();
 

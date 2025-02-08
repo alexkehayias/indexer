@@ -1,4 +1,4 @@
-use crate::openai::{Function, Property, ToolCall, ToolType};
+use crate::openai::{Function, Property, ToolCall, ToolType, Parameters};
 use serde::{Deserialize, Serialize};
 use serde_json;
 use std::process::Command;
@@ -38,5 +38,30 @@ impl ToolCall for NoteSearchTool {
 
     fn function_name(&self) -> String {
         self.function.name.clone()
+    }
+}
+
+impl Default for NoteSearchTool {
+    fn default() -> Self {
+            let function = Function {
+                name: String::from("search_notes"),
+                description: String::from("Find notes the user has written about."),
+                parameters: Parameters {
+                    r#type: String::from("object"),
+                    properties: NoteSearchProps {
+                        query: Property {
+                            r#type: String::from("string"),
+                            description: String::from("The query to use for searching notes that should be short and optimized for search.")
+                        }
+                    },
+                    required: vec![String::from("query")],
+                    additional_properties: false,
+                },
+                strict: true,
+            };
+        Self {
+            r#type: ToolType::Function,
+            function
+        }
     }
 }

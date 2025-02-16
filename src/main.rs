@@ -165,7 +165,7 @@ async fn main() -> Result<()> {
             let mut rl = DefaultEditor::new().expect("Editor failed");
 
             let note_search_tool = NoteSearchTool::default();
-            let tools: Option<Vec<Box<dyn ToolCall>>> = Some(vec![Box::new(note_search_tool)]);
+            let tools: Option<Vec<Box<dyn ToolCall + Send + Sync + 'static>>> = Some(vec![Box::new(note_search_tool)]);
             // TODO: Window the list of history
             let mut history = vec![Message::new(Role::System, "You are a helpful assistant.")];
 

@@ -24,7 +24,10 @@ use tower_http::services::ServeDir;
 use tower_http::trace::TraceLayer;
 use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
 
+use crate::chat::chat;
 use crate::indexing::index_all;
+use crate::openai::{Message, Role, ToolCall};
+use crate::tool::NoteSearchTool;
 
 use super::db::vector_db;
 use super::git::{diff_last_commit_files, maybe_pull_and_reset_repo};
@@ -44,12 +47,19 @@ struct ChatResponse {
     message: String,
 }
 
-struct ChatSession {
-    session_id: String,
-    transcript: Vec<String>,
+impl ChatResponse {
+    fn new(message: &str) -> Self {
+        Self { message: message.into() }
+    }
 }
 
-type ChatSessions = Arc<Mutex<HashMap<String, ChatSession>>>; // Type alias for chat sessions
+#[derive(Clone)]
+struct ChatSession {
+    session_id: String,
+    transcript: Vec<Message>,
+}
+
+type ChatSessions = HashMap<String, ChatSession>;
 
 pub struct AppConfig {
     pub notes_path: String,
@@ -82,35 +92,61 @@ impl AppState {
             push_subscriptions: Vec::new(),
             db: Mutex::new(db),
             config,
-            chat_sessions: Arc::new(Mutex::new(HashMap::new())),
+            chat_sessions: HashMap::new(),
         }
     }
 }
 
-async fn chat_handler(
+pub async fn chat_handler(
     State(state): State<SharedState>,
     Json(payload): Json<ChatRequest>,
 ) -> Json<ChatResponse> {
-    let chat_sessions = &state.read().unwrap().chat_sessions;
-    let mut sessions = chat_sessions.lock().unwrap();
-    let session = sessions
-        .entry(payload.session_id.clone())
-        .or_insert_with(|| ChatSession {
-            session_id: payload.session_id.clone(),
-            transcript: vec![],
-        });
+    let user_msg = Message::new(Role::User, &payload.message);
+    let tools: Option<Vec<Box<dyn ToolCall + Send + Sync + 'static>>> = Some(vec![Box::new(NoteSearchTool::default())]);
 
-    // Append user message to the transcript
-    session.transcript.push(format!("User: {}", payload.message));
+    let mut transcript = {
+        let mut sessions = state.read().unwrap().chat_sessions.clone();
 
-    // Stub response from the server
-    let response = "Server: This is a server response";
-    session.transcript.push(response.to_string());
+        let session = sessions
+            .entry(payload.session_id.clone())
+            .or_insert_with(|| ChatSession {
+                session_id: payload.session_id.clone(),
+                transcript: vec![],
+            });
 
-    // Return only the server response as a single message
-    Json(ChatResponse {
-        message: response.to_string(),
-    })
+        session.transcript.push(user_msg);
+
+        // Take the entire transcript so we don't hold the lock across .await
+        std::mem::take(&mut session.transcript)
+    };
+
+    chat(&mut transcript, &tools).await;
+
+    // Re-acquire the lock and write the transcript back into the session
+    let assistant_msg = {
+        let mut sessions = state.write().unwrap().chat_sessions.clone();
+
+        let session = sessions
+            .entry(payload.session_id.clone())
+            .insert_entry(ChatSession {
+                session_id: payload.session_id.clone(),
+                transcript,
+            });
+
+        // Grab the last message to build our response
+        // clone so we can safely use it outside the lock
+        session.get()
+            .transcript
+            .last()
+            .expect("Transcript was empty; no message found")
+            .clone()
+    };
+
+    let resp = ChatResponse::new(
+        &assistant_msg.content.unwrap()
+    );
+
+    Json(resp)
 }
 
 async fn kv_get(State(state): State<SharedState>) -> Json<Option<Value>> {

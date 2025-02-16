@@ -25,9 +25,11 @@ document.addEventListener('DOMContentLoaded', () => {
     messageContent.className = 'flex flex-col gap-1 w-full max-w-[320px]';
 
     const messageBody = document.createElement('div');
-    messageBody.className = 'flex flex-col leading-1.5 p-4 border-gray-200 bg-gray-100 rounded-e-xl rounded-es-xl dark:bg-gray-700';
+    messageBody.className = isUserMessage
+      ? 'flex flex-col leading-1.5 p-4 bg-blue-500 text-white rounded-e-xl rounded-es-xl'
+      : 'flex flex-col leading-1.5 p-4 border-gray-200 bg-gray-100 text-gray-900 dark:bg-gray-700 rounded-e-xl rounded-es-xl';
     const messageText = document.createElement('p');
-    messageText.className = 'text-sm font-normal text-gray-900 dark:text-white';
+    messageText.className = 'text-sm font-normal';
     messageText.textContent = message;
 
     messageBody.appendChild(messageText);

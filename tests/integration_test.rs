@@ -231,7 +231,7 @@ mod tests {
             r#type: openai::ToolType::Function,
             function: function2,
         };
-        let tools: Option<Vec<Box<dyn openai::ToolCall>>> =
+        let tools: Option<Vec<Box<dyn openai::ToolCall + Send + Sync + 'static>>> =
             Some(vec![Box::new(dummy_tool), Box::new(dummy_tool_2)]);
         let response = openai::completion(&messages, &tools).await.unwrap();
         let tool_calls = response["choices"][0]["message"]["tool_calls"]

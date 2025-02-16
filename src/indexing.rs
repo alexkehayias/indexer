@@ -52,7 +52,7 @@ struct Note {
 fn parse_note(content: &str) -> Note {
     let config = ParseConfig {
         todo_keywords: (
-            vec!["TODO".to_string(), "WAITING".to_string()],
+            vec!["TODO".to_string(), "NEXT".to_string(), "WAITING".to_string()],
             vec![
                 "DONE".to_string(),
                 "CANCELED".to_string(),

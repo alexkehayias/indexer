@@ -33,6 +33,24 @@ use super::search::{search_notes, SearchResult};
 
 type SharedState = Arc<RwLock<AppState>>;
 
+#[derive(Deserialize)]
+struct ChatRequest {
+    session_id: String,
+    message: String,
+}
+
+#[derive(Serialize)]
+struct ChatResponse {
+    message: String,
+}
+
+struct ChatSession {
+    session_id: String,
+    transcript: Vec<String>,
+}
+
+type ChatSessions = Arc<Mutex<HashMap<String, ChatSession>>>; // Type alias for chat sessions
+
 pub struct AppConfig {
     pub notes_path: String,
     pub index_path: String,
@@ -54,6 +72,7 @@ pub struct AppState {
     push_subscriptions: Vec<PushSubscription>,
     db: Mutex<Connection>,
     config: AppConfig,
+    chat_sessions: ChatSessions,
 }
 
 impl AppState {
@@ -63,8 +82,35 @@ impl AppState {
             push_subscriptions: Vec::new(),
             db: Mutex::new(db),
             config,
+            chat_sessions: Arc::new(Mutex::new(HashMap::new())),
         }
     }
+}
+
+async fn chat_handler(
+    State(state): State<SharedState>,
+    Json(payload): Json<ChatRequest>,
+) -> Json<ChatResponse> {
+    let chat_sessions = &state.read().unwrap().chat_sessions;
+    let mut sessions = chat_sessions.lock().unwrap();
+    let session = sessions
+        .entry(payload.session_id.clone())
+        .or_insert_with(|| ChatSession {
+            session_id: payload.session_id.clone(),
+            transcript: vec![],
+        });
+
+    // Append user message to the transcript
+    session.transcript.push(format!("User: {}", payload.message));
+
+    // Stub response from the server
+    let response = "Server: This is a server response";
+    session.transcript.push(response.to_string());
+
+    // Return only the server response as a single message
+    Json(ChatResponse {
+        message: response.to_string(),
+    })
 }
 
 async fn kv_get(State(state): State<SharedState>) -> Json<Option<Value>> {
@@ -288,6 +334,8 @@ pub fn app(app_state: AppState) -> Router {
         .route("/notes/index", post(index_notes))
         // View a specific note
         .route("/notes/:id/view", get(view_note))
+        // Chat with notes
+        .route("/notes/chat", post(chat_handler))
         // Storage for push subscriptions
         .route("/push/subscribe", post(push_subscription))
         .route("/push/notification", post(send_notification))

@@ -19,6 +19,7 @@ fn handle_tool_calls(
             .find(|i| *i.function_name() == *tool_call_name)
             .unwrap_or_else(|| panic!("Received tool call that doesn't exist: {}", tool_call_name))
             .call(tool_call_args);
+
         let tool_call_requests = vec![FunctionCall {
             function: FunctionCallFn {
                 arguments: tool_call_args.to_string(),
@@ -36,33 +37,22 @@ fn handle_tool_calls(
 }
 
 pub async fn chat(history: &mut Vec<Message>, tools: &Option<Vec<Box<dyn ToolCall>>>) {
-    let resp = completion(history, tools)
+    let mut resp = completion(history, tools)
         .await
         .expect("OpenAI API call failed");
 
     // Tool calls need to be handled for the chat to proceed
-    let tool_calls = resp["choices"][0]["message"]["tool_calls"].as_array();
-    if let Some(tool_calls) = tool_calls {
-        if let Some(ref tools_ref) = tools {
-            handle_tool_calls(history, tools_ref, tool_calls);
+    while let Some(tool_calls) = resp["choices"][0]["message"]["tool_calls"].as_array() {
+        let tools_ref = tools.as_ref().expect("Received tool call but no tools were specified");
+        handle_tool_calls(history, tools_ref, tool_calls);
 
-            // Provide the results of the tool calls back to the chat
-            let resp = completion(history, tools)
-                .await
-                .expect("OpenAI API call failed");
-
-            // If there wasn't a response, something went wrong
-            let msg = resp["choices"][0]["message"]["content"]
-                .as_str()
-                .unwrap_or_else(|| panic!("RESP: {:?}\n\nHISTORY: {:?}", resp, json!(history)));
-            println!("{}", msg);
-            history.push(Message::new(Role::Assistant, msg));
-        } else {
-            panic!("Received tool call but no tools were specified");
-        }
-    } else {
-        let msg = resp["choices"][0]["message"]["content"].as_str().unwrap();
-        println!("{}", msg);
-        history.push(Message::new(Role::Assistant, msg));
+        // Provide the results of the tool calls back to the chat
+        resp = completion(history, tools)
+            .await
+            .expect("OpenAI API call failed");
     }
+
+    let msg = resp["choices"][0]["message"]["content"].as_str().unwrap();
+    println!("{}", msg);
+    history.push(Message::new(Role::Assistant, msg));
 }

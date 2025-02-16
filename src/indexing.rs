@@ -64,8 +64,7 @@ fn parse_note(content: &str) -> Note {
     let p = config.parse(content);
 
     let props = p.document().properties().expect(
-        "Missing property
-drawer",
+        "Missing property drawer",
     );
     let note_id = props.get("ID").expect("Missing org-id").to_string();
     let note_title = p.title().expect("No title found");
@@ -245,8 +244,6 @@ fn index_note_full_text(
     file_name_value: &str,
     note: &Note,
 ) -> tantivy::Result<()> {
-    tracing::debug!("Indexing note: {}", file_name_value);
-
     // Delete the document first to get upsert behavior
     let id = schema.get_field("id")?;
     let term_id = Term::from_field_text(id, &note.id);
@@ -346,8 +343,6 @@ fn index_note_vector(
     file_name: &str,
     note: &Note,
 ) -> Result<()> {
-    tracing::debug!("Vector indexing note: {}", file_name);
-
     // Generate embeddings and store it in the DB
     let mut embedding_stmt =
         db.prepare("INSERT OR REPLACE INTO vec_items(note_meta_id, embedding) VALUES (?, ?)")?;
@@ -464,6 +459,7 @@ pub fn index_all(
         .expect("Index writer failed to initialize");
 
     for p in note_paths.iter() {
+        tracing::debug!("Indexing note: {:?}", p);
         // Don't hardcode file paths as it might be different between
         // local and server
         let file_name = p.file_name().unwrap().to_str().unwrap();

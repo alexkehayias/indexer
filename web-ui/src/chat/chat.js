@@ -28,9 +28,13 @@ document.addEventListener('DOMContentLoaded', () => {
     messageBody.className = isUserMessage
       ? 'flex flex-col leading-1.5 p-4 bg-blue-500 text-white rounded-e-xl rounded-es-xl'
       : 'flex flex-col leading-1.5 p-4 border-gray-200 bg-gray-100 text-gray-900 dark:bg-gray-700 rounded-e-xl rounded-es-xl';
+
+    // Convert Markdown to HTML using marked
+    const messageHTML = marked.parse(message);
+
     const messageText = document.createElement('p');
     messageText.className = 'text-sm font-normal';
-    messageText.textContent = message;
+    messageText.innerHTML = messageHTML; // Set innerHTML instead of textContent
 
     messageBody.appendChild(messageText);
 

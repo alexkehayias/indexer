@@ -27,18 +27,19 @@ impl ToolCall for NoteSearchTool {
         // Use system curl to query the search API with a max timeout
         // of 10s TODO: Remove this blocking call and replace with an
         // async http client
+        let command = format!(
+            "curl --get --data-urlencode \"query={}\" {}/notes/search -m 10",
+            fn_args.query, self.api_base_url
+        );
         let curl = Command::new("sh")
             .arg("-c")
-            .arg(format!(
-                "curl --get --data-urlencode \"query={}\" \"{}/notes/search\" -m 10",
-                fn_args.query, self.api_base_url
-            ))
+            .arg(&command)
             .output()
             .expect("failed to execute process");
 
         if !&curl.status.success() {
             let stderr = std::str::from_utf8(&curl.stderr).expect("Failed to parse stderr");
-            panic!("Note search API request failed: {}", stderr);
+            panic!("Note search API request failed: \n{}\n{}", command, stderr);
         }
         let stdout = std::str::from_utf8(&curl.stdout).expect("Failed to parse stdout");
         stdout.to_string()

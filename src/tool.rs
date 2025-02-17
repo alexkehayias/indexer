@@ -28,8 +28,7 @@ impl ToolCall for NoteSearchTool {
             .arg("-c")
             .arg(format!(
                 "curl --get --data-urlencode \"query={}\" \"{}/notes/search\"",
-                fn_args.query,
-                self.api_base_url
+                fn_args.query, self.api_base_url
             ))
             .output()
             .expect("failed to execute process");

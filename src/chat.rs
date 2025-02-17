@@ -1,4 +1,6 @@
-use crate::openai::{completion, BoxedToolCall, FunctionCall, FunctionCallFn, Message, Role, ToolCall};
+use crate::openai::{
+    completion, BoxedToolCall, FunctionCall, FunctionCallFn, Message, Role, ToolCall,
+};
 use serde_json::Value;
 
 fn handle_tool_calls(
@@ -43,7 +45,9 @@ pub async fn chat(history: &mut Vec<Message>, tools: &Option<Vec<BoxedToolCall>>
 
     // Tool calls need to be handled for the chat to proceed
     while let Some(tool_calls) = resp["choices"][0]["message"]["tool_calls"].as_array() {
-        let tools_ref = tools.as_ref().expect("Received tool call but no tools were specified");
+        let tools_ref = tools
+            .as_ref()
+            .expect("Received tool call but no tools were specified");
         handle_tool_calls(history, tools_ref, tool_calls);
 
         // Provide the results of the tool calls back to the chat

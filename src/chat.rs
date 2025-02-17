@@ -1,9 +1,9 @@
-use crate::openai::{completion, FunctionCall, FunctionCallFn, Message, Role, ToolCall};
-use serde_json::{json, Value};
+use crate::openai::{completion, BoxedToolCall, FunctionCall, FunctionCallFn, Message, Role, ToolCall};
+use serde_json::Value;
 
 fn handle_tool_calls(
     history: &mut Vec<Message>,
-    tools: &Vec<Box<dyn ToolCall>>,
+    tools: &Vec<Box<dyn ToolCall + Send + Sync + 'static>>,
     tool_calls: &Vec<Value>,
 ) {
     // Handle each tool call
@@ -36,7 +36,7 @@ fn handle_tool_calls(
     }
 }
 
-pub async fn chat(history: &mut Vec<Message>, tools: &Option<Vec<Box<dyn ToolCall>>>) {
+pub async fn chat(history: &mut Vec<Message>, tools: &Option<Vec<BoxedToolCall>>) {
     let mut resp = completion(history, tools)
         .await
         .expect("OpenAI API call failed");

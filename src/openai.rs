@@ -4,7 +4,7 @@ use serde::Serialize;
 use serde_json::{json, Value};
 use std::env;
 
-#[derive(Serialize)]
+#[derive(Clone, Serialize)]
 pub enum Role {
     #[serde(rename = "system")]
     System,
@@ -31,26 +31,26 @@ pub enum Role {
 //         }
 //     ]
 // }
-#[derive(Serialize)]
+#[derive(Clone, Serialize)]
 pub struct FunctionCallFn {
     pub arguments: String,
     pub name: String,
 }
 
-#[derive(Serialize)]
+#[derive(Clone, Serialize)]
 pub struct FunctionCall {
     pub function: FunctionCallFn,
     pub id: String,
     pub r#type: String,
 }
 
-#[derive(Serialize)]
+#[derive(Clone, Serialize)]
 pub struct Message {
     role: Role,
     #[serde(skip_serializing_if = "Option::is_none")]
     refusal: Option<bool>,
     #[serde(skip_serializing_if = "Option::is_none")]
-    content: Option<String>,
+    pub content: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
     tool_call_id: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -133,9 +133,11 @@ pub trait ToolCall: erased_serde::Serialize {
 }
 erased_serde::serialize_trait_object!(ToolCall);
 
+pub type BoxedToolCall = Box<dyn ToolCall + Send + Sync + 'static>;
+
 pub async fn completion(
     messages: &Vec<Message>,
-    tools: &Option<Vec<Box<dyn ToolCall>>>,
+    tools: &Option<Vec<BoxedToolCall>>,
 ) -> Result<Value, Error> {
     let open_ai_key = env::var("OPENAI_API_KEY").unwrap();
     let mut payload = json!({

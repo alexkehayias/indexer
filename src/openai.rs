@@ -133,9 +133,11 @@ pub trait ToolCall: erased_serde::Serialize {
 }
 erased_serde::serialize_trait_object!(ToolCall);
 
+pub type BoxedToolCall = Box<dyn ToolCall + Send + Sync + 'static>;
+
 pub async fn completion(
     messages: &Vec<Message>,
-    tools: &Option<Vec<Box<dyn ToolCall + Send + Sync + 'static>>>,
+    tools: &Option<Vec<BoxedToolCall>>,
 ) -> Result<Value, Error> {
     let open_ai_key = env::var("OPENAI_API_KEY").unwrap();
     let mut payload = json!({

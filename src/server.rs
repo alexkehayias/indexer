@@ -26,7 +26,7 @@ use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
 
 use crate::chat::chat;
 use crate::indexing::index_all;
-use crate::openai::{Message, Role, ToolCall};
+use crate::openai::{Message, Role, ToolCall, BoxedToolCall};
 use crate::tool::NoteSearchTool;
 
 use super::db::vector_db;
@@ -102,7 +102,7 @@ pub async fn chat_handler(
     Json(payload): Json<ChatRequest>,
 ) -> Json<ChatResponse> {
     let user_msg = Message::new(Role::User, &payload.message);
-    let tools: Option<Vec<Box<dyn ToolCall + Send + Sync + 'static>>> = Some(vec![Box::new(NoteSearchTool::default())]);
+    let tools: Option<Vec<BoxedToolCall>> = Some(vec![Box::new(NoteSearchTool::default())]);
 
     let mut transcript = {
         let mut sessions = state.read().unwrap().chat_sessions.clone();

@@ -15,6 +15,7 @@ mod tests {
     use indexer::db::vector_db;
     use indexer::indexing::index_all;
     use indexer::openai;
+    use indexer::openai::BoxedToolCall;
     use indexer::prompt::{self, Prompt};
     use indexer::server::{app, AppConfig, AppState};
     use serde::Serialize;
@@ -231,7 +232,7 @@ mod tests {
             r#type: openai::ToolType::Function,
             function: function2,
         };
-        let tools: Option<Vec<Box<dyn openai::ToolCall + Send + Sync + 'static>>> =
+        let tools: Option<Vec<BoxedToolCall>> =
             Some(vec![Box::new(dummy_tool), Box::new(dummy_tool_2)]);
         let response = openai::completion(&messages, &tools).await.unwrap();
         let tool_calls = response["choices"][0]["message"]["tool_calls"]

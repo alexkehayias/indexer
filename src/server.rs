@@ -66,6 +66,8 @@ pub struct AppConfig {
     pub index_path: String,
     pub deploy_key_path: String,
     pub vapid_key_path: String,
+    pub host: String,
+    pub port: String,
 }
 
 #[derive(Debug, Deserialize)]
@@ -101,8 +103,18 @@ pub async fn chat_handler(
     State(state): State<SharedState>,
     Json(payload): Json<ChatRequest>,
 ) -> Json<ChatResponse> {
+    let note_search_tool = {
+        let shared_state = state.read().expect("Unable to read share state");
+        let AppConfig {
+            host,
+            port,
+            ..
+        } = &shared_state.config;
+        NoteSearchTool::new(&format!("http://{}:{}", host, port))
+    };
+
+    let tools: Option<Vec<BoxedToolCall>> = Some(vec![Box::new(note_search_tool)]);
     let user_msg = Message::new(Role::User, &payload.message);
-    let tools: Option<Vec<BoxedToolCall>> = Some(vec![Box::new(NoteSearchTool::default())]);
 
     let mut transcript = {
         let mut sessions = state.read().unwrap().chat_sessions.clone();
@@ -412,6 +424,8 @@ pub async fn serve(
         index_path,
         deploy_key_path,
         vapid_key_path,
+        host: host.clone(),
+        port: port.clone(),
     };
     let app_state = AppState::new(db, app_config);
     let app = app(app_state);

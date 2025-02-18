@@ -134,23 +134,16 @@ async fn chat_handler(
 
     // Re-acquire the lock and write the transcript back into the session
     let assistant_msg = {
-        let mut sessions = state.write().unwrap().chat_sessions.clone();
+        let last_msg = transcript.last().expect("Transcript was empty").clone();
 
-        let session = sessions
+        state.write().unwrap().chat_sessions
             .entry(payload.session_id.clone())
             .insert_entry(ChatSession {
-                session_id: payload.session_id.clone(),
+                session_id: payload.session_id,
                 transcript,
             });
 
-        // Grab the last message to build our response
-        // clone so we can safely use it outside the lock
-        session
-            .get()
-            .transcript
-            .last()
-            .expect("Transcript was empty; no message found")
-            .clone()
+        last_msg
     };
 
     let resp = ChatResponse::new(&assistant_msg.content.unwrap());
@@ -392,6 +385,7 @@ pub fn app(app_state: AppState) -> Router {
 }
 
 // Run the server
+#[allow(clippy::too_many_arguments)]
 pub async fn serve(
     host: String,
     port: String,

@@ -1,9 +1,11 @@
 document.addEventListener('DOMContentLoaded', () => {
+  const urlParams = new URLSearchParams(window.location.search);
+  const sessionId = urlParams.get("session_id") || crypto.randomUUID();
+  history.replaceState({}, '', `?session_id=${sessionId}`);
+
   const chatDisplay = document.getElementById('chat-display');
   const chatInput = document.getElementById('chat-input');
   const sendButton = document.getElementById('send-button');
-
-  const sessionId = 'unique-session-id'; // Replace with a dynamically generated session ID if needed
 
   sendButton.addEventListener('click', () => sendMessage());
   chatInput.addEventListener('keypress', (e) => {

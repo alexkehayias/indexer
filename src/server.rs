@@ -27,7 +27,7 @@ use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
 use crate::chat::chat;
 use crate::indexing::index_all;
 use crate::openai::{BoxedToolCall, Message, Role};
-use crate::tool::NoteSearchTool;
+use crate::tool::{NoteSearchTool, SearxSearchTool};
 
 use super::db::vector_db;
 use super::git::{diff_last_commit_files, maybe_pull_and_reset_repo};
@@ -70,6 +70,7 @@ pub struct AppConfig {
     pub deploy_key_path: String,
     pub vapid_key_path: String,
     pub note_search_api_url: String,
+    pub searxng_api_url: String,
 }
 
 #[derive(Debug, Deserialize)]
@@ -107,11 +108,25 @@ async fn chat_handler(
 ) -> Json<ChatResponse> {
     let note_search_tool = {
         let shared_state = state.read().expect("Unable to read share state");
-        let AppConfig { note_search_api_url,.. } = &shared_state.config;
+        let AppConfig {
+            note_search_api_url,
+            ..
+        } = &shared_state.config;
         NoteSearchTool::new(note_search_api_url)
     };
 
-    let tools: Option<Vec<BoxedToolCall>> = Some(vec![Box::new(note_search_tool)]);
+    let searx_search_tool = {
+        let shared_state = state.read().expect("Unable to read share state");
+        let AppConfig {
+            searxng_api_url, ..
+        } = &shared_state.config;
+        SearxSearchTool::new(searxng_api_url)
+    };
+
+    let tools: Option<Vec<BoxedToolCall>> = Some(vec![
+        Box::new(note_search_tool),
+        Box::new(searx_search_tool),
+    ]);
     let user_msg = Message::new(Role::User, &payload.message);
 
     let mut transcript = {
@@ -136,7 +151,10 @@ async fn chat_handler(
     let assistant_msg = {
         let last_msg = transcript.last().expect("Transcript was empty").clone();
 
-        state.write().unwrap().chat_sessions
+        state
+            .write()
+            .unwrap()
+            .chat_sessions
             .entry(payload.session_id.clone())
             .insert_entry(ChatSession {
                 session_id: payload.session_id,
@@ -395,16 +413,17 @@ pub async fn serve(
     deploy_key_path: String,
     vapid_key_path: String,
     note_search_api_url: String,
+    searxng_api_url: String,
 ) {
     tracing_subscriber::registry()
         .with(
             tracing_subscriber::EnvFilter::try_from_default_env().unwrap_or_else(|_| {
                 // axum logs rejections from built-in extractors with the `axum::rejection`
                 // target, at `TRACE` level. `axum::rejection=trace` enables showing those events
-                format!(
+                format! {
                     "{}=debug,tower_http=debug,axum::rejection=trace",
                     env!("CARGO_CRATE_NAME")
-                )
+                }
                 .into()
             }),
         )
@@ -417,6 +436,7 @@ pub async fn serve(
         deploy_key_path,
         vapid_key_path,
         note_search_api_url,
+        searxng_api_url,
     };
     let app_state = AppState::new(db, app_config);
     let app = app(app_state);

@@ -14,7 +14,7 @@ use indexer::indexing::index_all;
 use indexer::openai::{Message, Role, ToolCall};
 use indexer::search::search_notes;
 use indexer::server;
-use indexer::tool::NoteSearchTool;
+use indexer::tool::{NoteSearchTool, SearxSearchTool};
 
 #[derive(Subcommand)]
 enum Command {
@@ -96,11 +96,11 @@ async fn main() -> Result<()> {
     // matches just as you would the top level cmd
     match args.command {
         Some(Command::Serve { host, port }) => {
-            let note_search_api_url =
-                env::var("INDEXER_NOTE_SEARCH_API_URL").unwrap_or(format!("http://{}:{}", host, port));
+            let note_search_api_url = env::var("INDEXER_NOTE_SEARCH_API_URL")
+                .unwrap_or(format!("http://{}:{}", host, port));
 
             server::serve(
-                host,
+                host.clone(),
                 port,
                 notes_path.clone(),
                 index_path,
@@ -108,6 +108,8 @@ async fn main() -> Result<()> {
                 deploy_key_path,
                 vapid_key_path,
                 note_search_api_url,
+                env::var("INDEXER_SEARXNG_API_URL")
+                    .unwrap_or(format!("http://{}:{}", host, "8080")),
             )
             .await;
         }
@@ -169,8 +171,11 @@ async fn main() -> Result<()> {
             let mut rl = DefaultEditor::new().expect("Editor failed");
 
             let note_search_tool = NoteSearchTool::default();
-            let tools: Option<Vec<Box<dyn ToolCall + Send + Sync + 'static>>> =
-                Some(vec![Box::new(note_search_tool)]);
+            let searx_search_tool = SearxSearchTool::default();
+            let tools: Option<Vec<Box<dyn ToolCall + Send + Sync + 'static>>> = Some(vec![
+                Box::new(note_search_tool),
+                Box::new(searx_search_tool),
+            ]);
             // TODO: Window the list of history
             let mut history = vec![Message::new(Role::System, "You are a helpful assistant.")];
 

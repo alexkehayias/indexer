@@ -1,11 +1,10 @@
-use async_trait::async_trait;
-use anyhow::{Error, Result};
 use crate::openai::{Function, Parameters, Property, ToolCall, ToolType};
+use anyhow::{Error, Result};
+use async_trait::async_trait;
+use reqwest;
 use serde::{Deserialize, Serialize};
 use serde_json;
 use serde_json::{json, Value};
-use reqwest;
-
 
 #[derive(Serialize)]
 pub struct NoteSearchProps {
@@ -28,13 +27,9 @@ pub struct NoteSearchTool {
 impl ToolCall for NoteSearchTool {
     async fn call(&self, args: &str) -> Result<String, Error> {
         let fn_args: NoteSearchArgs = serde_json::from_str(args).unwrap();
-        // Always exclude journal entries
-        let query = format!("-title:journal {}", &fn_args.query);
 
-        // Construct the URL with query parameters encoded
-        let mut url = reqwest::Url::parse(
-            &format!("{}/notes/search", self.api_base_url)
-        ).expect("Invalid URL");
+        let mut url = reqwest::Url::parse(&format!("{}/notes/search", self.api_base_url))
+            .expect("Invalid URL");
         url.query_pairs_mut().append_pair("query", &fn_args.query);
 
         let resp: Value = reqwest::Client::new()
@@ -44,8 +39,7 @@ impl ToolCall for NoteSearchTool {
             .await?
             .json()
             .await?;
-        // TODO: Process the results into something cleaner than raw
-        // json like markdown.
+
         let result = json!(resp).to_string();
         Ok(result)
     }
@@ -84,5 +78,88 @@ impl NoteSearchTool {
 impl Default for NoteSearchTool {
     fn default() -> Self {
         Self::new("http://localhost:2222")
+    }
+}
+
+#[derive(Serialize)]
+pub struct SearxSearchProps {
+    pub query: Property,
+    pub categories: Property,
+}
+
+#[derive(Deserialize)]
+pub struct SearxSearchArgs {
+    pub query: String,
+    pub categories: String,
+}
+
+#[derive(Serialize)]
+pub struct SearxSearchTool {
+    pub r#type: ToolType,
+    pub function: Function<SearxSearchProps>,
+    api_base_url: String,
+}
+
+#[async_trait]
+impl ToolCall for SearxSearchTool {
+    async fn call(&self, args: &str) -> Result<String, Error> {
+        let fn_args: SearxSearchArgs = serde_json::from_str(args).unwrap();
+        let query_url = reqwest::Url::parse_with_params(
+            &format!("{}/search", self.api_base_url),
+            &[
+                ("q", fn_args.query),
+                ("categories", fn_args.categories),
+                ("format", "json".to_string()),
+            ],
+        )?;
+
+        let resp = reqwest::get(query_url).await?;
+        let json_resp = resp.json::<serde_json::Value>().await?;
+        let result = json!(json_resp).to_string();
+        Ok(result)
+    }
+
+    fn function_name(&self) -> String {
+        self.function.name.clone()
+    }
+}
+
+impl SearxSearchTool {
+    pub fn new(api_base_url: &str) -> Self {
+        let function = Function {
+            name: String::from("search_searx"),
+            description: String::from("Perform a search using the SearxNG API."),
+            parameters: Parameters {
+                r#type: String::from("object"),
+                properties: SearxSearchProps {
+                    query: Property {
+                        r#type: String::from("string"),
+                        description: String::from(
+                            "The search query string. Allowed categories include general, images, videos, \
+                            news, map, music, it, science, files, social media."
+                        ),
+                    },
+                    categories: Property {
+                        r#type: String::from("string"),
+                        description: String::from("Optional categories for filtering the search."),
+                    },
+                },
+                required: vec!["query".into(), "categories".into()],
+                additional_properties: false,
+            },
+            strict: true,
+        };
+
+        Self {
+            r#type: ToolType::Function,
+            function,
+            api_base_url: api_base_url.to_string(),
+        }
+    }
+}
+
+impl Default for SearxSearchTool {
+    fn default() -> Self {
+        Self::new("http://localhost:8080")
     }
 }

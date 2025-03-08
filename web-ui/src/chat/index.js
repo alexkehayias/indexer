@@ -36,17 +36,17 @@ document.addEventListener('DOMContentLoaded', () => {
 
     const messageText = document.createElement('p');
     messageText.className = 'text-sm font-normal';
-    messageText.innerHTML = messageHTML; // Set innerHTML instead of textContent
-
+    messageText.innerHTML = messageHTML;
     messageBody.appendChild(messageText);
-
     messageContent.appendChild(messageBody);
-
     messageElement.appendChild(imgElement);
     messageElement.appendChild(messageContent);
 
-    chatDisplay.appendChild(messageElement);
-    chatDisplay.scrollTop = chatDisplay.scrollHeight; // Scroll to bottom
+    // Prepend since we use `flex-direction: column-reverse` to render
+    // the chat messages from bottom to top.
+    chatDisplay.prepend(messageElement);
+    // Scroll to the bottom of the chat
+    chatDisplay.scrollTop = chatDisplay.scrollHeight;
   };
 
   const sendMessage = () => {

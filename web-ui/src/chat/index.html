@@ -6,17 +6,20 @@
   <link href="../output.css" rel="stylesheet">
   <title>Notes Chat</title>
 </head>
-<body class="bg-gray-100 flex items-center justify-center min-h-screen">
-  <div class="w-96 bg-white rounded-lg shadow-lg p-4">
-    <div id="chat-display" class="h-64 overflow-y-auto border-b border-gray-300 mb-4">
-      <!-- Chat messages will appear here -->
-    </div>
+<body class="bg-gray-100">
+  <div style="height: 100dvh;" class="bg-white mx-auto w-full lg:max-w-2xl p-4 flex flex-col">
+    <div id="chat-display" class="grow overflow-y-auto border-b border-gray-300 mb-4"></div>
     <div class="flex">
-      <input type="text" id="chat-input" class="flex-grow border p-2 rounded-l" placeholder="Type a message...">
-      <button id="send-button" class="bg-blue-500 text-white px-4 py-2 rounded-r">Send</button>
+      <input id="chat-input"
+             type="text"
+             class="flex-grow border border-gray-300 border-r-0 p-2 rounded-l"
+             placeholder="Type a message...">
+      <button id="send-button"
+              class="bg-blue-500 text-white px-4 py-2 rounded-r">
+        Send
+      </button>
     </div>
   </div>
-  <!-- Include the Marked.js library from CDN -->
   <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
   <script src="index.js"></script>
 </body>

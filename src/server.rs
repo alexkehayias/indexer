@@ -4,11 +4,14 @@ use std::fs;
 use std::path::PathBuf;
 use std::sync::{Arc, Mutex, RwLock};
 
+use anyhow::{anyhow, Result, Error};
 use axum::response::Html;
+use axum::response::IntoResponse;
 use tantivy::doc;
 
 use axum::extract::Query;
 use axum::{
+    http::StatusCode,
     extract::{Path, State},
     response::Json,
     routing::{get, post},
@@ -99,6 +102,24 @@ impl AppState {
             config,
             chat_sessions: HashMap::new(),
         }
+    }
+}
+
+struct ChatTranscriptResponse {
+    transcript: Vec<Message>
+}
+
+async fn chat_session(
+    State(state): State<SharedState>,
+    // This is the session ID of the chat
+    Path(id): Path<String>,
+) -> Result<Json<ChatTranscriptResponse>, Error> {
+    if let Some(session) = state.read()
+        .expect("Unable to read share state")
+        .chat_sessions.get(&id) {
+        Ok(Json(ChatTranscriptResponse { transcript: session.transcript.clone() }))
+    } else {
+        Err(anyhow!("Session not found. ID {}", id))
     }
 }
 
@@ -392,6 +413,8 @@ pub fn app(app_state: AppState) -> Router {
         .route("/notes/:id/view", get(view_note))
         // Chat with notes
         .route("/notes/chat", post(chat_handler))
+        // Retrieve a past chat session
+        .route("/notes/chat/:id", get(chat_session))
         // Storage for push subscriptions
         .route("/push/subscribe", post(push_subscription))
         .route("/push/notification", post(send_notification))

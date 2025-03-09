@@ -127,21 +127,15 @@ async fn chat_handler(
     State(state): State<SharedState>,
     Json(payload): Json<ChatRequest>,
 ) -> Json<ChatResponse> {
-    let note_search_tool = {
+    let (note_search_tool, searx_search_tool) = {
         let shared_state = state.read().expect("Unable to read share state");
         let AppConfig {
             note_search_api_url,
+            searxng_api_url,
             ..
         } = &shared_state.config;
-        NoteSearchTool::new(note_search_api_url)
-    };
-
-    let searx_search_tool = {
-        let shared_state = state.read().expect("Unable to read share state");
-        let AppConfig {
-            searxng_api_url, ..
-        } = &shared_state.config;
-        SearxSearchTool::new(searxng_api_url)
+        (NoteSearchTool::new(note_search_api_url),
+         SearxSearchTool::new(searxng_api_url))
     };
 
     let tools: Option<Vec<BoxedToolCall>> = Some(vec![

@@ -417,7 +417,7 @@ pub fn app(app_state: AppState) -> Router {
         .route("/push/subscribe", post(push_subscription))
         .route("/push/notification", post(send_notification))
         // Static server of assets in ./web-ui
-        .nest_service("/", serve_dir.clone())
+        .nest_service("/", serve_dir)
         .layer(TraceLayer::new_for_http())
         .layer(cors)
         .with_state(Arc::clone(&shared_state))

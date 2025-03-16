@@ -39,6 +39,14 @@ struct Meeting {
     date: Option<String>,
 }
 
+#[derive(Debug)]
+struct Heading {
+    id: String,
+    title: String,
+    body: String,
+    tags: Option<String>,
+}
+
 struct Note {
     id: String,
     title: String,
@@ -46,6 +54,7 @@ struct Note {
     tags: Option<String>,
     tasks: Vec<Task>,
     meetings: Vec<Meeting>,
+    headings: Vec<Heading>,
 }
 
 /// Parse the content into a `Note`
@@ -102,6 +111,7 @@ fn parse_note(content: &str) -> Note {
 
     let mut tasks: Vec<Task> = Vec::new();
     let mut meetings: Vec<Meeting> = Vec::new();
+    let mut headings: Vec<Heading> = Vec::new();
 
     for i in p.document().headlines() {
         let tag_string = i
@@ -211,6 +221,15 @@ fn parse_note(content: &str) -> Note {
             tasks.push(task);
             continue;
         }
+
+        // Handle all other headings
+        let heading = Heading {
+            id,
+            title,
+            body,
+            tags,
+        };
+        headings.push(heading);
     }
 
     Note {
@@ -220,6 +239,7 @@ fn parse_note(content: &str) -> Note {
         tags: note_tags,
         tasks,
         meetings,
+        headings,
     }
 }
 
@@ -227,6 +247,7 @@ enum DocType {
     Note,
     Task,
     Meeting,
+    Heading,
 }
 
 impl DocType {
@@ -235,6 +256,7 @@ impl DocType {
             DocType::Note => "note",
             DocType::Task => "task",
             DocType::Meeting => "meeting",
+            DocType::Heading => "heading",
         }
     }
 }
@@ -268,6 +290,7 @@ fn index_note_full_text(
         tags: note_tags,
         tasks: note_tasks,
         meetings: note_meetings,
+        headings: note_headings,
     } = parse_note(content);
 
     let mut doc = doc!(
@@ -320,6 +343,26 @@ fn index_note_full_text(
             file_name => file_name_value,
         );
         if let Some(tag_list) = t.tags {
+            doc.add_text(tags, tag_list);
+        }
+        index_writer.add_document(doc)?;
+    }
+
+    // Index each heading
+    for h in note_headings.into_iter() {
+        // Delete first to get upsert behavior
+        let heading_term_id = Term::from_field_text(id, &h.id);
+        index_writer.delete_term(heading_term_id);
+
+        let heading_type = DocType::Heading.to_str();
+        let mut doc = doc!(
+            id => h.id,
+            r#type => heading_type,
+            title => h.title,
+            body => h.body,
+            file_name => file_name_value,
+        );
+        if let Some(tag_list) = h.tags {
             doc.add_text(tags, tag_list);
         }
         index_writer.add_document(doc)?;
@@ -397,6 +440,10 @@ fn index_note_meta(db: &mut Connection, file_name: &str, note: &Note) -> Result<
         "REPLACE INTO note_meta(id, type, file_name, title, tags, body) VALUES (?, ?, ?, ?, ?, ?)",
     )?;
 
+    let mut heading_meta_stmt = db.prepare(
+        "REPLACE INTO note_meta(id, type, file_name, title, tags, body) VALUES (?, ?, ?, ?, ?, ?)",
+    )?;
+
     let mut task_meta_stmt = db.prepare(
         "REPLACE INTO note_meta(id, type, file_name, title, tags, body, status) VALUES (?, ?, ?, ?, ?, ?, ?)",
     )?;
@@ -407,6 +454,14 @@ fn index_note_meta(db: &mut Connection, file_name: &str, note: &Note) -> Result<
                 m.id, "meeting", file_name, m.title, m.tags, m.body
             ])
             .expect("Note meta upsert failed for meeting");
+    }
+
+    for t in note.headings.iter() {
+        heading_meta_stmt
+            .execute(rusqlite::params![
+                t.id, "heading", file_name, t.title, t.tags, t.body
+            ])
+            .expect("Note meta upsert failed for heading");
     }
 
     for t in note.tasks.iter() {

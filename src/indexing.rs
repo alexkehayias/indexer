@@ -20,6 +20,7 @@ use zerocopy::IntoBytes;
 struct Task {
     id: String,
     title: String,
+    category: String,
     body: String,
     status: String,
     tags: Option<String>,
@@ -33,6 +34,7 @@ struct Task {
 struct Meeting {
     id: String,
     title: String,
+    category: String,
     body: String,
     tags: Option<String>,
     #[allow(dead_code)]
@@ -43,6 +45,7 @@ struct Meeting {
 struct Heading {
     id: String,
     title: String,
+    category: String,
     body: String,
     tags: Option<String>,
 }
@@ -50,6 +53,7 @@ struct Heading {
 struct Note {
     id: String,
     title: String,
+    category: String,
     body: String,
     tags: Option<String>,
     tasks: Vec<Task>,
@@ -75,16 +79,27 @@ fn parse_note(content: &str) -> Note {
         ..Default::default()
     };
     let p = config.parse(content);
+    let d = p.document();
 
-    let props = p.document().properties().expect("Missing property drawer");
+    let props = d.properties().expect("Missing property drawer");
     let note_id = props.get("ID").expect("Missing org-id").to_string();
     let note_title = p.title().expect("No title found");
+    let note_category = p
+        .keywords()
+        .filter_map(|k| match k.key().to_string().as_str() {
+            "CATEGORY" => Some(k.value().to_string()),
+            _ => None,
+        })
+        .collect::<Vec<String>>()
+        .first()
+        .unwrap_or(&note_title.to_lowercase().replace(" ", "_"))
+        .to_owned();
 
     // TODO: Remove the title and the tasks when indexing the body so it's
     // not duplicated
     // let title_text_range = org_doc.first_headline()?.text_range();
     // p.replace_range(title_text_range, "");
-    let note_body = p.document().raw();
+    let note_body = d.raw();
 
     let filetags: Vec<Vec<String>> = p
         .keywords()
@@ -178,6 +193,7 @@ fn parse_note(content: &str) -> Note {
             let meeting = Meeting {
                 id,
                 title,
+                category: note_category.clone(),
                 body,
                 tags,
                 date,
@@ -212,6 +228,7 @@ fn parse_note(content: &str) -> Note {
             let task = Task {
                 id,
                 title,
+                category: note_category.clone(),
                 body,
                 tags,
                 status,
@@ -226,6 +243,7 @@ fn parse_note(content: &str) -> Note {
         let heading = Heading {
             id,
             title,
+            category: note_category.clone(),
             body,
             tags,
         };
@@ -235,6 +253,7 @@ fn parse_note(content: &str) -> Note {
     Note {
         id: note_id,
         title: note_title,
+        category: note_category,
         body: note_body,
         tags: note_tags,
         tasks,
@@ -275,6 +294,7 @@ fn index_note_full_text(
 
     let r#type = schema.get_field("type")?;
     let title = schema.get_field("title")?;
+    let category = schema.get_field("category")?;
     let body = schema.get_field("body")?;
     let tags = schema.get_field("tags")?;
     let status = schema.get_field("status")?;
@@ -286,6 +306,7 @@ fn index_note_full_text(
     let Note {
         id: note_id,
         title: note_title,
+        category: note_category,
         body: note_body,
         tags: note_tags,
         tasks: note_tasks,
@@ -297,6 +318,7 @@ fn index_note_full_text(
         id => note_id,
         r#type => note_type,
         title => note_title,
+        category => note_category.clone(),
         body => note_body,
         file_name => file_name_value,
     );
@@ -318,6 +340,7 @@ fn index_note_full_text(
             id => m.id,
             r#type => meeting_type,
             title => m.title,
+            category => note_category.clone(),
             body => m.body,
             file_name => file_name_value,
         );
@@ -338,6 +361,7 @@ fn index_note_full_text(
             id => t.id,
             r#type => task_type,
             title => t.title,
+            category => note_category.clone(),
             body => t.body,
             status => t.status,
             file_name => file_name_value,
@@ -359,6 +383,7 @@ fn index_note_full_text(
             id => h.id,
             r#type => heading_type,
             title => h.title,
+            category => note_category.clone(),
             body => h.body,
             file_name => file_name_value,
         );
@@ -425,33 +450,33 @@ fn index_note_vector(
 /// note(s) by ID.
 fn index_note_meta(db: &mut Connection, file_name: &str, note: &Note) -> Result<()> {
     let mut note_meta_stmt = db.prepare(
-        "REPLACE INTO note_meta(id, type, file_name, title, tags, body) VALUES (?, ?, ?, ?, ?, ?)",
+        "REPLACE INTO note_meta(id, type, category, file_name, title, tags, body) VALUES (?, ?, ?, ?, ?, ?, ?)",
     )?;
 
     // Update the note meta table
     note_meta_stmt
         // TODO: Don't hardcode the note path, save the file name instead
         .execute(rusqlite::params![
-            note.id, "note", file_name, note.title, note.tags, note.body
+            note.id, "note", note.category, file_name, note.title, note.tags, note.body
         ])
         .expect("Note meta upsert failed");
 
     let mut meeting_meta_stmt = db.prepare(
-        "REPLACE INTO note_meta(id, type, file_name, title, tags, body) VALUES (?, ?, ?, ?, ?, ?)",
+        "REPLACE INTO note_meta(id, type, category, file_name, title, tags, body) VALUES (?, ?, ?, ?, ?, ?, ?)",
     )?;
 
     let mut heading_meta_stmt = db.prepare(
-        "REPLACE INTO note_meta(id, type, file_name, title, tags, body) VALUES (?, ?, ?, ?, ?, ?)",
+        "REPLACE INTO note_meta(id, type, category, file_name, title, tags, body) VALUES (?, ?, ?, ?, ?, ?, ?)",
     )?;
 
     let mut task_meta_stmt = db.prepare(
-        "REPLACE INTO note_meta(id, type, file_name, title, tags, body, status) VALUES (?, ?, ?, ?, ?, ?, ?)",
+        "REPLACE INTO note_meta(id, type, category, file_name, title, tags, body, status) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
     )?;
 
     for m in note.meetings.iter() {
         meeting_meta_stmt
             .execute(rusqlite::params![
-                m.id, "meeting", file_name, m.title, m.tags, m.body
+                m.id, "meeting", m.category, file_name, m.title, m.tags, m.body
             ])
             .expect("Note meta upsert failed for meeting");
     }
@@ -459,7 +484,7 @@ fn index_note_meta(db: &mut Connection, file_name: &str, note: &Note) -> Result<
     for t in note.headings.iter() {
         heading_meta_stmt
             .execute(rusqlite::params![
-                t.id, "heading", file_name, t.title, t.tags, t.body
+                t.id, "heading", t.category, file_name, t.title, t.tags, t.body
             ])
             .expect("Note meta upsert failed for heading");
     }
@@ -467,7 +492,7 @@ fn index_note_meta(db: &mut Connection, file_name: &str, note: &Note) -> Result<
     for t in note.tasks.iter() {
         task_meta_stmt
             .execute(rusqlite::params![
-                t.id, "task", file_name, t.title, t.tags, t.body, t.status
+                t.id, "task", t.category, file_name, t.title, t.tags, t.body, t.status
             ])
             .expect("Note meta upsert failed for task");
     }

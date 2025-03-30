@@ -115,6 +115,7 @@ pub struct SearchResult {
     id: String,
     r#type: String,
     title: String,
+    category: String,
     file_name: String,
     tags: Option<String>,
     is_task: bool,
@@ -157,6 +158,7 @@ pub fn search_notes(
           SELECT
             id,
             type,
+            category,
             file_name,
             title,
             tags,
@@ -172,10 +174,11 @@ pub fn search_notes(
             Ok(SearchResult {
                 id: r.get(0)?,
                 r#type: r.get(1)?,
-                file_name: r.get(2)?,
-                title: r.get(3)?,
-                tags: r.get(4)?,
-                body: r.get(5)?,
+                category: r.get(2)?,
+                file_name: r.get(3)?,
+                title: r.get(4)?,
+                tags: r.get(5)?,
+                body: r.get(6)?,
                 is_task: maybe_task_status.is_some(),
                 task_status: maybe_task_status,
             })

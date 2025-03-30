@@ -47,7 +47,7 @@ embedding float[384]
 pub fn migrate_db(db: &Connection) -> Result<()> {
     // 2024-12-29 Add columns for type and status
     // 2025-03-30 Add column for category
-    let migrated_note_meta_table = db.execute(
+    let migrated_note_meta_table = db.execute_batch(
         r"BEGIN;
 
 CREATE TABLE IF NOT EXISTS note_meta_new (
@@ -68,8 +68,7 @@ DROP TABLE note_meta;
 
 ALTER TABLE note_meta_new RENAME TO note_meta;
 
-COMMIT;",
-        [],
+COMMIT;"
     );
 
     match migrated_note_meta_table {

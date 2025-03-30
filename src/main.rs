@@ -1,8 +1,10 @@
 use anyhow::{anyhow, Result};
 use clap::{Parser, Subcommand};
+use indexer::schema::note_schema;
 use rustyline::error::ReadlineError;
 use rustyline::DefaultEditor;
 use serde_json::json;
+use tantivy::Index;
 use std::env;
 use std::fs;
 use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
@@ -26,6 +28,13 @@ enum Command {
         index: bool,
         #[arg(long, action, default_value = "false")]
         notes: bool,
+    },
+    /// Migrate indices and db schema
+    Migrate {
+        #[arg(long, action, default_value = "false")]
+        db: bool,
+        #[arg(long, action, default_value = "false")]
+        index: bool,
     },
     /// Run the API server
     Serve {
@@ -116,6 +125,28 @@ async fn main() -> Result<()> {
                     env::var("INDEXER_NOTES_REPO_URL").expect("Missing env var INDEXER_NOTES_REPO_URL");
                 maybe_clone_repo(&deploy_key_path, &repo_url, &notes_path);
                 println!("Finished cloning and resetting notes from git");
+            }
+        }
+        Some(Command::Migrate { db, index }) => {
+            // Run the DB migration script
+            if db {
+                println!("Migrating db...");
+                let db = vector_db(&vec_db_path).expect("Failed to connect to db");
+                migrate_db(&db).unwrap_or_else(|err| eprintln!("DB migration failed {}", err));
+                println!("Finished migrating db");
+            }
+
+            // Delete and recreate the index
+            if index {
+                println!("Migrating search index...");
+                fs::remove_dir_all(index_path.clone()).expect("Failed to delete index directory");
+                fs::create_dir(index_path.clone()).expect("Failed to recreate index directory");
+                let index_path =
+                    tantivy::directory::MmapDirectory::open(index_path).expect("Index not found");
+                let schema = note_schema();
+                Index::open_or_create(index_path, schema.clone()).expect("Unable to open or create index");
+                println!("Finished migrating search index");
+                println!("NOTE: You will need to re-populate the index by running --index --full-text");
             }
         }
         Some(Command::Serve { host, port }) => {

@@ -5,7 +5,7 @@ use serde::Serialize;
 use serde_json::{json, Value};
 use std::env;
 
-#[derive(Clone, Serialize)]
+#[derive(Clone, Serialize, Debug)]
 pub enum Role {
     #[serde(rename = "system")]
     System,
@@ -32,20 +32,20 @@ pub enum Role {
 //         }
 //     ]
 // }
-#[derive(Clone, Serialize)]
+#[derive(Clone, Serialize, Debug)]
 pub struct FunctionCallFn {
     pub arguments: String,
     pub name: String,
 }
 
-#[derive(Clone, Serialize)]
+#[derive(Clone, Serialize, Debug)]
 pub struct FunctionCall {
     pub function: FunctionCallFn,
     pub id: String,
     pub r#type: String,
 }
 
-#[derive(Clone, Serialize)]
+#[derive(Clone, Serialize, Debug)]
 pub struct Message {
     role: Role,
     #[serde(skip_serializing_if = "Option::is_none")]

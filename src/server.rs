@@ -56,7 +56,7 @@ impl ChatResponse {
     }
 }
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 struct ChatSession {
     #[allow(unused)]
     session_id: String,
@@ -149,16 +149,15 @@ async fn chat_handler(
     let user_msg = Message::new(Role::User, &payload.message);
 
     let mut transcript = {
-        let mut sessions = state.read().unwrap().chat_sessions.clone();
+        let mut sessions = state.write().unwrap().chat_sessions.clone();
 
         let session = sessions
             .entry(payload.session_id.clone())
-            .or_insert_with(|| ChatSession {
+            .and_modify(|v| v.transcript.push(user_msg.clone()))
+            .or_insert(ChatSession {
                 session_id: payload.session_id.clone(),
-                transcript: vec![],
+                transcript: vec![user_msg],
             });
-
-        session.transcript.push(user_msg);
 
         // Take the entire transcript so we don't hold the lock across .await
         std::mem::take(&mut session.transcript)
@@ -167,21 +166,20 @@ async fn chat_handler(
     chat(&mut transcript, &tools).await;
 
     // Re-acquire the lock and write the transcript back into the session
-    let assistant_msg = {
-        let last_msg = transcript.last().expect("Transcript was empty").clone();
+    let assistant_msg = transcript.last()
+        .expect("Transcript was empty")
+        .clone();
 
-        state
-            .write()
-            .unwrap()
-            .chat_sessions
-            .entry(payload.session_id.clone())
-            .insert_entry(ChatSession {
-                session_id: payload.session_id,
-                transcript,
-            });
-
-        last_msg
-    };
+    state
+        .write()
+        .unwrap()
+        .chat_sessions
+        .entry(payload.session_id.clone())
+        .and_modify(|v| v.transcript = transcript.clone())
+        .or_insert(ChatSession {
+            session_id: payload.session_id.clone(),
+            transcript,
+        });
 
     let resp = ChatResponse::new(&assistant_msg.content.unwrap());
 

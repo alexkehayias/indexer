@@ -12,7 +12,7 @@ mod tests {
         http::{Request, StatusCode},
         Router,
     };
-    use indexer::db::migrate_db;
+    use indexer::db::initialize_db;
     use indexer::db::vector_db;
     use indexer::indexing::index_all;
     use indexer::openai;
@@ -56,7 +56,7 @@ mod tests {
 
         let mut db =
             vector_db(dir.join(&vec_db_path).to_str().unwrap()).expect("Failed to connect to db");
-        migrate_db(&db).expect("Failed to migrate db");
+        initialize_db(&db).expect("Failed to migrate db");
 
         index_dummy_notes(&mut db, dir);
 

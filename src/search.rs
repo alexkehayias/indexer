@@ -170,7 +170,7 @@ pub fn search_notes(
         )
         .unwrap()
         .query_map([result_ids_str.as_bytes()], |r| {
-            let maybe_task_status: Option<String> = r.get(6)?;
+            let maybe_task_status: Option<String> = r.get(7)?;
             Ok(SearchResult {
                 id: r.get(0)?,
                 r#type: r.get(1)?,

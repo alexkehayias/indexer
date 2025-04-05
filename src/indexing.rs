@@ -24,10 +24,9 @@ struct Task {
     body: String,
     status: String,
     tags: Option<String>,
-    #[allow(dead_code)]
     scheduled: Option<String>,
-    #[allow(dead_code)]
     deadline: Option<String>,
+    closed: Option<String>,
 }
 
 #[derive(Debug)]
@@ -93,7 +92,7 @@ fn parse_note(content: &str) -> Note {
         .collect::<Vec<String>>()
         .first()
         .unwrap_or(&note_title.to_lowercase().replace(" ", "_"))
-        .trim()
+
         .to_owned();
 
     // TODO: Remove the title and the tasks when indexing the body so it's
@@ -207,6 +206,7 @@ fn parse_note(content: &str) -> Note {
         if let Some(status) = i.todo_keyword().map(|j| j.to_string()) {
             let mut scheduled = None;
             let mut deadline = None;
+            let mut closed = None;
             if let Some(planning) = i.planning() {
                 scheduled = planning.scheduled().map(|t| {
                     format!(
@@ -217,6 +217,14 @@ fn parse_note(content: &str) -> Note {
                     )
                 });
                 deadline = planning.deadline().map(|t| {
+                    format!(
+                        "{}-{}-{}",
+                        t.year_start().unwrap(),
+                        t.month_start().unwrap(),
+                        t.day_start().unwrap()
+                    )
+                });
+                closed = planning.closed().map(|t| {
                     format!(
                         "{}-{}-{}",
                         t.year_start().unwrap(),
@@ -235,6 +243,7 @@ fn parse_note(content: &str) -> Note {
                 status,
                 scheduled,
                 deadline,
+                closed,
             };
             tasks.push(task);
             continue;
@@ -471,7 +480,7 @@ fn index_note_meta(db: &mut Connection, file_name: &str, note: &Note) -> Result<
     )?;
 
     let mut task_meta_stmt = db.prepare(
-        "REPLACE INTO note_meta(id, type, category, file_name, title, tags, body, status) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
+        "REPLACE INTO note_meta(id, type, category, file_name, title, tags, body, status, scheduled, deadline, closed) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
     )?;
 
     for m in note.meetings.iter() {
@@ -493,7 +502,7 @@ fn index_note_meta(db: &mut Connection, file_name: &str, note: &Note) -> Result<
     for t in note.tasks.iter() {
         task_meta_stmt
             .execute(rusqlite::params![
-                t.id, "task", t.category, file_name, t.title, t.tags, t.body, t.status
+                t.id, "task", t.category, file_name, t.title, t.tags, t.body, t.status, t.scheduled, t.deadline, t.closed
             ])
             .expect("Note meta upsert failed for task");
     }

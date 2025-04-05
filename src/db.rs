@@ -9,17 +9,30 @@ pub fn initialize_db(db: &Connection) -> Result<()> {
     // upserts and hydrating the notes
     let create_note_meta = db.execute(
         r"CREATE TABLE IF NOT EXISTS note_meta (
+    -- org-id of the note or hash of the title
     id TEXT PRIMARY KEY,
+    -- Source file from storage directory
     file_name TEXT,
+    -- Title of the note file or the heading
     title TEXT,
+    -- Category
     category TEXT,
+    -- Comma separated string of tags
     tags TEXT NULLABLE,
+    -- Body of the note in markdown format
     body TEXT,
+    -- Type of note e.g. note, meeting, task
     type TEXT,
+    -- Task status e.g. todo, done
     status TEXT,
+    -- Task scheduled for date yyyy-mm-dd
     scheduled TEXT NULLABLE,
+    -- Task deadline date yyyy-mm-dd
     deadline TEXT NULLABLE,
-    closed TEXT NULLABLE
+    -- Task closed date yyyy-mm-dd
+    closed TEXT NULLABLE,
+    -- Meeting date yyyy-mm-dd
+    date TEXT NULLABLE
 );",
         [],
     );
@@ -66,7 +79,8 @@ CREATE TABLE IF NOT EXISTS note_meta_new (
     status TEXT,
     scheduled TEXT NULLABLE,
     deadline TEXT NULLABLE,
-    closed TEXT NULLABLE
+    closed TEXT NULLABLE,
+    date TEXT NULLABLE
 );
 
 INSERT INTO note_meta_new (id, file_name, title, category, tags, body)

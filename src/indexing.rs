@@ -1,5 +1,6 @@
 use std::hash::{Hash, Hasher};
 use std::path::PathBuf;
+use regex::Regex;
 
 use super::schema::note_schema;
 use super::source::{note_filter, notes};
@@ -36,8 +37,7 @@ struct Meeting {
     category: String,
     body: String,
     tags: Option<String>,
-    #[allow(dead_code)]
-    date: Option<String>,
+    date: String,
 }
 
 #[derive(Debug)]
@@ -128,6 +128,7 @@ fn parse_note(content: &str) -> Note {
     let mut meetings: Vec<Meeting> = Vec::new();
     let mut headings: Vec<Heading> = Vec::new();
 
+    let date_regex = Regex::new(r"(\d{4})-(\d{2})-(\d{2})").unwrap();
     for i in p.document().headlines() {
         let tag_string = i
             .tags()
@@ -168,27 +169,19 @@ fn parse_note(content: &str) -> Note {
 
         // Handle meetings
         if tag_string.contains("meeting") {
-            let date = i
-                .clocks()
-                .filter_map(|c| {
-                    if let Some(cv) = c.value() {
-                        if cv.is_inactive() {
-                            Some(format!(
-                                "{}-{}-{}",
-                                cv.year_start().unwrap(),
-                                cv.month_start().unwrap(),
-                                cv.day_start().unwrap()
-                            ))
-                        } else {
-                            None
-                        }
-                    } else {
-                        None
-                    }
-                })
-                .collect::<Vec<String>>()
-                .first()
-                .map(|f| f.to_owned());
+            // Parse it from the headline to get the meeting date
+            // since this is always added as part of the org-mode
+            // capture template
+            let mut dates = vec![];
+            for (_, [year, month, day]) in date_regex.captures_iter(&title).map(|c| c.extract()) {
+                dates.push(format!("{}-{}-{}", year, month, day));
+            }
+            let date = dates.first()
+                .map(|d| d.to_string())
+                .unwrap_or_else(|| {
+                    println!("Meeting missing date! {}, file: {}", title.clone(), note_title.clone());
+                    String::from("2000-01-01")
+                });
 
             let meeting = Meeting {
                 id,
@@ -478,7 +471,7 @@ fn index_note_meta(db: &mut Connection, file_name: &str, note: &Note) -> Result<
         .expect("Note meta upsert failed");
 
     let mut meeting_meta_stmt = db.prepare(
-        "REPLACE INTO note_meta(id, type, category, file_name, title, tags, body) VALUES (?, ?, ?, ?, ?, ?, ?)",
+        "REPLACE INTO note_meta(id, type, category, file_name, title, tags, body, date) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
     )?;
 
     let mut heading_meta_stmt = db.prepare(
@@ -492,7 +485,7 @@ fn index_note_meta(db: &mut Connection, file_name: &str, note: &Note) -> Result<
     for m in note.meetings.iter() {
         meeting_meta_stmt
             .execute(rusqlite::params![
-                m.id, "meeting", m.category, file_name, m.title, m.tags, m.body
+                m.id, "meeting", m.category, file_name, m.title, m.tags, m.body, m.date
             ])
             .expect("Note meta upsert failed for meeting");
     }

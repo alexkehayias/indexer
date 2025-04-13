@@ -10,6 +10,8 @@ use tantivy::{Index, ReloadPolicy};
 use zerocopy::IntoBytes;
 
 use super::schema::note_schema;
+use crate::query::expr_to_query;
+use crate::aql::parse_query;
 
 #[derive(Serialize)]
 pub enum SearchHitType {
@@ -26,12 +28,10 @@ pub struct SearchHit {
     pub score: f32,
 }
 
-fn fulltext_search(index_path: &str, query: &str, limit: usize) -> Vec<SearchHit> {
+fn fulltext_search(index_path: &str, query_str: &str, limit: usize) -> Vec<SearchHit> {
     let schema = note_schema();
     let index_path = tantivy::directory::MmapDirectory::open(index_path).expect("Index not found");
     let idx = Index::open(index_path).expect("Unable to open index");
-    let title = schema.get_field("title").unwrap();
-    let body = schema.get_field("body").unwrap();
 
     let reader = idx
         .reader_builder()
@@ -40,10 +40,10 @@ fn fulltext_search(index_path: &str, query: &str, limit: usize) -> Vec<SearchHit
         .expect("Reader failed to load");
 
     let searcher = reader.searcher();
-    let query_parser = QueryParser::for_index(&idx, vec![title, body]);
-    let query = query_parser
-        .parse_query(query)
-        .expect("Failed to parse query");
+
+    // Parse query using custom parser
+    let expr = parse_query(query_str).expect("Failed to parse query");
+    let query = expr_to_query(expr, &schema);
 
     searcher
         .search(&query, &TopDocs::with_limit(limit))

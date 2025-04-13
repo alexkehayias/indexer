@@ -67,3 +67,17 @@ docker run -p 2222:2222 -d indexer:latest
 - `DOKKU_DOCKERFILE_START_CMD` to `serve --host 0.0.0.0 --port 2222`
 10. On local, add remote `git remote add dokku dokku@<dokku-host>:indexer`
 11. Push to build and start `git push dokku main`
+
+## Queries
+
+Searching the index uses AQL (Alex Query Language) which is roughly `orgql` syntax with some customization.
+
+| **Type**        | **Example**                | **Notes**                                             |
+|-----------------|----------------------------|-------------------------------------------------------|
+| Fielded Term    | `title:rust`               | Single term                                           |
+| Phrase          | `title:"rust programming"` | Quoted term                                           |
+| Multiple Values | `title:rust,python`        | Multiple values separated by comma are OR-ed together |
+| Default Term    | `hello world`              | Defaults to searching the body and title field        |
+| Negation        | `-title:rust`              | Negates any term                                      |
+| Grouping        | `(title:rust or title:go)` | For more complex queries separated by `and`, `or`     |
+| Range           | `date:>2025-01-01`         | Operations supported `>`, `>=`, `<`, `<=`             |

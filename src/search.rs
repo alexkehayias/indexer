@@ -1,17 +1,15 @@
 use fastembed::{EmbeddingModel, InitOptions, TextEmbedding};
-use itertools::Itertools;
 use rusqlite::{Connection, Result};
 use serde::Serialize;
 use serde_json::json;
 use tantivy::collector::TopDocs;
-use tantivy::query::QueryParser;
 use tantivy::schema::*;
 use tantivy::{Index, ReloadPolicy};
 use zerocopy::IntoBytes;
 
 use super::schema::note_schema;
-use crate::query::expr_to_query;
-use crate::aql::parse_query;
+use crate::query::aql_to_index_query;
+use crate::aql::{self};
 
 #[derive(Serialize)]
 pub enum SearchHitType {
@@ -28,7 +26,7 @@ pub struct SearchHit {
     pub score: f32,
 }
 
-fn fulltext_search(index_path: &str, query_str: &str, limit: usize) -> Vec<SearchHit> {
+fn fulltext_search(index_path: &str, query: &aql::Expr, limit: usize) -> Vec<SearchHit> {
     let schema = note_schema();
     let index_path = tantivy::directory::MmapDirectory::open(index_path).expect("Index not found");
     let idx = Index::open(index_path).expect("Unable to open index");
@@ -42,11 +40,10 @@ fn fulltext_search(index_path: &str, query_str: &str, limit: usize) -> Vec<Searc
     let searcher = reader.searcher();
 
     // Parse query using custom parser
-    let expr = parse_query(query_str).expect("Failed to parse query");
-    let query = expr_to_query(expr, &schema);
+    let index_query = aql_to_index_query(&query, &schema);
 
     searcher
-        .search(&query, &TopDocs::with_limit(limit))
+        .search(&index_query, &TopDocs::with_limit(limit))
         .expect("Search failed")
         .iter()
         .map(|(score, doc_addr)| {
@@ -135,18 +132,20 @@ pub fn search_notes(
     index_path: &str,
     db: &Connection,
     include_similarity: bool,
-    query: &str,
+    query: &aql::Expr,
     limit: usize,
 ) -> Vec<SearchResult> {
     let search_hits = if include_similarity {
-        let mut result = fulltext_search(index_path, query, limit);
-        let similarity_query = query.replace("-title:journal ", "");
-        let mut vec_search_result =
-            search_similar_notes(db, &similarity_query, limit).unwrap_or_default();
+        // TODO: Re-enable this
+        // let mut result = fulltext_search(index_path, query, limit);
+        // let similarity_query = query.replace("-title:journal ", "");
+        // let mut vec_search_result =
+        //     search_similar_notes(db, &similarity_query, limit).unwrap_or_default();
 
-        // Combine the results, dedupe, then sort by score
-        result.append(&mut vec_search_result);
-        result.into_iter().unique_by(|i| i.id.clone()).collect()
+        // // Combine the results, dedupe, then sort by score
+        // result.append(&mut vec_search_result);
+        // result.into_iter().unique_by(|i| i.id.clone()).collect()
+        fulltext_search(index_path, query, limit)
     } else {
         fulltext_search(index_path, query, limit)
     };

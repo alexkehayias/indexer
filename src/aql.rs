@@ -1,4 +1,4 @@
-use winnow::ascii::{alphanumeric1, space0, space1};
+use winnow::ascii::{alphanumeric1, space0};
 use winnow::combinator::*;
 use winnow::error::{ErrMode, InputError};
 use winnow::prelude::*;
@@ -28,7 +28,6 @@ pub enum Expr {
     },
     And(Box<Expr>, Box<Expr>),
     Or(Box<Expr>, Box<Expr>),
-    Group(Vec<Expr>),
 }
 
 pub fn parse_query(input: &str) -> Result<Expr, ErrMode<InputError<&str>>> {
@@ -42,7 +41,7 @@ fn parse_expr<'a>(input: &mut &'a str) -> Result<Expr, ErrMode<InputError<&'a st
 
 fn parse_or<'a>(input: &mut &'a str) -> Result<Expr, ErrMode<InputError<&'a str>>> {
     let mut lhs = parse_and(input)?;
-    while preceded(space0, tag_no_case("AND"))
+    while preceded(space0, tag_no_case("OR"))
         .parse_next(input)
         .is_ok()
     {
@@ -58,7 +57,7 @@ fn parse_and<'a>(input: &mut &'a str) -> Result<Expr, ErrMode<InputError<&'a str
     loop {
         let checkpoint = *input;
 
-        if preceded(space0, tag_no_case("OR"))
+        if preceded(space0, tag_no_case("AND"))
             .parse_next(input)
             .is_ok()
         {
@@ -80,36 +79,22 @@ fn parse_not<'a>(input: &mut &'a str) -> Result<Expr, ErrMode<InputError<&'a str
     let negated = opt(alt((literal("-"), tag_no_case("NOT"))))
         .parse_next(input)?
         .is_some();
-    let mut expr = parse_group_or_term(input)?;
+    let mut expr = parse_term(input)?;
     match &mut expr {
         Expr::Term { negated: n, .. } => *n = *n || negated,
         Expr::Range { negated: n, .. } => *n = *n || negated,
-        _ => {
-            if negated {
-                expr = Expr::Group(vec![expr]);
-            }
-        }
+        _ => ()
     }
+
     Ok(expr)
 }
 
-fn parse_group_or_term<'a>(input: &mut &'a str) -> Result<Expr, ErrMode<InputError<&'a str>>> {
+fn parse_term<'a>(input: &mut &'a str) -> Result<Expr, ErrMode<InputError<&'a str>>> {
     alt((
-        parse_group,
         parse_range_expr,
         parse_fielded_term,
         parse_default_term,
     ))
-    .parse_next(input)
-}
-
-fn parse_group<'a>(input: &mut &'a str) -> Result<Expr, ErrMode<InputError<&'a str>>> {
-    delimited(
-        literal("("),
-        separated(0.., parse_expr, space1),
-        literal(")"),
-    )
-    .map(Expr::Group)
     .parse_next(input)
 }
 

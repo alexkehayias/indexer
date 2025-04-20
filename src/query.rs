@@ -160,14 +160,6 @@ pub fn aql_to_index_query(expr: &Expr, schema: &Schema) -> Option<Box<dyn Query>
                 None
             }
         }
-        Expr::Group(exprs) => {
-            // TODO fix this doesn't work with SQL related terms
-            let queries: Vec<(Occur, Box<dyn Query>)> = exprs
-                .iter()
-                .map(|e| (Occur::Must, aql_to_index_query(e, schema).unwrap()))
-                .collect();
-            Some(Box::new(BooleanQuery::from(queries)))
-        }
     }
 }
 
@@ -252,14 +244,6 @@ pub fn expr_to_sql(expr: &Expr) -> Option<String> {
                 (Some(l), None) => Some(l),
                 (None, Some(r)) => Some(r),
                 _ => None,
-            }
-        }
-        Expr::Group(exprs) => {
-            let clauses: Vec<String> = exprs.iter().filter_map(expr_to_sql).collect();
-            if clauses.is_empty() {
-                None
-            } else {
-                Some(clauses.join(" AND "))
             }
         }
         _ => None,
@@ -362,24 +346,6 @@ mod tests {
     }
 
     #[test]
-    fn test_expr_to_sql_and_or_group() {
-        let expr = parse_query("scheduled:2025-04-20 AND deadline:<2023-01-01").unwrap();
-        assert_eq!(
-            expr_to_sql(&expr),
-            Some("(scheduled = '2025-04-20' AND deadline < '2023-01-01')".to_string())
-        );
-
-        // This parses as AND within group
-        let expr = parse_query("(scheduled:2025-01-10 deadline:2024-01-01)").unwrap();
-        assert_eq!(
-            expr_to_sql(&expr),
-            Some("(scheduled = '2025-01-10' AND deadline = '2024-01-01')".to_string())
-        );
-
-        // NOTE: OR with non-group terms is not supported by parser and is omitted.
-    }
-
-    #[test]
     fn test_expr_to_sql_drops_unknown() {
         // 'priority' is not an allowed field; should yield None when it's alone.
         let expr = parse_query("priority:high").unwrap();
@@ -392,16 +358,4 @@ mod tests {
             Some("scheduled = '2024-12-12'".to_string())
         );
     }
-
-    // #[test]
-    // fn test_expr_to_sql_nested_and_or() {
-    //     // Use only top-level OR without parenthesis nesting.
-    //     let expr = parse_query("scheduled:2025-06-01 OR deadline:2024-02-02").unwrap();
-    //     assert_eq!(
-    //         expr_to_sql(&expr),
-    //         Some(r#"(\"scheduled\" = '2025-06-01' OR \"deadline\" = '2024-02-02')"#.to_string())
-    //     );
-
-    //     // NOTE: Nested parenthesis and mixed AND/OR is not supported by parser and is omitted.
-    // }
 }

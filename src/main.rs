@@ -9,6 +9,7 @@ use std::fs;
 use tantivy::Index;
 use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
 
+use indexer::aql;
 use indexer::chat::chat;
 use indexer::db::{initialize_db, migrate_db, vector_db};
 use indexer::git::{maybe_clone_repo, maybe_pull_and_reset_repo};
@@ -17,7 +18,6 @@ use indexer::openai::{Message, Role, ToolCall};
 use indexer::search::search_notes;
 use indexer::server;
 use indexer::tool::{NoteSearchTool, SearxSearchTool};
-use indexer::aql;
 
 #[derive(Subcommand)]
 enum Command {

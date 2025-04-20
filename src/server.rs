@@ -166,7 +166,10 @@ async fn chat_handler(
             .and_modify(|v| v.transcript.push(user_msg.clone()))
             .or_insert(ChatSession {
                 session_id: payload.session_id.clone(),
-                transcript: vec![Message::new(Role::System, "You are a helpful assistant."), user_msg],
+                transcript: vec![
+                    Message::new(Role::System, "You are a helpful assistant."),
+                    user_msg,
+                ],
             });
 
         // Take the entire transcript so we don't hold the lock across .await

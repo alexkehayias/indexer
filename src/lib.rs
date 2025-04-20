@@ -1,3 +1,4 @@
+pub mod aql;
 pub mod chat;
 pub mod db;
 pub mod export;
@@ -6,10 +7,9 @@ pub mod indexing;
 pub mod notification;
 pub mod openai;
 pub mod prompt;
+pub mod query;
 pub mod schema;
 pub mod search;
 pub mod server;
 pub mod source;
 pub mod tool;
-pub mod aql;
-pub mod query;

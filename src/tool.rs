@@ -4,7 +4,7 @@ use async_trait::async_trait;
 use reqwest;
 use serde::{Deserialize, Serialize};
 use serde_json;
-use serde_json::{json, Value};
+use serde_json::{Value, json};
 
 #[derive(Serialize)]
 pub struct NoteSearchProps {
@@ -59,8 +59,10 @@ impl NoteSearchTool {
                 properties: NoteSearchProps {
                     query: Property {
                         r#type: String::from("string"),
-                        description: String::from("The query to use for searching notes that should be short and optimized for search.")
-                    }
+                        description: String::from(
+                            "The query to use for searching notes that should be short and optimized for search.",
+                        ),
+                    },
                 },
                 required: vec![String::from("query")],
                 additional_properties: false,
@@ -136,7 +138,7 @@ impl SearxSearchTool {
                         r#type: String::from("string"),
                         description: String::from(
                             "The search query string. Allowed categories include general, images, videos, \
-                            news, map, music, it, science, files, social media."
+                            news, map, music, it, science, files, social media.",
                         ),
                     },
                     categories: Property {

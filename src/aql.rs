@@ -83,19 +83,14 @@ fn parse_not<'a>(input: &mut &'a str) -> Result<Expr, ErrMode<InputError<&'a str
     match &mut expr {
         Expr::Term { negated: n, .. } => *n = *n || negated,
         Expr::Range { negated: n, .. } => *n = *n || negated,
-        _ => ()
+        _ => (),
     }
 
     Ok(expr)
 }
 
 fn parse_term<'a>(input: &mut &'a str) -> Result<Expr, ErrMode<InputError<&'a str>>> {
-    alt((
-        parse_range_expr,
-        parse_fielded_term,
-        parse_default_term,
-    ))
-    .parse_next(input)
+    alt((parse_range_expr, parse_fielded_term, parse_default_term)).parse_next(input)
 }
 
 fn parse_range_expr<'a>(input: &mut &'a str) -> Result<Expr, ErrMode<InputError<&'a str>>> {

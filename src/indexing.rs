@@ -6,15 +6,15 @@ use super::schema::note_schema;
 use super::source::{note_filter, notes};
 use crate::export::MarkdownExport;
 use fastembed::{EmbeddingModel, InitOptions, TextEmbedding};
-use orgize::rowan::ast::AstNode;
 use orgize::ParseConfig;
+use orgize::rowan::ast::AstNode;
 use rusqlite::{Connection, Result};
 use std::fs;
 use std::hash::DefaultHasher;
 use tantivy::schema::*;
-use tantivy::{doc, Index, IndexWriter};
+use tantivy::{Index, IndexWriter, doc};
 use text_splitter::{ChunkConfig, TextSplitter};
-use tiktoken_rs::{cl100k_base, CoreBPE};
+use tiktoken_rs::{CoreBPE, cl100k_base};
 use zerocopy::IntoBytes;
 
 #[derive(Debug)]

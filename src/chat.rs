@@ -1,5 +1,5 @@
 use crate::openai::{
-    completion, BoxedToolCall, FunctionCall, FunctionCallFn, Message, Role, ToolCall,
+    BoxedToolCall, FunctionCall, FunctionCallFn, Message, Role, ToolCall, completion,
 };
 use serde_json::Value;
 

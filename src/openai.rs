@@ -2,7 +2,7 @@ use anyhow::{Error, Result};
 use async_trait::async_trait;
 use erased_serde;
 use serde::Serialize;
-use serde_json::{json, Value};
+use serde_json::{Value, json};
 use std::env;
 
 #[derive(Clone, Serialize, Debug)]
@@ -146,7 +146,7 @@ pub async fn completion(
         "model": "gpt-4.1-mini",
         "messages": messages,
     });
-    if let Some(ref tools) = tools {
+    if let Some(tools) = tools {
         payload["tools"] = json!(tools);
     }
     let response = reqwest::Client::new()

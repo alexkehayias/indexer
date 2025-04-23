@@ -1,8 +1,8 @@
-use anyhow::{anyhow, Result};
+use anyhow::{Result, anyhow};
 use clap::{Parser, Subcommand};
 use indexer::schema::note_schema;
-use rustyline::error::ReadlineError;
 use rustyline::DefaultEditor;
+use rustyline::error::ReadlineError;
 use serde_json::json;
 use std::env;
 use std::fs;

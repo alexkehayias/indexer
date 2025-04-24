@@ -306,7 +306,7 @@ struct ViewNoteResult {
     id: String,
     title: String,
     body: String,
-    tags: String,
+    tags: Option<String>,
 }
 
 // Render a note in org-mode format by ID

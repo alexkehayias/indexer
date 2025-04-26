@@ -26,6 +26,7 @@ tantivy = "0.22.0"
 text-splitter = { version = "0.16.1", features = ["tiktoken-rs"] }
 tiktoken-rs = "0.5.9"
 tokio = { version = "1.40.0", features = ["macros", "rt-multi-thread"] }
+tower = "0.5.2"
 tower-http = { version = "0.5.0", features = ["trace", "cors", "fs"] }
 tracing = "0.1"
 tracing-subscriber = { version = "0.3", features = ["env-filter"] }

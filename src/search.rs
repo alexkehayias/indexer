@@ -84,15 +84,22 @@ pub fn search_similar_notes(
     query: &aql::Expr,
     limit: usize,
 ) -> Result<Vec<SearchHit>> {
-    // Extract the relevant text to use for similar search from the AQL query
-    let similarity_string =
-        query_to_similarity(query).expect("Failed to make similarity search query string");
+    // Extract the relevant text to use for similar search from the
+    // AQL query. It's possible there is nothing to use for a
+    // similarity search. This can happen when the query is entirely
+    // fields that are not valid for similarity like a status field or
+    // a date field.
+    let similarity_string = query_to_similarity(query);
+    if similarity_string.is_none() {
+        return Ok(Vec::new())
+    }
+
     let embeddings_model = TextEmbedding::try_new(
         InitOptions::new(EmbeddingModel::BGESmallENV15).with_show_download_progress(true),
     )
     .unwrap();
     let query_vector = embeddings_model
-        .embed(vec![similarity_string], None)
+        .embed(vec![similarity_string.unwrap()], None)
         .unwrap();
     let q = query_vector[0].clone();
     let result: Vec<SearchHit> = db

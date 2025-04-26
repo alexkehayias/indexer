@@ -296,7 +296,7 @@ pub fn query_to_similarity(expr: &Expr) -> Option<String> {
 mod tests {
     use super::*;
     use crate::aql::parse_query;
-    use crate::schema::note_schema;
+    use crate::fts::schema::note_schema;
 
     #[test]
     fn test_aql_to_index_query() {

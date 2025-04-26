@@ -8,7 +8,7 @@ use tantivy::schema::*;
 use tantivy::{Index, ReloadPolicy};
 use zerocopy::IntoBytes;
 
-use super::schema::note_schema;
+use crate::fts::schema::note_schema;
 use crate::aql::{self};
 use crate::query::{aql_to_index_query, expr_to_sql, query_to_similarity};
 

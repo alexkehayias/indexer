@@ -1,12 +1,10 @@
 use anyhow::{Result, anyhow};
 use clap::{Parser, Subcommand};
-use indexer::schema::note_schema;
 use rustyline::DefaultEditor;
 use rustyline::error::ReadlineError;
 use serde_json::json;
 use std::env;
 use std::fs;
-use tantivy::Index;
 use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
 
 use indexer::aql;
@@ -15,6 +13,7 @@ use indexer::db::{initialize_db, migrate_db, vector_db};
 use indexer::git::{maybe_clone_repo, maybe_pull_and_reset_repo};
 use indexer::indexing::index_all;
 use indexer::openai::{Message, Role, ToolCall};
+use indexer::fts::utils::recreate_index;
 use indexer::search::search_notes;
 use indexer::server;
 use indexer::tool::{NoteSearchTool, SearxSearchTool};
@@ -56,6 +55,8 @@ enum Command {
         #[arg(long, default_value = "false")]
         vector: bool,
     },
+    /// Rebuild all of the indices from source
+    Rebuild {},
     /// Query the search index
     Query {
         #[arg(long)]
@@ -141,13 +142,7 @@ async fn main() -> Result<()> {
             // Delete and recreate the index
             if index {
                 println!("Migrating search index...");
-                fs::remove_dir_all(index_path.clone()).expect("Failed to delete index directory");
-                fs::create_dir(index_path.clone()).expect("Failed to recreate index directory");
-                let index_path =
-                    tantivy::directory::MmapDirectory::open(index_path).expect("Index not found");
-                let schema = note_schema();
-                Index::open_or_create(index_path, schema.clone())
-                    .expect("Unable to open or create index");
+                recreate_index(&index_path);
                 println!("Finished migrating search index");
                 println!(
                     "NOTE: You will need to re-populate the index by running --index --full-text"
@@ -214,6 +209,32 @@ async fn main() -> Result<()> {
                 index_all(&mut db, &index_path, &notes_path, true, true, None)
                     .expect("Indexing failed");
             }
+        }
+        Some(Command::Rebuild {}) => {
+            tracing_subscriber::registry()
+                .with(
+                    tracing_subscriber::EnvFilter::try_from_default_env()
+                        .unwrap_or_else(|_| format!("{}=debug", env!("CARGO_CRATE_NAME")).into()),
+                )
+                .with(tracing_subscriber::fmt::layer())
+                .init();
+
+            let mut db = vector_db(&vec_db_path).expect("Failed to connect to db");
+
+            // Delete all note metadata and vector data
+            println!("Deleting all meta data in the db...");
+            db.execute("DELETE FROM vec_items", []).expect("Failed to delete vec_items data");
+            db.execute("DELETE FROM note_meta", []).expect("Failed to delete note_meta data");
+            println!("Finished deleting all meta data the db...");
+
+            // Remove the full text search index
+            println!("Recreating search index...");
+            recreate_index(&index_path);
+            println!("Finished recreating search index");
+
+            // Index everything
+            index_all(&mut db, &index_path, &notes_path, true, true, None)
+                .expect("Indexing failed");
         }
         Some(Command::Query { term, vector }) => {
             let db = vector_db(&vec_db_path).expect("Failed to connect to db");

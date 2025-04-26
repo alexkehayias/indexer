@@ -2,8 +2,8 @@ use regex::Regex;
 use std::hash::{Hash, Hasher};
 use std::path::PathBuf;
 
-use super::schema::note_schema;
-use super::source::{note_filter, notes};
+use crate::fts::schema::note_schema;
+use crate::source::{note_filter, notes};
 use crate::export::MarkdownExport;
 use fastembed::{EmbeddingModel, InitOptions, TextEmbedding};
 use orgize::ParseConfig;

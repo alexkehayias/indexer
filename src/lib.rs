@@ -8,7 +8,7 @@ pub mod notification;
 pub mod openai;
 pub mod prompt;
 pub mod query;
-pub mod schema;
+pub mod fts;
 pub mod search;
 pub mod server;
 pub mod source;

@@ -211,6 +211,7 @@ pub fn search_notes(
           date
         FROM note_meta
         WHERE {}
+        ORDER BY date DESC, deadline DESC, scheduled DESC, closed DESC
         LIMIT {}
     "#,
         where_clause, limit

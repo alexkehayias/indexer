@@ -75,6 +75,8 @@
               case "done":
                 taskIconContainer.innerText = "✅";
                 break;
+              case "someday":
+                taskIconContainer.innerText = "🤷";
               default:
                 break;
             }

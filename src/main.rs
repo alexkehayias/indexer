@@ -251,12 +251,17 @@ async fn main() -> Result<()> {
         Some(Command::Chat {}) => {
             let mut rl = DefaultEditor::new().expect("Editor failed");
 
-            let note_search_tool = NoteSearchTool::default();
-            let searx_search_tool = SearxSearchTool::default();
+            let note_search_tool = env::var("INDEXER_NOTE_SEARCH_API_URL")
+                .map(|url| NoteSearchTool::new(&url))
+                .unwrap_or_default();
+            let searx_search_tool = env::var("INDEXER_SEARXNG_API_URL")
+                .map(|url| SearxSearchTool::new(&url))
+                .unwrap_or_default();
             let tools: Option<Vec<Box<dyn ToolCall + Send + Sync + 'static>>> = Some(vec![
                 Box::new(note_search_tool),
                 Box::new(searx_search_tool),
             ]);
+
             // TODO: Window the list of history
             let mut history = vec![Message::new(Role::System, "You are a helpful assistant.")];
 

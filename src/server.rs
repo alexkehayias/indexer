@@ -441,7 +441,7 @@ pub async fn email_unread_handler(
     let oauth = match refresh_token {
         Ok(token) => token,
         Err(e) => {
-            eprintln!("OAuth error: {e:?}");
+            tracing::error!("OAuth error: {}", e);
             return Json(serde_json::Value::from(""))
         }
     };
@@ -452,7 +452,7 @@ pub async fn email_unread_handler(
     let messages = match list_unread_messages(&oauth.access_token, limit).await {
         Ok(x) => x,
         Err(e) => {
-            eprintln!("Gmail API error: {e:?}");
+            tracing::error!("Gmail API error: {}", e);
             return Json(serde_json::Value::from(""))
         },
     };

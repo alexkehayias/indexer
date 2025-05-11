@@ -67,6 +67,8 @@ mod tests {
             vapid_key_path: String::from("test_vapid_key_path"),
             note_search_api_url: String::from("http://localhost:2222"),
             searxng_api_url: String::from("http://localhost:8080"),
+            gmail_api_client_id: String::from("test_client_id"),
+            gmail_api_client_secret: String::from("test_client_secret"),
         };
         let app_state = AppState::new(db, app_config);
         app(app_state)

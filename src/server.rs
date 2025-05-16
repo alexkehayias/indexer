@@ -34,7 +34,7 @@ use super::git::{diff_last_commit_files, maybe_pull_and_reset_repo};
 use super::notification::{PushSubscription, send_push_notification};
 use super::search::{SearchResult, search_notes};
 use crate::oauth::refresh_access_token;
-use crate::gmail::{fetch_thread, list_unread_messages, Thread};
+use crate::gmail::{extract_body, fetch_thread, list_unread_messages, Thread};
 
 type SharedState = Arc<RwLock<AppState>>;
 
@@ -409,6 +409,27 @@ pub struct EmailUnreadQuery {
     limit: Option<i64>,
 }
 
+#[derive(Clone, Serialize)]
+pub struct EmailMessage {
+    id: String,
+    thread_id: String,
+    from: String,
+    to: String,
+    received: String,
+    subject: String,
+    body: String,
+}
+
+#[derive(Clone, Serialize)]
+pub struct EmailThread {
+    id: String,
+    received: String,
+    from: String,
+    to: String,
+    subject: String,
+    messages: Vec<EmailMessage>
+}
+
 pub async fn email_unread_handler(
     State(state): State<SharedState>,
     Query(params): Query<EmailUnreadQuery>,
@@ -463,15 +484,61 @@ pub async fn email_unread_handler(
         },
     };
 
-    let mut threads = JoinSet::new();
+    // Fetch each thread concurrently
+    let mut tasks = JoinSet::new();
     for message in messages.into_iter() {
         let access_token = access_token.clone();
         let thread_id = message.thread_id;
-        threads.spawn(fetch_thread(access_token, thread_id));
+        tasks.spawn(fetch_thread(access_token, thread_id));
     };
-    let results: Vec<Thread> = threads.join_all().await.into_iter().map(|i| i.unwrap()).collect();
+    let results: Vec<Thread> = tasks.join_all().await.into_iter().map(|i| i.unwrap()).collect();
 
-    Json(json!(results))
+    // Transform the threads and messages into a simpler format
+    let mut threads: Vec<EmailThread> = Vec::new();
+    for t in results {
+        let mut messages: Vec<EmailMessage> = Vec::new();
+        for m in t.messages {
+            let body = extract_body(&m);
+            if body == "Failed to decode" {
+                tracing::error!("Decode error: {:?}", m.payload);
+            }
+            let payload = m.payload.unwrap();
+            let headers = payload.headers.unwrap();
+
+            // Each of these headers are required to be here or it's not a valid email
+            let from = headers.iter().find(|h| h.name == "From").map(|h| h.value.clone()).unwrap();
+            let to = headers.iter().find(|h| h.name == "To").map(|h| h.value.clone()).unwrap();
+            let subject = headers.iter().find(|h| h.name == "Subject").map(|h| h.value.clone()).unwrap();
+
+            messages.push(EmailMessage {
+                id: m.id,
+                thread_id: m.thread_id,
+                received: m.internal_date,
+                from,
+                to,
+                subject,
+                body
+            })
+        };
+
+        // It's guaranteed there is at least one message per thread
+        let latest_msg = messages[0].clone();
+
+        threads.push(EmailThread {
+            id: t.id,
+            received: latest_msg.received,
+            subject: latest_msg.subject,
+            from: latest_msg.from,
+            to: latest_msg.to,
+            messages
+        });
+    }
+
+    // Order of threads isn't guaranteed because we fetch them
+    // concurrently
+    threads.sort_by_key(|i| std::cmp::Reverse(i.received.clone()));
+
+    Json(json!(threads))
 }
 
 async fn set_static_cache_control(request: Request, next: middleware::Next) -> Response {

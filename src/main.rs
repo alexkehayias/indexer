@@ -10,10 +10,10 @@ use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
 use indexer::aql;
 use indexer::chat::chat;
 use indexer::db::{initialize_db, migrate_db, vector_db};
+use indexer::fts::utils::recreate_index;
 use indexer::git::{maybe_clone_repo, maybe_pull_and_reset_repo};
 use indexer::indexing::index_all;
 use indexer::openai::{Message, Role, ToolCall};
-use indexer::fts::utils::recreate_index;
 use indexer::search::search_notes;
 use indexer::server;
 use indexer::tool::{NoteSearchTool, SearxSearchTool};
@@ -164,9 +164,9 @@ async fn main() -> Result<()> {
             let note_search_api_url = env::var("INDEXER_NOTE_SEARCH_API_URL")
                 .unwrap_or(format!("http://{}:{}", host, port));
             let searxng_api_url = env::var("INDEXER_SEARXNG_API_URL")
-                    .unwrap_or(format!("http://{}:{}", host, "8080"));
-            let gmail_client_id = std::env::var("INDEXER_GMAIL_CLIENT_ID")
-                .expect("Missing INDEXER_GMAIL_CLIENT_ID");
+                .unwrap_or(format!("http://{}:{}", host, "8080"));
+            let gmail_client_id =
+                std::env::var("INDEXER_GMAIL_CLIENT_ID").expect("Missing INDEXER_GMAIL_CLIENT_ID");
             let gmail_client_secret = std::env::var("INDEXER_GMAIL_CLIENT_SECRET")
                 .expect("Missing INDEXER_GMAIL_CLIENT_SECRET");
 
@@ -182,7 +182,6 @@ async fn main() -> Result<()> {
                 searxng_api_url,
                 gmail_client_id,
                 gmail_client_secret,
-
             )
             .await;
         }
@@ -242,8 +241,10 @@ async fn main() -> Result<()> {
 
             // Delete all note metadata and vector data
             println!("Deleting all meta data in the db...");
-            db.execute("DELETE FROM vec_items", []).expect("Failed to delete vec_items data");
-            db.execute("DELETE FROM note_meta", []).expect("Failed to delete note_meta data");
+            db.execute("DELETE FROM vec_items", [])
+                .expect("Failed to delete vec_items data");
+            db.execute("DELETE FROM note_meta", [])
+                .expect("Failed to delete note_meta data");
             println!("Finished deleting all meta data the db...");
 
             // Remove the full text search index
@@ -305,14 +306,16 @@ async fn main() -> Result<()> {
             match service {
                 ServiceKind::Gmail => {
                     use indexer::oauth::exchange_code_for_token;
-use std::io::{self, Write};
+                    use std::io::{self, Write};
 
-// Prompt the user for their email address
-print!("Enter the email address you are authenticating: ");
-io::stdout().flush().unwrap();
-let mut user_email = String::new();
-io::stdin().read_line(&mut user_email).expect("Failed to read email address");
-let user_email = user_email.trim();
+                    // Prompt the user for their email address
+                    print!("Enter the email address you are authenticating: ");
+                    io::stdout().flush().unwrap();
+                    let mut user_email = String::new();
+                    io::stdin()
+                        .read_line(&mut user_email)
+                        .expect("Failed to read email address");
+                    let user_email = user_email.trim();
 
                     let client_id = std::env::var("INDEXER_GMAIL_CLIENT_ID")
                         .expect("Set INDEXER_GMAIL_CLIENT_ID in your environment");
@@ -327,32 +330,37 @@ let user_email = user_email.trim();
                         urlencoding::encode(&redirect_uri),
                         urlencoding::encode(scope)
                     );
-                    println!("\nPlease open the following URL in your browser and authorize access:\n\n{}\n", auth_url);
+                    println!(
+                        "\nPlease open the following URL in your browser and authorize access:\n\n{}\n",
+                        auth_url
+                    );
                     print!("Paste the authorization code shown by Google here: ");
                     io::stdout().flush().unwrap();
                     let mut code = String::new();
-                    io::stdin().read_line(&mut code).expect("Failed to read code");
+                    io::stdin()
+                        .read_line(&mut code)
+                        .expect("Failed to read code");
                     let code = code.trim();
 
-                    let token = exchange_code_for_token(
-                        &client_id,
-                        &client_secret,
-                        code,
-                        &redirect_uri,
-                    ).await?;
+                    let token =
+                        exchange_code_for_token(&client_id, &client_secret, code, &redirect_uri)
+                            .await?;
 
                     // Store the refresh token in the DB and use that to fetch an access token from now on.
                     let db = vector_db(&vec_db_path).expect("Failed to connect to db");
-                    let refresh_token = token.refresh_token.clone().ok_or(anyhow!("No refresh token in response"))?;
+                    let refresh_token = token
+                        .refresh_token
+                        .clone()
+                        .ok_or(anyhow!("No refresh token in response"))?;
 
                     db.execute(
                         "INSERT INTO auth (id, refresh_token) VALUES (?1, ?2)
                          ON CONFLICT(id) DO UPDATE SET refresh_token = excluded.refresh_token",
                         (&user_email, &refresh_token),
-                    ).expect("Failed to insert/update refresh token in DB");
+                    )
+                    .expect("Failed to insert/update refresh token in DB");
 
                     println!("Refresh token for {} saved to DB.", user_email);
-
                 }
             }
         }

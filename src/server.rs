@@ -27,7 +27,7 @@ use crate::aql;
 use crate::chat::chat;
 use crate::indexing::index_all;
 use crate::openai::{BoxedToolCall, Message, Role};
-use crate::tool::{NoteSearchTool, SearxSearchTool};
+use crate::tool::{NoteSearchTool, SearxSearchTool, EmailUnreadTool};
 
 use super::db::vector_db;
 use super::git::{diff_last_commit_files, maybe_pull_and_reset_repo};
@@ -141,7 +141,7 @@ async fn chat_handler(
     State(state): State<SharedState>,
     Json(payload): Json<ChatRequest>,
 ) -> Json<ChatResponse> {
-    let (note_search_tool, searx_search_tool) = {
+    let (note_search_tool, searx_search_tool, email_unread_tool) = {
         let shared_state = state.read().expect("Unable to read share state");
         let AppConfig {
             note_search_api_url,
@@ -151,12 +151,14 @@ async fn chat_handler(
         (
             NoteSearchTool::new(note_search_api_url),
             SearxSearchTool::new(searxng_api_url),
+            EmailUnreadTool::new(note_search_api_url),
         )
     };
 
     let tools: Option<Vec<BoxedToolCall>> = Some(vec![
         Box::new(note_search_tool),
         Box::new(searx_search_tool),
+        Box::new(email_unread_tool),
     ]);
     let user_msg = Message::new(Role::User, &payload.message);
 

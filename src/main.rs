@@ -16,7 +16,7 @@ use indexer::indexing::index_all;
 use indexer::openai::{Message, Role, ToolCall};
 use indexer::search::search_notes;
 use indexer::server;
-use indexer::tool::{NoteSearchTool, SearxSearchTool};
+use indexer::tool::{NoteSearchTool, SearxSearchTool, EmailUnreadTool};
 
 #[derive(ValueEnum, Clone)]
 enum ServiceKind {
@@ -274,12 +274,16 @@ async fn main() -> Result<()> {
             let note_search_tool = env::var("INDEXER_NOTE_SEARCH_API_URL")
                 .map(|url| NoteSearchTool::new(&url))
                 .unwrap_or_default();
+            let email_unread_tool = env::var("INDEXER_NOTE_SEARCH_API_URL")
+                .map(|url| EmailUnreadTool::new(&url))
+                .unwrap_or_default();
             let searx_search_tool = env::var("INDEXER_SEARXNG_API_URL")
                 .map(|url| SearxSearchTool::new(&url))
                 .unwrap_or_default();
             let tools: Option<Vec<Box<dyn ToolCall + Send + Sync + 'static>>> = Some(vec![
                 Box::new(note_search_tool),
                 Box::new(searx_search_tool),
+                Box::new(email_unread_tool),
             ]);
 
             // TODO: Window the list of history

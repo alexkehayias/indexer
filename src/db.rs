@@ -72,6 +72,25 @@ embedding float[384]
         Err(e) => println!("Create auth table failed: {}", e),
     };
 
+    // Create vector virtual table for similarity search
+    let create_push_subscription_table = db.execute(
+        "CREATE TABLE IF NOT EXISTS push_subscription (
+    -- Endpoint for the notification service uniquely identifies the client
+    endpoint TEXT PRIMARY KEY,
+    -- Public key of the client
+    p256dh TEXT NOT NULL,
+    -- Private key for encrypting notifications
+    auth TEXT NOT NULL,
+    encoding TEXT NOT NULL DEFAULT 'Aes126Gcm'
+);",
+        [],
+    );
+
+    match create_push_subscription_table {
+        Ok(_) => (),
+        Err(e) => println!("Create push subscription table failed: {}", e),
+    };
+
     Ok(())
 }
 

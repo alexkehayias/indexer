@@ -8,7 +8,8 @@ use axum::middleware;
 use axum::{
     Router,
     extract::{Path, Request, State},
-    response::{Json, Response},
+    http::StatusCode,
+    response::{Json, Response, IntoResponse},
     routing::{get, post},
 };
 use http::{HeaderValue, header};
@@ -35,6 +36,32 @@ use super::notification::{PushSubscription, send_push_notification};
 use super::search::{SearchResult, search_notes};
 use crate::gmail::{Thread, extract_body, fetch_thread, list_unread_messages};
 use crate::oauth::refresh_access_token;
+
+
+// Top level API error
+pub struct ApiError(anyhow::Error);
+
+/// Convert `AppError` into an Axum compatible response.
+impl IntoResponse for ApiError {
+    fn into_response(self) -> Response {
+        (
+            StatusCode::INTERNAL_SERVER_ERROR,
+            format!("Something went wrong: {}", self.0),
+        )
+            .into_response()
+    }
+}
+
+/// Enables using `?` on functions that return `Result<_,
+/// anyhow::Error>` to turn them into `Result<_, AppError>`
+impl<E> From<E> for ApiError
+where
+    E: Into<anyhow::Error>,
+{
+    fn from(err: E) -> Self {
+        Self(err.into())
+    }
+}
 
 type SharedState = Arc<RwLock<AppState>>;
 
@@ -485,19 +512,15 @@ pub struct EmailThread {
 pub async fn email_unread_handler(
     State(state): State<SharedState>,
     Query(params): Query<EmailUnreadQuery>,
-) -> Json<Value> {
+) -> Result<Json<Value>, ApiError> {
     let refresh_token: String = {
         let shared_state = state.read().expect("Unable to read share state");
 
         let db = shared_state.db.lock().unwrap_or_else(|e| e.into_inner());
 
-        match db
+        db
             .prepare("SELECT refresh_token FROM auth WHERE id = ?1")
-            .and_then(|mut stmt| stmt.query_row([&params.email], |row| row.get(0)))
-        {
-            Ok(token) => token,
-            Err(_) => return Json(serde_json::Value::from("")),
-        }
+            .and_then(|mut stmt| stmt.query_row([&params.email], |row| row.get(0)))?
     };
 
     // Pull the config values out before the async call so that we
@@ -511,25 +534,12 @@ pub async fn email_unread_handler(
         } = &shared_state.config;
         (gmail_api_client_id.clone(), gmail_api_client_secret.clone())
     };
-    let refresh_resp = refresh_access_token(&client_id, &client_secret, &refresh_token).await;
-    let oauth = match refresh_resp {
-        Ok(token) => token,
-        Err(e) => {
-            tracing::error!("OAuth error: {}", e);
-            return Json(serde_json::Value::from(""));
-        }
-    };
+    let oauth = refresh_access_token(&client_id, &client_secret, &refresh_token).await?;
     let access_token = oauth.access_token;
     let limit = params.limit.unwrap_or(7); // Default 7 days if not specified
 
     // Query Gmail for unread messages
-    let messages = match list_unread_messages(&access_token, limit).await {
-        Ok(x) => x,
-        Err(e) => {
-            tracing::error!("Gmail API error: {}", e);
-            return Json(serde_json::Value::from(""));
-        }
-    };
+    let messages = list_unread_messages(&access_token, limit).await?;
 
     // Fetch each thread concurrently
     let mut tasks = JoinSet::new();
@@ -602,7 +612,7 @@ pub async fn email_unread_handler(
     // concurrently
     threads.sort_by_key(|i| std::cmp::Reverse(i.received.clone()));
 
-    Json(json!(threads))
+    Ok(Json(json!(threads)))
 }
 
 async fn set_static_cache_control(request: Request, next: middleware::Next) -> Response {

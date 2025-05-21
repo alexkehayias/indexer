@@ -2,6 +2,7 @@ use std::collections::HashMap;
 use std::env;
 use std::path::PathBuf;
 use std::sync::{Arc, Mutex, RwLock};
+use std::time::Duration;
 
 use axum::extract::Query;
 use axum::middleware;
@@ -18,6 +19,7 @@ use serde::{Deserialize, Serialize};
 use serde_json::{Value, json};
 use tantivy::doc;
 use tokio::task::JoinSet;
+use tokio::time::interval;
 use tower::ServiceBuilder;
 use tower_http::cors::CorsLayer;
 use tower_http::services::ServeDir;
@@ -32,7 +34,8 @@ use crate::tool::{NoteSearchTool, SearxSearchTool, EmailUnreadTool};
 
 use super::db::vector_db;
 use super::git::{diff_last_commit_files, maybe_pull_and_reset_repo};
-use super::notification::{PushSubscription, send_push_notification};
+use super::notification::{PushSubscription, broadcast_push_notification};
+use uuid::Uuid;
 use super::search::{SearchResult, search_notes};
 use crate::gmail::{Thread, extract_body, fetch_thread, list_unread_messages};
 use crate::oauth::refresh_access_token;
@@ -427,7 +430,6 @@ async fn send_notification(
     State(state): State<SharedState>,
     Json(payload): Json<NotificationPayload>,
 ) -> Json<Value> {
-
     let vapid_key_path = state
         .read()
         .expect("Unable to read share state")
@@ -436,51 +438,29 @@ async fn send_notification(
         .clone();
 
     let subscriptions = {
-        let shared_state = state.read().expect("Unable to read share state");
+        let shared_state = state.read().unwrap();
         let db = shared_state.db.lock().unwrap_or_else(|e| e.into_inner());
-
-        let mut stmt = db
-            .prepare(
-                r"
-          SELECT
-            endpoint,
-            p256dh,
-            auth
-          FROM push_subscription
-        ")
-        .expect("Failed to prepare sql statement");
-
-        let results = stmt.query_map([], |i| {
+        let mut stmt = db.prepare(
+            "SELECT endpoint, p256dh, auth FROM push_subscription"
+        ).expect("prepare failed");
+        stmt.query_map([], |i| {
             Ok(PushSubscription {
                 endpoint: i.get(0)?,
                 p256dh: i.get(1)?,
                 auth: i.get(2)?,
             })
-        }).unwrap();
-
-        let mut subs: Vec<PushSubscription> = Vec::new();
-        for s in results {
-            subs.push(s.unwrap());
-        }
-        subs
+        })
+        .expect("query_map failed")
+        .filter_map(Result::ok)
+        .collect::<Vec<_>>()
     };
+    broadcast_push_notification(
+        subscriptions,
+        vapid_key_path,
+        payload.message.clone(),
+    ).await;
 
-    let mut tasks = JoinSet::new();
-    for sub in subscriptions {
-        tasks.spawn(send_push_notification(
-            vapid_key_path.clone(),
-            sub.endpoint,
-            sub.p256dh,
-            sub.auth,
-            payload.message.clone(),
-        ));
-    }
-    tasks.join_all().await;
-
-    let resp = json!({
-        "success": true,
-    });
-    Json(resp)
+    Json(json!({ "success": true }))
 }
 
 #[derive(Deserialize)]
@@ -624,8 +604,7 @@ async fn set_static_cache_control(request: Request, next: middleware::Next) -> R
     response
 }
 
-pub fn app(app_state: AppState) -> Router {
-    let shared_state = SharedState::new(RwLock::new(app_state));
+pub fn app(shared_state: Arc<RwLock<AppState>>) -> Router {
     let cors = CorsLayer::permissive();
 
     Router::new()
@@ -702,7 +681,8 @@ pub async fn serve(
         gmail_api_client_secret,
     };
     let app_state = AppState::new(db, app_config);
-    let app = app(app_state);
+    let shared_state = Arc::new(RwLock::new(app_state));
+    let app = app(Arc::clone(&shared_state));
 
     let listener = tokio::net::TcpListener::bind(format!("{}:{}", host, port))
         .await
@@ -712,6 +692,67 @@ pub async fn serve(
         "Server started. Listening on {}",
         listener.local_addr().unwrap()
     );
+
+    // Run periodic tasks in the background
+    let state_clone = Arc::clone(&shared_state);
+    tokio::spawn(async move {
+        let mut ticker = interval(Duration::from_secs(10));
+        loop {
+            ticker.tick().await;
+
+            let system_msg = "You are an email assistant AI. Summarize, search, and analyze emails on behalf of the user.";
+            let user_msg = "Summarize my unread emails.";
+            let session_id = Uuid::new_v4().to_string();
+            let mut history = vec![
+                Message::new(Role::System, system_msg),
+                Message::new(Role::User, user_msg),
+            ];
+            let resp = crate::agents::email::email_chat_response(user_msg, None).await;
+            history.push(Message::new(Role::Assistant, &resp));
+
+            // Store in AppState
+            {
+                let mut state = state_clone.write().unwrap();
+                state.chat_sessions.insert(
+                    session_id.clone(),
+                    ChatSession {
+                        session_id: session_id.clone(),
+                        transcript: history.clone(),
+                    },
+                );
+            }
+
+            // Broadcast push notification to all subscribers, using a new read lock for DB/config each time
+            let vapid_key_path = {
+                let state = state_clone.read().unwrap();
+                state.config.vapid_key_path.clone()
+            };
+            let subscriptions = {
+                let state = state_clone.read().unwrap();
+                let db = state.db.lock().unwrap_or_else(|e| e.into_inner());
+                let mut stmt = db.prepare(
+                    "SELECT endpoint, p256dh, auth FROM push_subscription"
+                ).expect("prepare failed");
+                stmt.query_map([], |i| {
+                    Ok(PushSubscription {
+                        endpoint: i.get(0)?,
+                        p256dh: i.get(1)?,
+                        auth: i.get(2)?
+                    })
+                })
+                .expect("query_map failed")
+                .filter_map(Result::ok)
+                .collect::<Vec<_>>()
+            };
+            broadcast_push_notification(
+                subscriptions,
+                vapid_key_path,
+                "Emails processed!".to_string(),
+            ).await;
+
+            tracing::debug!("Periodic agent: {}", resp);
+        }
+    });
 
     axum::serve(listener, app).await.unwrap();
 }

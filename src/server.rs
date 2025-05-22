@@ -700,7 +700,7 @@ pub async fn serve(
     let state_clone = Arc::clone(&shared_state);
 
     tokio::spawn(async move {
-        let mut ticker = interval(Duration::from_secs(10));
+        let mut ticker = interval(Duration::from_secs(60*60*2));
         loop {
             ticker.tick().await;
 
@@ -711,6 +711,9 @@ pub async fn serve(
 
             let session_id = Uuid::new_v4().to_string();
             let history = crate::agents::email::email_chat_response(&note_search_api_url, emails).await;
+
+            let last_msg = history.last().unwrap();
+            let summary = last_msg.content.clone().unwrap();
 
             // Store in AppState
             {
@@ -736,7 +739,7 @@ pub async fn serve(
             broadcast_push_notification(
                 subscriptions,
                 vapid_key_path,
-                "Emails processed!".to_string(),
+                format!("Emails processed! {}", summary).to_string(),
             ).await;
         }
     });

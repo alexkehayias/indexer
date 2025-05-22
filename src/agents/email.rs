@@ -1,19 +1,23 @@
 use crate::chat;
-use crate::openai::{Message, Role};
+use crate::openai::{Message, Role, ToolCall};
+use crate::tool::EmailUnreadTool;
 
 /// Email reader and responder agent.
-pub async fn email_chat_response(user_message: &str, tools: Option<Vec<crate::openai::BoxedToolCall>>) -> String {
-    let system_message = "You are an email assistant AI. Summarize, search, and analyze emails on behalf of the user.";
+pub async fn email_chat_response(api_base_url: &str, emails: Vec<String>) -> Vec<Message> {
+
+    let email_unread_tool = EmailUnreadTool::new(api_base_url);
+    let tools: Option<Vec<Box<dyn ToolCall + Send + Sync + 'static>>> = Some(vec![
+        Box::new(email_unread_tool),
+    ]);
+
+    let system_msg = format!("You are an email assistant AI. Summarize, search, and analyze emails on behalf of the user for the following users: {}", emails.join(", "));
+    let user_msg = "Summarize my unread emails.";
 
     let mut history = vec![
-        Message::new(Role::System, system_message),
-        Message::new(Role::User, user_message),
+        Message::new(Role::System, &system_msg),
+        Message::new(Role::User, user_msg),
     ];
-
     chat::chat(&mut history, &tools).await;
-    // Return the most recent assistant message
+
     history
-        .last()
-        .and_then(|msg| msg.content.clone())
-        .unwrap_or_else(|| "No response generated.".to_string())
 }

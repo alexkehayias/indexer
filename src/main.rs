@@ -21,7 +21,14 @@ use indexer::tool::{NoteSearchTool, SearxSearchTool, EmailUnreadTool};
 #[derive(ValueEnum, Clone)]
 enum ServiceKind {
     Gmail,
-    // Future: add more
+}
+
+impl ServiceKind {
+    fn to_str(&self) -> &'static str {
+        match self {
+            ServiceKind::Gmail => "gmail",
+        }
+    }
 }
 
 #[derive(Subcommand)]
@@ -358,9 +365,9 @@ async fn main() -> Result<()> {
                         .ok_or(anyhow!("No refresh token in response"))?;
 
                     db.execute(
-                        "INSERT INTO auth (id, refresh_token) VALUES (?1, ?2)
-                         ON CONFLICT(id) DO UPDATE SET refresh_token = excluded.refresh_token",
-                        (&user_email, &refresh_token),
+                        "INSERT INTO auth (id, service, refresh_token) VALUES (?1, ?2, ?3)
+                         ON CONFLICT(id) DO UPDATE SET service = excluded.service, refresh_token = excluded.refresh_token",
+                        (&user_email, service.to_str(), &refresh_token),
                     )
                     .expect("Failed to insert/update refresh token in DB");
 

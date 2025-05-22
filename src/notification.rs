@@ -65,7 +65,7 @@ pub async fn broadcast_push_notification(
     while let Some(_res) = tasks.join_next().await {}
 }
 
-pub async fn find_notification_subscriptions(db: &Connection) -> Result<Vec<PushSubscription>, Error> {
+pub async fn find_all_notification_subscriptions(db: &Connection) -> Result<Vec<PushSubscription>, Error> {
     let subscriptions = db.call(|conn| {
         let mut stmt = conn.prepare("SELECT endpoint, p256dh, auth FROM push_subscription")?;
         let rows = stmt.query_map([], |i| {

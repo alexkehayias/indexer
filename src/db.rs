@@ -1,4 +1,5 @@
 use rusqlite::{Connection, Result, ffi::sqlite3_auto_extension};
+use tokio_rusqlite::Connection as AsyncConnection;
 use sqlite_vec::sqlite3_vec_init;
 
 /// Initialize the db by creating all tables. This function should
@@ -151,4 +152,9 @@ pub fn vector_db(path_to_db_file: &str) -> Result<Connection> {
     let db = Connection::open(format!("{}/vector.db", path_to_db_file))?;
 
     Ok(db)
+}
+
+pub async fn async_db(path_to_db_file: &str) -> anyhow::Result<AsyncConnection, anyhow::Error> {
+    let db = AsyncConnection::open(format!("{}/vector.db", path_to_db_file)).await;
+    Ok(db?)
 }

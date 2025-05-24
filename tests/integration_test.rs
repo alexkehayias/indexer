@@ -19,7 +19,8 @@ mod tests {
     use indexer::openai;
     use indexer::openai::BoxedToolCall;
     use indexer::prompt::{self, Prompt};
-    use indexer::server::{AppConfig, AppState, app};
+    use indexer::server::{AppState, app};
+use indexer::config::AppConfig;
     use serde::Serialize;
     use serde_json::json;
     use serial_test::serial;

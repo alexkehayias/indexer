@@ -180,6 +180,7 @@ mod tests {
     }
 
     #[tokio::test]
+    #[ignore]
     async fn it_makes_openai_request() {
         let messages = vec![
             openai::Message::new(openai::Role::System, "You are a helpful assistant."),
@@ -194,6 +195,7 @@ mod tests {
     }
 
     #[tokio::test]
+    #[ignore]
     async fn it_makes_openai_tool_calls() {
         let messages = vec![
             openai::Message::new(openai::Role::System, "You are a helpful assistant."),

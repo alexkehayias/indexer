@@ -1,11 +1,16 @@
+use anyhow::{Result, Error};
+use tokio_rusqlite::Connection;
+use serde_json::{json, Value};
+
 use crate::openai::{
     BoxedToolCall, FunctionCall, FunctionCallFn, Message, Role, ToolCall, completion,
 };
-use serde_json::Value;
+
 
 async fn handle_tool_calls(
-    history: &mut Vec<Message>,
     tools: &Vec<Box<dyn ToolCall + Send + Sync + 'static>>,
+    history: &mut Vec<Message>,
+    accum_new: &mut Vec<Message>,
     tool_calls: &Vec<Value>,
 ) {
     // Handle each tool call
@@ -32,15 +37,25 @@ async fn handle_tool_calls(
             id: tool_call_id.to_string(),
             r#type: String::from("function"),
         }];
-        history.push(Message::new_tool_call_request(tool_call_requests));
+        history.push(Message::new_tool_call_request(tool_call_requests.clone()));
         history.push(Message::new_tool_call_response(
+            &tool_call_result,
+            tool_call_id,
+        ));
+        accum_new.push(Message::new_tool_call_request(tool_call_requests));
+        accum_new.push(Message::new_tool_call_response(
             &tool_call_result,
             tool_call_id,
         ));
     }
 }
 
-pub async fn chat(history: &mut Vec<Message>, tools: &Option<Vec<BoxedToolCall>>) {
+/// Appends one or more messages to `history` and new messages to
+/// `accum_new` so there's no need to diff after calling this to
+/// figure out what's new.
+pub async fn chat(
+    tools: &Option<Vec<BoxedToolCall>>, history: &mut Vec<Message>, accum_new: &mut Vec<Message>
+) {
     let mut resp = completion(history, tools)
         .await
         .expect("OpenAI API call failed");
@@ -50,7 +65,7 @@ pub async fn chat(history: &mut Vec<Message>, tools: &Option<Vec<BoxedToolCall>>
         let tools_ref = tools
             .as_ref()
             .expect("Received tool call but no tools were specified");
-        handle_tool_calls(history, tools_ref, tool_calls).await;
+        handle_tool_calls(tools_ref, history, accum_new, tool_calls).await;
 
         // Provide the results of the tool calls back to the chat
         resp = completion(history, tools)
@@ -60,7 +75,42 @@ pub async fn chat(history: &mut Vec<Message>, tools: &Option<Vec<BoxedToolCall>>
 
     if let Some(msg) = resp["choices"][0]["message"]["content"].as_str() {
         history.push(Message::new(Role::Assistant, msg));
+        accum_new.push(Message::new(Role::Assistant, msg));
     } else {
         panic!("No message received. Resp:\n\n {}", resp);
     }
+}
+
+pub async fn insert_chat_message(
+    db: &Connection, session_id: &str, msg: &Message
+) -> Result<usize, Error> {
+    let s_id = session_id.to_owned();
+    let data = json!(msg).to_string();
+    let result = db.call(move |conn| {
+        let mut stmt = conn.prepare(
+            "INSERT INTO chat_message (session_id, data) VALUES (?, ?)"
+        )?;
+        let result = stmt.execute([s_id, data])?;
+        Ok(result)
+    }).await?;
+
+    Ok(result)
+}
+
+pub async fn find_chat_session_by_id(
+    db: &Connection, session_id: &str
+) -> Result<Vec<Message>, Error> {
+    let s_id = session_id.to_owned();
+    let history = db.call(move |conn| {
+        let mut stmt = conn.prepare("SELECT data FROM chat_message WHERE session_id=?")?;
+        let rows = stmt.query_map([s_id], |i| {
+            let val: String = i.get(0)?;
+            let msg: Message = serde_json::from_str(&val).unwrap();
+            Ok(msg)
+            })?
+            .filter_map(Result::ok)
+            .collect::<Vec<Message>>();
+        Ok(rows)
+    });
+    Ok(history.await?)
 }

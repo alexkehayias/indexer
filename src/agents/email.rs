@@ -17,7 +17,8 @@ pub async fn email_chat_response(api_base_url: &str, emails: Vec<String>) -> Vec
         Message::new(Role::System, &system_msg),
         Message::new(Role::User, user_msg),
     ];
-    chat::chat(&mut history, &tools).await;
+    let mut accum_new: Vec<Message> = Vec::new();
+    chat::chat(&tools, &mut history, &mut accum_new).await;
 
     history
 }

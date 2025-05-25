@@ -295,13 +295,14 @@ async fn main() -> Result<()> {
 
             // TODO: Window the list of history
             let mut history = vec![Message::new(Role::System, "You are a helpful assistant.")];
+            let mut accum_new: Vec<Message> = Vec::new();
 
             loop {
                 let readline = rl.readline("> ");
                 match readline {
                     Ok(line) => {
                         history.push(Message::new(Role::User, line.as_str()));
-                        chat(&mut history, &tools).await;
+                        chat(&tools, &mut history, &mut accum_new).await;
                         println!("{}", history.last().unwrap().content.clone().unwrap());
                     }
                     Err(ReadlineError::Interrupted) => break,

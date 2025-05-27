@@ -457,18 +457,18 @@ pub struct EmailThread {
     messages: Vec<EmailMessage>,
 }
 
-pub async fn email_unread_handler(
+async fn email_unread_handler(
     State(state): State<SharedState>,
     Query(params): Query<EmailUnreadQuery>,
 ) -> Result<Json<Value>, ApiError> {
     let refresh_token: String = {
-        let shared_state = state.read().expect("Unable to read share state");
+        let db = state.read().unwrap().a_db.clone();
 
-        let db = shared_state.db.lock().unwrap_or_else(|e| e.into_inner());
-
-        db
-            .prepare("SELECT refresh_token FROM auth WHERE id = ?1")
-            .and_then(|mut stmt| stmt.query_row([&params.email], |row| row.get(0)))?
+        db.call(move |conn| {
+            let result = conn.prepare("SELECT refresh_token FROM auth WHERE id = ?1")
+                .and_then(|mut stmt| stmt.query_row([&params.email], |row| row.get(0)))?;
+            Ok(result)
+        }).await?
     };
 
     // Pull the config values out before the async call so that we

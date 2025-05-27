@@ -32,7 +32,7 @@ use crate::chat::{chat, find_chat_session_by_id, insert_chat_message};
 use crate::indexing::index_all;
 use crate::jobs::{
     spawn_periodic_job,
-    email_agent::ProcessEmail,
+    ProcessEmail,
 };
 use crate::openai::{BoxedToolCall, Message, Role};
 use crate::tool::{NoteSearchTool, SearxSearchTool, EmailUnreadTool};

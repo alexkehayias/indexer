@@ -292,46 +292,26 @@ async fn search(
 }
 
 // Build the index for all notes
-async fn index_notes(State(state): State<SharedState>) -> Json<Value> {
-    tokio::spawn(async move {
+async fn index_notes(State(state): State<SharedState>) -> Result<Json<Value>, ApiError> {
+    // Clone all of these vars so we don't pass data across await
+    // calls below
+    let (a_db, index_path, notes_path, deploy_key_path) = {
         let shared_state = state.read().expect("Unable to read share state");
-        let mut db = shared_state
-            .db
-            .lock()
-            // Ignoring any previous panics since we are trying to get the
-            // db connection and it's probably fine
-            .unwrap_or_else(|e| e.into_inner());
-
-        let AppConfig {
-            index_path,
-            notes_path,
-            deploy_key_path,
-            ..
-        } = &shared_state.config;
-
-        // Pull the latest from origin
-        maybe_pull_and_reset_repo(deploy_key_path, notes_path);
-
-        // Determine which notes changed
-        let diff = diff_last_commit_files(deploy_key_path, notes_path);
-        // NOTE: This assumes all notes are in one directory at the root
-        // of `notes_path`. This will not work if note files are in
-        // different directories!
-        let paths: Vec<PathBuf> = diff
-            .iter()
-            .map(|f| PathBuf::from(format!("{}/{}", notes_path, f)))
-            .collect();
+        (
+            shared_state.a_db.clone(),
+            shared_state.config.index_path.clone(),
+            shared_state.config.notes_path.clone(),
+            shared_state.config.deploy_key_path.clone(),
+        )
+    };
+    tokio::spawn(async move {
+        maybe_pull_and_reset_repo(&deploy_key_path, &notes_path);
+        let diff = diff_last_commit_files(&deploy_key_path, &notes_path);
+        let paths: Vec<PathBuf> = diff.iter().map(|f| PathBuf::from(format!("{}/{}", &notes_path, f))).collect();
         let filter_paths = if paths.is_empty() { None } else { Some(paths) };
-
-        // Re-index just the notes that changed
-        index_all(&mut db, index_path, notes_path, true, true, filter_paths)
-            .expect("Vector indexing failed");
+        index_all(&a_db, &index_path, &notes_path, true, true, filter_paths).await.unwrap();
     });
-
-    let resp = json!({
-        "success": true,
-    });
-    Json(resp)
+    Ok(Json(json!({ "success": true })))
 }
 
 #[derive(Serialize)]

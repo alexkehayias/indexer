@@ -65,7 +65,7 @@ use indexer::config::AppConfig;
         initialize_db(&db).expect("Failed to migrate db");
         let a_db = async_db(db_path_str).await.expect("Failed to connect to async db");
 
-        index_dummy_notes(&mut db, dir);
+        index_dummy_notes_async(&a_db, dir.clone()).await;
 
         let app_config = AppConfig {
             notes_path: notes_path.display().to_string(),
@@ -81,7 +81,7 @@ use indexer::config::AppConfig;
         app(Arc::new(RwLock::new(app_state)))
     }
 
-    fn index_dummy_notes(db: &mut rusqlite::Connection, temp_dir: PathBuf) {
+    async fn index_dummy_notes_async(a_db: &tokio_rusqlite::Connection, temp_dir: PathBuf) {
         let index_dir = temp_dir.join("index");
         let index_dir_path = index_dir.to_str().unwrap();
         fs::create_dir_all(index_dir_path).expect("Failed to create directory");
@@ -104,8 +104,9 @@ use indexer::config::AppConfig;
         )
         .unwrap();
 
-        index_all(db, index_dir_path, notes_dir_path, true, true, Some(paths)).unwrap();
+        index_all(a_db, index_dir_path, notes_dir_path, true, true, Some(paths)).await.unwrap();
     }
+
 
     #[tokio::test]
     #[serial]

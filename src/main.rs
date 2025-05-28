@@ -217,21 +217,21 @@ async fn main() -> Result<()> {
                 .expect("Missing env var INDEXER_NOTES_REPO_URL");
             maybe_pull_and_reset_repo(&deploy_key_path, &notes_path);
 
-            let mut db = vector_db(&vec_db_path).expect("Failed to connect to db");
+            let db = indexer::db::async_db(&vec_db_path).await.expect("Failed to connect to async db");
 
             if full_text {
-                // Index for full text search
-                index_all(&mut db, &index_path, &notes_path, true, false, None)
+                index_all(&db, &index_path, &notes_path, true, false, None)
+                    .await
                     .expect("Indexing failed");
             }
             if vector {
-                // Index for vector search
-                index_all(&mut db, &index_path, &notes_path, false, true, None)
+                index_all(&db, &index_path, &notes_path, false, true, None)
+                    .await
                     .expect("Indexing failed");
             }
-
             if all {
-                index_all(&mut db, &index_path, &notes_path, true, true, None)
+                index_all(&db, &index_path, &notes_path, true, true, None)
+                    .await
                     .expect("Indexing failed");
             }
         }
@@ -244,14 +244,15 @@ async fn main() -> Result<()> {
                 .with(tracing_subscriber::fmt::layer())
                 .init();
 
-            let mut db = vector_db(&vec_db_path).expect("Failed to connect to db");
+            let db = indexer::db::async_db(&vec_db_path).await.expect("Failed to connect to async db");
 
             // Delete all note metadata and vector data
             println!("Deleting all meta data in the db...");
-            db.execute("DELETE FROM vec_items", [])
-                .expect("Failed to delete vec_items data");
-            db.execute("DELETE FROM note_meta", [])
-                .expect("Failed to delete note_meta data");
+            db.call(|conn| {
+                conn.execute("DELETE FROM vec_items", [])?;
+                conn.execute("DELETE FROM note_meta", [])?;
+                Ok(())
+            }).await.expect("Failed to delete note_meta or vec_items data");
             println!("Finished deleting all meta data the db...");
 
             // Remove the full text search index
@@ -260,7 +261,8 @@ async fn main() -> Result<()> {
             println!("Finished recreating search index");
 
             // Index everything
-            index_all(&mut db, &index_path, &notes_path, true, true, None)
+            index_all(&db, &index_path, &notes_path, true, true, None)
+                .await
                 .expect("Indexing failed");
         }
         Some(Command::Query { term, vector }) => {

@@ -1,6 +1,7 @@
 use fastembed::{EmbeddingModel, InitOptions, TextEmbedding};
 use itertools::Itertools;
-use rusqlite::{Connection, Result};
+use rusqlite::Result;
+use tokio_rusqlite::Connection;
 use serde::Serialize;
 use serde_json::json;
 use tantivy::collector::TopDocs;
@@ -79,11 +80,11 @@ fn fulltext_search(index_path: &str, query: &aql::Expr, limit: usize) -> Result<
 /// Returns the note ID and similarity distance for the query. Results
 /// are ordered by ascending distance because sqlite-vec only supports
 /// ascending distance.
-pub fn search_similar_notes(
-    db: &Connection,
+pub async fn search_similar_notes(
+    db: &tokio_rusqlite::Connection,
     query: &aql::Expr,
     limit: usize,
-) -> Result<Vec<SearchHit>> {
+) -> anyhow::Result<Vec<SearchHit>> {
     // Extract the relevant text to use for similar search from the
     // AQL query. It's possible there is nothing to use for a
     // similarity search. This can happen when the query is entirely
@@ -102,9 +103,9 @@ pub fn search_similar_notes(
         .embed(vec![similarity_string.unwrap()], None)
         .unwrap();
     let q = query_vector[0].clone();
-    let result: Vec<SearchHit> = db
-        .prepare(
-            r"
+    let result: Vec<SearchHit> = db.call(move |conn| {
+        let mut stmt = conn.prepare(
+            r#"
           SELECT
             note_meta.id,
             note_meta.file_name,
@@ -118,9 +119,9 @@ pub fn search_similar_notes(
           WHERE embedding MATCH ? AND k = ?
           ORDER BY distance
           LIMIT ?
-        ",
-        )?
-        .query_map([q.as_bytes(), limit.as_bytes(), limit.as_bytes()], |r| {
+        "#,
+        )?;
+        let found = stmt.query_map([q.as_bytes(), limit.as_bytes(), limit.as_bytes()], |r| {
             Ok(SearchHit {
                 r#type: SearchHitType::Similarity,
                 id: r.get(0)?,
@@ -128,6 +129,8 @@ pub fn search_similar_notes(
             })
         })?
         .collect::<Result<Vec<SearchHit>, _>>()?;
+        Ok(found)
+    }).await?;
     Ok(result)
 }
 
@@ -152,13 +155,13 @@ pub struct SearchResult {
 // `include_similarity`, also includes vector search results appended
 // to the end of the list of results. This way, if there is a keyword
 // search miss, there may be semantically similar results.
-pub fn search_notes(
+pub async fn search_notes(
     index_path: &str,
     db: &Connection,
     include_similarity: bool,
     query: &aql::Expr,
     limit: usize,
-) -> Vec<SearchResult> {
+) -> anyhow::Result<Vec<SearchResult>> {
     // The limit of search hits needs to be high enough here for broad
     // queries like `status:todo deadline:>2025-04-01` otherwise
     // results will be unexpectedly missing
@@ -168,7 +171,7 @@ pub fn search_notes(
     // relevance
     let mut search_hits = fulltext_search(index_path, query, 10000).unwrap_or_else(|_| Vec::new());
     if include_similarity {
-        let mut vec_search_result = search_similar_notes(db, query, limit).unwrap_or_default();
+        let mut vec_search_result = search_similar_notes(db, query, limit).await.unwrap_or_default();
 
         // Combine the results, dedupe, then sort by score
         search_hits.append(&mut vec_search_result);
@@ -222,12 +225,10 @@ pub fn search_notes(
         where_clause, limit
     );
 
-    // Need to do that because query_map takes an array whose size and
-    // type need to be known at compile time
-    if !result_ids.is_empty() {
-        db.prepare(&sql)
-            .unwrap()
-            .query_map([result_ids_str.as_bytes()], |r| {
+    let results: Vec<SearchResult> = if !result_ids.is_empty() {
+        db.call(move |conn| {
+            let mut stmt = conn.prepare(&sql).unwrap();
+            let found = stmt.query_map([result_ids_str.as_bytes()], |r| {
                 let maybe_task_status: Option<String> = r.get(7)?;
                 Ok(SearchResult {
                     id: r.get(0)?,
@@ -244,14 +245,14 @@ pub fn search_notes(
                     task_closed: r.get(10)?,
                     meeting_date: r.get(11)?,
                 })
-            })
-            .unwrap()
-            .collect::<Result<Vec<SearchResult>, _>>()
-            .unwrap()
+            }).unwrap()
+            .collect::<Result<Vec<SearchResult>, _>>()?;
+            Ok(found)
+        }).await.unwrap()
     } else {
-        db.prepare(&sql)
-            .unwrap()
-            .query_map([], |r| {
+        db.call(move |conn| {
+            let mut stmt = conn.prepare(&sql).unwrap();
+            let found = stmt.query_map([], |r| {
                 let maybe_task_status: Option<String> = r.get(7)?;
                 Ok(SearchResult {
                     id: r.get(0)?,
@@ -268,9 +269,10 @@ pub fn search_notes(
                     task_closed: r.get(10)?,
                     meeting_date: r.get(11)?,
                 })
-            })
-            .unwrap()
-            .collect::<Result<Vec<SearchResult>, _>>()
-            .unwrap()
-    }
+            }).unwrap()
+            .collect::<Result<Vec<SearchResult>, _>>()?;
+            Ok(found)
+        }).await.unwrap()
+    };
+    Ok(results)
 }

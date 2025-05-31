@@ -525,6 +525,8 @@ fn index_note_meta(db: &mut Connection, file_name: &str, note: &Note) -> Result<
 /// saving notes in the db, full text search index, and vector
 /// storage. This needs to be done in one to avoid parsing org mode
 /// notes many times for each index.
+use std::sync::Arc;
+
 pub async fn index_all(
     db: &tokio_rusqlite::Connection,
     index_dir_path: &str,
@@ -533,19 +535,17 @@ pub async fn index_all(
     index_vector: bool,
     paths: Option<Vec<PathBuf>>,
 ) -> Result<()> {
-    let embeddings_model = TextEmbedding::try_new(
-        InitOptions::new(EmbeddingModel::BGESmallENV15).with_show_download_progress(true),
-    )
-    .unwrap();
-
+    let embeddings_model = Arc::new(
+        TextEmbedding::try_new(
+            InitOptions::new(EmbeddingModel::BGESmallENV15).with_show_download_progress(true),
+        )
+        .unwrap(),
+    );
     let tokenizer = cl100k_base().unwrap();
-    // Targeting Llama 3.2 with a context window of 128k tokens means
-    // we can stuff around 100 documents
     let max_tokens = 1280;
-    let splitter = TextSplitter::new(ChunkConfig::new(max_tokens).with_sizer(tokenizer));
+    let splitter = Arc::new(TextSplitter::new(ChunkConfig::new(max_tokens).with_sizer(tokenizer)));
 
     let note_paths: Vec<PathBuf> = if let Some(path_bufs) = paths {
-        // Only index the specified notes
         note_filter(notes_dir_path, path_bufs)
     } else {
         notes(notes_dir_path)
@@ -562,45 +562,24 @@ pub async fn index_all(
 
     for p in note_paths.iter() {
         tracing::debug!("Indexing note: {:?}", p);
-        // Don't hardcode file paths as it might be different between
-        // local and server
-        let file_name = p.file_name().unwrap().to_str().unwrap().to_owned();
 
-        // Only read and parse each note once
-        let content =
-            fs::read_to_string(p).unwrap_or_else(|err| panic!("Error {} file: {:?}", err, p));
-        let note = parse_note(&content);
+        // Arc the shared items so that it can be safely passed to the
+        // async closure.
+        let file_name = Arc::new(p.file_name().unwrap().to_str().unwrap().to_owned());
+        let content = fs::read_to_string(p).unwrap_or_else(|err| panic!("Error {} file: {:?}", err, p));
+        let note = Arc::new(parse_note(&content));
 
-        // Compute embeddings now, if needed, and pass them in
-        let embeddings: Option<Vec<Vec<Vec<f32>>>> = if index_vector {
-            Some(
-                splitter.chunks(&note.body)
-                    .map(|chunk| embeddings_model.embed(vec![chunk], None).expect("Failed to generate embeddings"))
-                    .collect()
-            )
-        } else {
-            None
-        };
+        let embeddings_model = Arc::clone(&embeddings_model);
+        let splitter = Arc::clone(&splitter);
+        let note_inner = Arc::clone(&note);
+        let file_name_inner = Arc::clone(&file_name);
 
-        let note_for_db = note.clone();
-        let file_name_for_db = file_name.clone();
         db.call(move |conn| {
-            index_note_meta(conn, &file_name_for_db, &note_for_db).expect("Upserting note meta failed");
-            if let Some(ref all_embeddings) = embeddings {
-                let mut embedding_stmt = conn.prepare(
-                    "INSERT OR REPLACE INTO vec_items(note_meta_id, embedding) VALUES (?, ?)"
-                )?;
-                let mut embedding_update_stmt = conn.prepare(
-                    "UPDATE vec_items set embedding = ? WHERE note_meta_id = ?")?;
-                for embedding in all_embeddings.clone().concat() {
-                    embedding_stmt
-                        .execute(rusqlite::params![note_for_db.id, embedding.as_bytes()])
-                        .unwrap_or_else(|_| {
-                            embedding_update_stmt
-                                .execute(rusqlite::params![embedding.as_bytes(), note_for_db.id])
-                                .expect("Update failed")
-                        });
-                }
+            index_note_meta(conn, &file_name_inner, &note_inner).expect("Upserting note meta failed");
+
+            if index_vector {
+                index_note_vector(conn, &embeddings_model, &splitter, &note_inner)
+                    .expect("Upserting note vector failed");
             }
             Ok(())
         }).await.expect("DB work failed");
@@ -610,6 +589,7 @@ pub async fn index_all(
                 .expect("Updating full text search failed");
         }
     }
+
     index_writer
         .commit()
         .expect("Full text search index failed to commit");

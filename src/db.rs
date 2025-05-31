@@ -171,6 +171,16 @@ pub fn vector_db(path_to_db_file: &str) -> Result<Connection> {
 }
 
 pub async fn async_db(path_to_db_file: &str) -> anyhow::Result<AsyncConnection, anyhow::Error> {
+    unsafe {
+        sqlite3_auto_extension(Some(std::mem::transmute::<
+            *const (),
+            unsafe extern "C" fn(
+                *mut tokio_rusqlite::ffi::sqlite3,
+                *mut *mut i8,
+                *const tokio_rusqlite::ffi::sqlite3_api_routines,
+            ) -> i32,
+        >(sqlite3_vec_init as *const ())));
+    }
     let db = AsyncConnection::open(format!("{}/vector.db", path_to_db_file)).await;
     Ok(db?)
 }

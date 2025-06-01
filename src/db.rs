@@ -1,5 +1,5 @@
-use rusqlite::{Connection, Result, ffi::sqlite3_auto_extension};
-use tokio_rusqlite::Connection as AsyncConnection;
+use rusqlite::Connection;
+use tokio_rusqlite::{Connection as AsyncConnection, Result, ffi::sqlite3_auto_extension};
 use sqlite_vec::sqlite3_vec_init;
 
 /// Initialize the db by creating all tables. This function should
@@ -152,22 +152,6 @@ COMMIT;",
     }
 
     Ok(())
-}
-
-pub fn vector_db(path_to_db_file: &str) -> Result<Connection> {
-    unsafe {
-        sqlite3_auto_extension(Some(std::mem::transmute::<
-            *const (),
-            unsafe extern "C" fn(
-                *mut rusqlite::ffi::sqlite3,
-                *mut *mut i8,
-                *const rusqlite::ffi::sqlite3_api_routines,
-            ) -> i32,
-        >(sqlite3_vec_init as *const ())));
-    }
-    let db = Connection::open(format!("{}/vector.db", path_to_db_file))?;
-
-    Ok(db)
 }
 
 pub async fn async_db(path_to_db_file: &str) -> anyhow::Result<AsyncConnection, anyhow::Error> {

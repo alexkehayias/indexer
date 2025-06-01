@@ -8,7 +8,7 @@ use crate::source::{note_filter, notes};
 use fastembed::{EmbeddingModel, InitOptions, TextEmbedding};
 use orgize::ParseConfig;
 use orgize::rowan::ast::AstNode;
-use rusqlite::{Connection, Result};
+use tokio_rusqlite::{Connection, Result};
 use std::fs;
 use std::hash::DefaultHasher;
 use tantivy::schema::*;
@@ -412,7 +412,7 @@ fn index_note_full_text(
 /// 5. Include metadata about the source of the chunk for further
 ///    retrieval and to avoid duplicating rows
 fn index_note_vector(
-    db: &mut Connection,
+    db: &mut rusqlite::Connection,
     embeddings_model: &TextEmbedding,
     splitter: &TextSplitter<CoreBPE>,
     note: &Note,
@@ -438,10 +438,10 @@ fn index_note_vector(
         // attempts to insert a new row and then falls back to an
         // update statement.
         embedding_stmt
-            .execute(rusqlite::params![note.id, embedding.as_bytes()])
+            .execute(tokio_rusqlite::params![note.id, embedding.as_bytes()])
             .unwrap_or_else(|_| {
                 embedding_update_stmt
-                    .execute(rusqlite::params![embedding.as_bytes(), note.id])
+                    .execute(tokio_rusqlite::params![embedding.as_bytes(), note.id])
                     .expect("Update failed")
             });
     }
@@ -453,7 +453,7 @@ fn index_note_vector(
 /// representing the note that all other indexes refer to by ID. It
 /// should always be safe to query an index and then lookup the
 /// note(s) by ID.
-fn index_note_meta(db: &mut Connection, file_name: &str, note: &Note) -> Result<()> {
+fn index_note_meta(db: &mut rusqlite::Connection, file_name: &str, note: &Note) -> Result<()> {
     let mut note_meta_stmt = db.prepare(
         "REPLACE INTO note_meta(id, type, category, file_name, title, tags, body) VALUES (?, ?, ?, ?, ?, ?, ?)",
     )?;
@@ -461,7 +461,7 @@ fn index_note_meta(db: &mut Connection, file_name: &str, note: &Note) -> Result<
     // Update the note meta table
     note_meta_stmt
         // TODO: Don't hardcode the note path, save the file name instead
-        .execute(rusqlite::params![
+        .execute(tokio_rusqlite::params![
             note.id,
             "note",
             note.category,
@@ -486,7 +486,7 @@ fn index_note_meta(db: &mut Connection, file_name: &str, note: &Note) -> Result<
 
     for m in note.meetings.iter() {
         meeting_meta_stmt
-            .execute(rusqlite::params![
+            .execute(tokio_rusqlite::params![
                 m.id, "meeting", m.category, file_name, m.title, m.tags, m.body, m.date
             ])
             .expect("Note meta upsert failed for meeting");
@@ -494,7 +494,7 @@ fn index_note_meta(db: &mut Connection, file_name: &str, note: &Note) -> Result<
 
     for t in note.headings.iter() {
         heading_meta_stmt
-            .execute(rusqlite::params![
+            .execute(tokio_rusqlite::params![
                 t.id, "heading", t.category, file_name, t.title, t.tags, t.body
             ])
             .expect("Note meta upsert failed for heading");
@@ -502,7 +502,7 @@ fn index_note_meta(db: &mut Connection, file_name: &str, note: &Note) -> Result<
 
     for t in note.tasks.iter() {
         task_meta_stmt
-            .execute(rusqlite::params![
+            .execute(tokio_rusqlite::params![
                 t.id,
                 "task",
                 t.category,
@@ -528,7 +528,7 @@ fn index_note_meta(db: &mut Connection, file_name: &str, note: &Note) -> Result<
 use std::sync::Arc;
 
 pub async fn index_all(
-    db: &tokio_rusqlite::Connection,
+    db: &Connection,
     index_dir_path: &str,
     notes_dir_path: &str,
     index_full_text: bool,

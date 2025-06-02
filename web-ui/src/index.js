@@ -212,14 +212,14 @@
                 })
                 .then(noteData => {
                   let html = '';
-                  // Show title
-                  html += `<div class=\"text-2xl font-bold mb-2\">${noteData.title||''}</div>`;
+                  // Render markdown into HTML
+                  const messageHtml = marked.parse(noteData.body, { breaks: true });
                   // Tags
                   if (noteData.tags) {
-                    html += `<div class=\"mb-4\">${noteData.tags.split(',').map(t=>`<span class=\\"inline-block mr-2 bg-gray-200 text-gray-700 text-xs px-2 py-0.5 rounded-full\\">#${t}</span>`).join('')}</div>`;
+                    html += `<div class=\"mb-4\">${noteData.tags.split(',').map(t=>`<span class=\"inline-block mr-2 bg-gray-200 text-gray-700 text-xs px-2 py-0.5 rounded-full\">#${t}</span>`).join('')}</div>`;
                   }
-                  // Content (plain text, preserving white space)
-                  html += `<div class=\"whitespace-pre-wrap leading-relaxed text-base text-gray-800\">${noteData.body||''}</div>`;
+                  // Content
+                  html += `<div class=\"markdown leading-relaxed text-base text-gray-800\">${messageHtml||''}</div>`;
                   // Insert and keep the close button on top
                   content.innerHTML = `<button id=\"modal-close-btn\" class=\"absolute top-3 right-6 bg-transparent border-0 text-3xl text-gray-500 hover:text-black cursor-pointer\">×</button>` + html;
                   content.querySelector('#modal-close-btn').onclick = dismissModal;

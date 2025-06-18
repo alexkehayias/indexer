@@ -286,20 +286,23 @@ async fn main() -> Result<()> {
         Some(Command::Chat {}) => {
             let mut rl = DefaultEditor::new().expect("Editor failed");
 
-            let note_search_tool = env::var("INDEXER_NOTE_SEARCH_API_URL")
-                .map(|url| NoteSearchTool::new(&url))
-                .unwrap_or_default();
-            let email_unread_tool = env::var("INDEXER_NOTE_SEARCH_API_URL")
-                .map(|url| EmailUnreadTool::new(&url))
-                .unwrap_or_default();
-            let searx_search_tool = env::var("INDEXER_SEARXNG_API_URL")
-                .map(|url| SearxSearchTool::new(&url))
-                .unwrap_or_default();
+            // Create tools
+            let note_search_api_url = env::var("INDEXER_NOTE_SEARCH_API_URL").unwrap_or_default();
+            let searxng_api_url = env::var("INDEXER_SEARXNG_API_URL").unwrap_or_default();
+            let note_search_tool = NoteSearchTool::new(&note_search_api_url);
+            let email_unread_tool = EmailUnreadTool::new(&note_search_api_url);
+            let searx_search_tool = SearxSearchTool::new(&searxng_api_url);
+            
             let tools: Option<Vec<Box<dyn ToolCall + Send + Sync + 'static>>> = Some(vec![
                 Box::new(note_search_tool),
                 Box::new(searx_search_tool),
                 Box::new(email_unread_tool),
             ]);
+
+            // Get OpenAI API configuration from environment variables (similar to AppConfig)
+            let openai_api_hostname = env::var("OPENAI_API_HOSTNAME").unwrap_or_else(|_| "https://api.openai.com".to_string());
+            let openai_api_key = env::var("OPENAI_API_KEY").expect("OPENAI_API_KEY environment variable is not set");
+            let openai_model = env::var("OPENAI_MODEL").unwrap_or_else(|_| "gpt-4.1-mini".to_string());
 
             // TODO: Window the list of history
             let mut history = vec![Message::new(Role::System, "You are a helpful assistant.")];
@@ -310,7 +313,7 @@ async fn main() -> Result<()> {
                 match readline {
                     Ok(line) => {
                         history.push(Message::new(Role::User, line.as_str()));
-                        chat(&tools, &mut history, &mut accum_new).await;
+                        chat(&tools, &mut history, &mut accum_new, &openai_api_hostname, &openai_api_key, &openai_model).await;
                         println!("{}", history.last().unwrap().content.clone().unwrap());
                     }
                     Err(ReadlineError::Interrupted) => break,

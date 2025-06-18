@@ -17,13 +17,26 @@ impl PeriodicJob for ProcessEmail {
     }
 
     async fn run_job(&self, config: &AppConfig, db: &Connection) {
-        let AppConfig {note_search_api_url, vapid_key_path, ..} = config;
+        let AppConfig {
+            note_search_api_url, 
+            vapid_key_path,
+            openai_api_hostname,
+            openai_api_key,
+            openai_model,
+            ..
+        } = config;
         let emails = {
             find_all_gmail_auth_emails(db).await.expect("Query failed")
         };
 
         let session_id = Uuid::new_v4().to_string();
-        let history = crate::agents::email::email_chat_response(note_search_api_url, emails).await;
+        let history = crate::agents::email::email_chat_response(
+            note_search_api_url, 
+            emails,
+            openai_api_hostname,
+            openai_api_key,
+            openai_model
+        ).await;
         let last_msg = history.last().unwrap();
         let summary = last_msg.content.clone().unwrap();
 

@@ -71,6 +71,8 @@ docker run -p 2222:2222 -d indexer:latest
 - `DOKKU_DOCKERFILE_START_CMD` to `serve --host 0.0.0.0 --port 2222`
 10. On local, add remote `git remote add dokku dokku@<dokku-host>:indexer`
 11. Push to build and start `git push dokku main`
+12. Increase the default proxy timeout `dokku nginx:set indexer proxy-read-timeout 5m`
+13. Redeploy the app so the `nginx` changes take effect `dokku deploy indexer`
 
 ## Queries
 

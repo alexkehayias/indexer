@@ -1,3 +1,5 @@
+use std::time::Duration;
+
 use anyhow::{Error, Result};
 use async_trait::async_trait;
 use erased_serde;
@@ -155,6 +157,7 @@ pub async fn completion(
         .post(url)
         .bearer_auth(api_key)
         .header("Content-Type", "application/json")
+        .timeout(Duration::from_secs(60*5))
         .json(&payload)
         .send()
         .await?

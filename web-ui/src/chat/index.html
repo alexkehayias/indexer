@@ -6,16 +6,19 @@
   <link href="../output.css" rel="stylesheet">
   <title>Notes Chat</title>
 </head>
-<body class="bg-gray-100">
-  <div style="height: 100dvh;" class="bg-white mx-auto w-full lg:max-w-2xl p-4 flex flex-col">
-    <div id="chat-display" class="grow overflow-y-auto border-b border-gray-300 mb-4 flex flex-col-reverse "></div>
-    <div class="flex">
-      <input id="chat-input"
+<body>
+  <div style="height: 100dvh;" class="bg-white mx-auto flex flex-col items-center">
+    <div class="overflow-y-auto w-full flex flex-col items-center">
+      <div id="chat-display" class="p-4 grow flex flex-col-reverse w-full lg:max-w-2xl"></div>
+    </div>
+    <div class="relative w-full px-4 pb-4 lg:max-w-2xl">
+      <textarea id="chat-input"
              type="text"
-             class="flex-grow border border-gray-300 border-r-0 p-2 rounded-l"
-             placeholder="Type a message...">
+             class="block w-full p-4 border border-gray-300 rounded highlight-none"
+             placeholder="Type a message..."
+             rows="1"></textarea>
       <button id="send-button"
-              class="bg-blue-500 text-white px-4 py-2 rounded-r">
+              class="bg-blue-500 text-white px-4 py-2 rounded absolute end-[1.5rem] bottom-[1.5rem] right-[1.5rem]">
         Send
       </button>
     </div>

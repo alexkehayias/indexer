@@ -1,7 +1,7 @@
 use crate::aql::{Expr, RangeOp};
 use std::ops::Bound;
 use tantivy::Term;
-use tantivy::query::{AllQuery, BooleanQuery, TermQuery};
+use tantivy::query::{AllQuery, BooleanQuery, FuzzyTermQuery, TermQuery};
 use tantivy::query::{Occur, Query};
 use tantivy::schema::{Field, IndexRecordOption, Schema};
 
@@ -73,7 +73,7 @@ pub fn aql_to_index_query(expr: &Expr, schema: &Schema) -> Option<Box<dyn Query>
                             ),
                         ]))
                     } else {
-                        Box::new(TermQuery::new(term, IndexRecordOption::Basic)) as Box<dyn Query>
+                        Box::new(FuzzyTermQuery::new(term, 2, true)) as Box<dyn Query>
                     }
                 })
                 .collect();

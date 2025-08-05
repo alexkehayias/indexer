@@ -1,4 +1,12 @@
 document.addEventListener('DOMContentLoaded', () => {
+  // Preload dog images to avoid fetching them each time
+  const dogImages = [];
+  for (let i = 1; i <= 3; i++) {
+    const img = new Image();
+    img.src = `./img/dog${i}.png`;
+    dogImages.push(img);
+  }
+
   const urlParams = new URLSearchParams(window.location.search);
   let sessionId;
   const maybeSessionId = urlParams.get("session_id");

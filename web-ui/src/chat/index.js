@@ -18,14 +18,25 @@ document.addEventListener('DOMContentLoaded', () => {
         'Content-Type': 'application/json'
       },
     })
-    .then(response => response.json())
+    .then(response => {
+      if (response.status === 404) {
+        console.log('Session not found, starting new conversation');
+        return Promise.resolve(null);
+      } else if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+      return response.json();
+    })
     .then(data => {
-      data.transcript.map(message => {
-        const isUser = message.role === 'user';
-        const isAssistant = message.role === 'assistant';
-        const isToolCall = (message.role === 'tool') || (isAssistant && !message.content);
-        renderMessageBubble(message.content, isUser, isToolCall);
-      });
+      // Only process transcript if we have data
+      if (data && data.transcript) {
+        data.transcript.map(message => {
+          const isUser = message.role === 'user';
+          const isAssistant = message.role === 'assistant';
+          const isToolCall = (message.role === 'tool') || (isAssistant && !message.content);
+          renderMessageBubble(message.content, isUser, isToolCall);
+        });
+      }
     })
     .catch(error => console.error('Error:', error));
   } else {

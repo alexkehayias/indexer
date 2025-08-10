@@ -30,7 +30,9 @@
   > p a {
     @apply text-gray-900 underline;
   }
-  > p code,
+  > p code {
+    @apply text-sm font-semibold text-red-700 bg-gray-200 text-wrap;
+  }
   > ul code {
     @apply text-sm font-bold text-gray-700 bg-gray-200;
   }

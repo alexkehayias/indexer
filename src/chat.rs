@@ -54,8 +54,8 @@ async fn handle_tool_calls(
 /// `accum_new` so there's no need to diff after calling this to
 /// figure out what's new.
 pub async fn chat(
-    tools: &Option<Vec<BoxedToolCall>>, 
-    history: &mut Vec<Message>, 
+    tools: &Option<Vec<BoxedToolCall>>,
+    history: &mut Vec<Message>,
     accum_new: &mut Vec<Message>,
     api_hostname: &str,
     api_key: &str,
@@ -67,6 +67,9 @@ pub async fn chat(
 
     // Tool calls need to be handled for the chat to proceed
     while let Some(tool_calls) = resp["choices"][0]["message"]["tool_calls"].as_array() {
+        if tool_calls.is_empty() {
+            break;
+        }
         let tools_ref = tools
             .as_ref()
             .expect("Received tool call but no tools were specified");

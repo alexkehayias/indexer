@@ -1,6 +1,6 @@
 use anyhow::{Error, Result};
-use tokio_rusqlite::Connection;
 use serde::{Deserialize, Serialize};
+use tokio_rusqlite::Connection;
 use web_push::{
     ContentEncoding, HyperWebPushClient, SubscriptionInfo, VapidSignatureBuilder, WebPushClient,
     WebPushMessageBuilder,
@@ -20,7 +20,6 @@ pub async fn send_push_notification(
     auth: String,
     payload: String,
 ) -> Result<(), Error> {
-
     // Create subscription info
     let subscription_info = SubscriptionInfo::new(endpoint, p256dh, auth);
 
@@ -65,15 +64,19 @@ pub async fn broadcast_push_notification(
     while let Some(_res) = tasks.join_next().await {}
 }
 
-pub async fn find_all_notification_subscriptions(db: &Connection) -> Result<Vec<PushSubscription>, Error> {
+pub async fn find_all_notification_subscriptions(
+    db: &Connection,
+) -> Result<Vec<PushSubscription>, Error> {
     let subscriptions = db.call(|conn| {
         let mut stmt = conn.prepare("SELECT endpoint, p256dh, auth FROM push_subscription")?;
-        let rows = stmt.query_map([], |i| {
-            Ok(PushSubscription {
-                endpoint: i.get(0)?,
-                p256dh: i.get(1)?,
-                auth: i.get(2)?
-            })})?
+        let rows = stmt
+            .query_map([], |i| {
+                Ok(PushSubscription {
+                    endpoint: i.get(0)?,
+                    p256dh: i.get(1)?,
+                    auth: i.get(2)?,
+                })
+            })?
             .filter_map(Result::ok)
             .collect::<Vec<PushSubscription>>();
         Ok(rows)

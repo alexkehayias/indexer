@@ -1,11 +1,10 @@
-use anyhow::{Result, Error};
+use anyhow::{Error, Result};
+use serde_json::{Value, json};
 use tokio_rusqlite::Connection;
-use serde_json::{json, Value};
 
 use crate::openai::{
     BoxedToolCall, FunctionCall, FunctionCallFn, Message, Role, ToolCall, completion,
 };
-
 
 async fn handle_tool_calls(
     tools: &Vec<Box<dyn ToolCall + Send + Sync + 'static>>,
@@ -59,7 +58,7 @@ pub async fn chat(
     accum_new: &mut Vec<Message>,
     api_hostname: &str,
     api_key: &str,
-    model: &str
+    model: &str,
 ) {
     let mut resp = completion(history, tools, api_hostname, api_key, model)
         .await
@@ -90,31 +89,36 @@ pub async fn chat(
 }
 
 pub async fn insert_chat_message(
-    db: &Connection, session_id: &str, msg: &Message
+    db: &Connection,
+    session_id: &str,
+    msg: &Message,
 ) -> Result<usize, Error> {
     let s_id = session_id.to_owned();
     let data = json!(msg).to_string();
-    let result = db.call(move |conn| {
-        let mut stmt = conn.prepare(
-            "INSERT INTO chat_message (session_id, data) VALUES (?, ?)"
-        )?;
-        let result = stmt.execute([s_id, data])?;
-        Ok(result)
-    }).await?;
+    let result = db
+        .call(move |conn| {
+            let mut stmt =
+                conn.prepare("INSERT INTO chat_message (session_id, data) VALUES (?, ?)")?;
+            let result = stmt.execute([s_id, data])?;
+            Ok(result)
+        })
+        .await?;
 
     Ok(result)
 }
 
 pub async fn find_chat_session_by_id(
-    db: &Connection, session_id: &str
+    db: &Connection,
+    session_id: &str,
 ) -> Result<Vec<Message>, Error> {
     let s_id = session_id.to_owned();
     let history = db.call(move |conn| {
         let mut stmt = conn.prepare("SELECT data FROM chat_message WHERE session_id=?")?;
-        let rows = stmt.query_map([s_id], |i| {
-            let val: String = i.get(0)?;
-            let msg: Message = serde_json::from_str(&val).unwrap();
-            Ok(msg)
+        let rows = stmt
+            .query_map([s_id], |i| {
+                let val: String = i.get(0)?;
+                let msg: Message = serde_json::from_str(&val).unwrap();
+                Ok(msg)
             })?
             .filter_map(Result::ok)
             .collect::<Vec<Message>>();

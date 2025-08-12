@@ -219,9 +219,7 @@ impl EmailUnreadTool {
                 properties: EmailUnreadProps {
                     email: Property {
                         r#type: String::from("string"),
-                        description: String::from(
-                            "The email address to fetch unread emails for.",
-                        ),
+                        description: String::from("The email address to fetch unread emails for."),
                     },
                 },
                 required: vec![String::from("email")],

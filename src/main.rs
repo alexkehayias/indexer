@@ -9,14 +9,14 @@ use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
 
 use indexer::aql;
 use indexer::chat::chat;
-use indexer::db::{initialize_db, migrate_db, async_db};
+use indexer::db::{async_db, initialize_db, migrate_db};
 use indexer::fts::utils::recreate_index;
 use indexer::git::{maybe_clone_repo, maybe_pull_and_reset_repo};
 use indexer::indexing::index_all;
 use indexer::openai::{Message, Role, ToolCall};
 use indexer::search::search_notes;
 use indexer::server;
-use indexer::tool::{NoteSearchTool, SearxSearchTool, EmailUnreadTool};
+use indexer::tool::{EmailUnreadTool, NoteSearchTool, SearxSearchTool};
 
 #[derive(ValueEnum, Clone)]
 enum ServiceKind {
@@ -122,11 +122,14 @@ async fn main() -> Result<()> {
                 fs::create_dir_all(&vec_db_path)
                     .unwrap_or_else(|err| println!("Ignoring vector DB create failed: {}", err));
 
-                let db = async_db(&vec_db_path).await.expect("Failed to connect to db");
+                let db = async_db(&vec_db_path)
+                    .await
+                    .expect("Failed to connect to db");
                 db.call(|conn| {
                     initialize_db(conn).expect("DB initialization failed");
                     Ok(())
-                }).await?;
+                })
+                .await?;
                 println!("Finished initializing db");
             }
 
@@ -155,11 +158,14 @@ async fn main() -> Result<()> {
             // Run the DB migration script
             if db {
                 println!("Migrating db...");
-                let db = async_db(&vec_db_path).await.expect("Failed to connect to db");
+                let db = async_db(&vec_db_path)
+                    .await
+                    .expect("Failed to connect to db");
                 db.call(|conn| {
                     migrate_db(conn).unwrap_or_else(|err| eprintln!("DB migration failed {}", err));
                     Ok(())
-                }).await?;
+                })
+                .await?;
                 println!("Finished migrating db");
             }
 
@@ -223,7 +229,9 @@ async fn main() -> Result<()> {
                 .expect("Missing env var INDEXER_NOTES_REPO_URL");
             maybe_pull_and_reset_repo(&deploy_key_path, &notes_path);
 
-            let db = indexer::db::async_db(&vec_db_path).await.expect("Failed to connect to async db");
+            let db = indexer::db::async_db(&vec_db_path)
+                .await
+                .expect("Failed to connect to async db");
 
             if full_text {
                 index_all(&db, &index_path, &notes_path, true, false, None)
@@ -250,7 +258,9 @@ async fn main() -> Result<()> {
                 .with(tracing_subscriber::fmt::layer())
                 .init();
 
-            let db = indexer::db::async_db(&vec_db_path).await.expect("Failed to connect to async db");
+            let db = indexer::db::async_db(&vec_db_path)
+                .await
+                .expect("Failed to connect to async db");
 
             // Delete all note metadata and vector data
             println!("Deleting all meta data in the db...");
@@ -258,7 +268,9 @@ async fn main() -> Result<()> {
                 conn.execute("DELETE FROM vec_items", [])?;
                 conn.execute("DELETE FROM note_meta", [])?;
                 Ok(())
-            }).await.expect("Failed to delete note_meta or vec_items data");
+            })
+            .await
+            .expect("Failed to delete note_meta or vec_items data");
             println!("Finished deleting all meta data the db...");
 
             // Remove the full text search index
@@ -272,7 +284,9 @@ async fn main() -> Result<()> {
                 .expect("Indexing failed");
         }
         Some(Command::Query { term, vector }) => {
-            let db = async_db(&vec_db_path).await.expect("Failed to connect to async db");
+            let db = async_db(&vec_db_path)
+                .await
+                .expect("Failed to connect to async db");
             let query = aql::parse_query(&term).expect("Parsing AQL failed");
             let results = search_notes(&index_path, &db, vector, &query, 20).await?;
             println!(
@@ -292,7 +306,7 @@ async fn main() -> Result<()> {
             let note_search_tool = NoteSearchTool::new(&note_search_api_url);
             let email_unread_tool = EmailUnreadTool::new(&note_search_api_url);
             let searx_search_tool = SearxSearchTool::new(&searxng_api_url);
-            
+
             let tools: Option<Vec<Box<dyn ToolCall + Send + Sync + 'static>>> = Some(vec![
                 Box::new(note_search_tool),
                 Box::new(searx_search_tool),
@@ -300,9 +314,12 @@ async fn main() -> Result<()> {
             ]);
 
             // Get OpenAI API configuration from environment variables (similar to AppConfig)
-            let openai_api_hostname = env::var("OPENAI_API_HOSTNAME").unwrap_or_else(|_| "https://api.openai.com".to_string());
-            let openai_api_key = env::var("OPENAI_API_KEY").expect("OPENAI_API_KEY environment variable is not set");
-            let openai_model = env::var("OPENAI_MODEL").unwrap_or_else(|_| "gpt-4.1-mini".to_string());
+            let openai_api_hostname = env::var("OPENAI_API_HOSTNAME")
+                .unwrap_or_else(|_| "https://api.openai.com".to_string());
+            let openai_api_key =
+                env::var("OPENAI_API_KEY").expect("OPENAI_API_KEY environment variable is not set");
+            let openai_model =
+                env::var("OPENAI_MODEL").unwrap_or_else(|_| "gpt-4.1-mini".to_string());
 
             // TODO: Window the list of history
             let mut history = vec![Message::new(Role::System, "You are a helpful assistant.")];
@@ -313,7 +330,15 @@ async fn main() -> Result<()> {
                 match readline {
                     Ok(line) => {
                         history.push(Message::new(Role::User, line.as_str()));
-                        chat(&tools, &mut history, &mut accum_new, &openai_api_hostname, &openai_api_key, &openai_model).await;
+                        chat(
+                            &tools,
+                            &mut history,
+                            &mut accum_new,
+                            &openai_api_hostname,
+                            &openai_api_key,
+                            &openai_model,
+                        )
+                        .await;
                         println!("{}", history.last().unwrap().content.clone().unwrap());
                     }
                     Err(ReadlineError::Interrupted) => break,
@@ -370,7 +395,9 @@ async fn main() -> Result<()> {
                             .await?;
 
                     // Store the refresh token in the DB and use that to fetch an access token from now on.
-                    let db = async_db(&vec_db_path).await.expect("Failed to connect to db");
+                    let db = async_db(&vec_db_path)
+                        .await
+                        .expect("Failed to connect to db");
                     let refresh_token = token
                         .refresh_token
                         .clone()

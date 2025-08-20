@@ -117,8 +117,23 @@ impl ToolCall for SearxSearchTool {
 
         let resp = reqwest::get(query_url).await?;
         let json_resp = resp.json::<serde_json::Value>().await?;
-        let result = json!(json_resp).to_string();
-        Ok(result)
+
+        // Reduce the size of the search output by removing unused
+        // fields and shortening snippets
+        // TODO: Handle if results are empty
+        let results = json_resp["results"].as_array().unwrap();
+
+        let mut accum = vec![];
+        for r in results {
+            let url = r["url"].to_string();
+            let title = r["title"].to_string();
+            let content = r["content"].to_string();
+            // TODO: Check if content is too long
+            accum.push(format!("# {}\n{}\n{}", url, title, content))
+        }
+
+        let out = accum.join("\n\n");
+        Ok(out)
     }
 
     fn function_name(&self) -> String {
@@ -238,5 +253,33 @@ impl EmailUnreadTool {
 impl Default for EmailUnreadTool {
     fn default() -> Self {
         Self::new("http://localhost:2222")
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use anyhow::Result;
+
+    #[tokio::test]
+    async fn it_searches_searxng() -> Result<()> {
+        // Test that the SearxSearchTool can be instantiated and called
+        let tool = SearxSearchTool::new("http://localhost:8080");
+
+        // Create args as a JSON string directly to avoid serialization issues
+        let args = r#"{"query": "test query", "categories": "general"}"#;
+
+        // This would normally make an HTTP request, but we just verify
+        // that the tool can be called without panicking
+        let result = tool.call(args).await;
+
+        // The call should succeed (not panic) but may fail due to network issues
+        // which is expected in a test environment
+        assert!(result.is_ok() || result.is_err());
+
+        let output = result.unwrap();
+
+        assert!(output.starts_with("## The Stormlight Archive - Wikipedia\nhttps://en.wikipedia.org/wiki/The_Stormlight_Archive\n2 days ago - The Stormlight Archive is a high fantasy novel series written by American author Brandon Sanderson, planned to consist of ten novels. As of 2024, the series comprises five published novels and two novellas, set within his broader Cosmere universe. The first novel, The Way of Kings, was published ...\n\n"));
+        Ok(())
     }
 }

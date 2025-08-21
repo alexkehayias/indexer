@@ -173,6 +173,7 @@ mod tests {
         }
     }
 
+
     #[derive(Serialize)]
     pub struct DummyProps2 {
         dummy_arg: openai::Property,
@@ -181,7 +182,7 @@ mod tests {
     #[derive(Serialize)]
     pub struct DummyTool2 {
         pub r#type: openai::ToolType,
-        pub function: openai::Function<DummyProps>,
+        pub function: openai::Function<DummyProps2>,
     }
 
     #[async_trait]
@@ -250,7 +251,7 @@ mod tests {
             description: String::from("Retrieves notes the user asks about."),
             parameters: openai::Parameters {
                 r#type: String::from("object"),
-                properties: DummyProps {
+                properties: DummyProps2 {
                     dummy_arg: openai::Property {
                         r#type: String::from("string"),
                         description: String::from("Some dummy arg"),

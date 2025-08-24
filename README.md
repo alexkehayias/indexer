@@ -65,9 +65,9 @@ docker run -p 2222:2222 -d indexer:latest
 - `INDEXER_NOTE_SEARCH_API_URL` for the note search AI tool
 - `INDEXER_SEARXNG_API_URL` for the web search AI tool
 - `INDEXER_GMAIL_CLIENT_ID` and `INDEXER_GMAIL_CLIENT_SECRET` for the gmail API
-- `OPENAI_API_HOSTNAME` for the OpenAI API hostname (defaults to "https://api.openai.com" if not set)
-- `OPENAI_API_KEY` for the OpenAI API authentication (required)
-- `OPENAI_MODEL` for the OpenAI model to use (defaults to "gpt-4.1-mini" if not set)
+- `INDEXER_LOCAL_LLM_HOST` for the OpenAI API hostname (defaults to "https://api.openai.com" if not set)
+- `INDEXER_LOCAL_LLM_MODEL` for the OpenAI model to use (defaults to "gpt-4.1-mini" if not set)
+- `OPENAI_API_KEY` for OpenAI API authentication (ignored when using a local LLM server)
 - `DOKKU_DOCKERFILE_START_CMD` to `serve --host 0.0.0.0 --port 2222`
 10. On local, add remote `git remote add dokku dokku@<dokku-host>:indexer`
 11. Push to build and start `git push dokku main`

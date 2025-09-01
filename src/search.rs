@@ -161,6 +161,7 @@ pub async fn search_notes(
     index_path: &str,
     db: &Connection,
     include_similarity: bool,
+    truncate: bool,
     query: &aql::Expr,
     limit: usize,
 ) -> anyhow::Result<Vec<SearchResult>> {

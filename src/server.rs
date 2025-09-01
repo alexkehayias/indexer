@@ -1,4 +1,3 @@
-use std::collections::HashMap;
 use std::env;
 use std::path::PathBuf;
 use std::sync::{Arc, RwLock};
@@ -13,7 +12,7 @@ use axum::{
     routing::{get, post},
 };
 use http::{HeaderValue, header};
-use serde::{Deserialize, Serialize};
+use serde::Deserialize;
 use serde_json::{Value, json};
 use tantivy::doc;
 use tokio::task::JoinSet;
@@ -30,59 +29,17 @@ use crate::config::AppConfig;
 use crate::indexing::index_all;
 use crate::openai::{BoxedToolCall, Message, Role};
 use crate::tool::{EmailUnreadTool, NoteSearchTool, SearxSearchTool};
+use crate::public;
 
 use super::db::async_db;
 use super::git::{diff_last_commit_files, maybe_pull_and_reset_repo};
 use super::notification::{PushSubscription, broadcast_push_notification};
-use super::search::{SearchResult, search_notes};
+use super::search::search_notes;
 use crate::gmail::{Thread, extract_body, fetch_thread, list_unread_messages};
 use crate::oauth::refresh_access_token;
 
-// Top level API error
-pub struct ApiError(anyhow::Error);
-
-/// Convert `AppError` into an Axum compatible response.
-impl IntoResponse for ApiError {
-    fn into_response(self) -> Response {
-        (
-            StatusCode::INTERNAL_SERVER_ERROR,
-            format!("Something went wrong: {}", self.0),
-        )
-            .into_response()
-    }
-}
-
-/// Enables using `?` on functions that return `Result<_,
-/// anyhow::Error>` to turn them into `Result<_, AppError>`
-impl<E> From<E> for ApiError
-where
-    E: Into<anyhow::Error>,
-{
-    fn from(err: E) -> Self {
-        Self(err.into())
-    }
-}
 
 type SharedState = Arc<RwLock<AppState>>;
-
-#[derive(Deserialize)]
-struct ChatRequest {
-    session_id: String,
-    message: String,
-}
-
-#[derive(Serialize)]
-struct ChatResponse {
-    message: String,
-}
-
-impl ChatResponse {
-    fn new(message: &str) -> Self {
-        Self {
-            message: message.into(),
-        }
-    }
-}
 
 #[derive(Debug, Deserialize)]
 struct LastSelection {
@@ -108,16 +65,11 @@ impl AppState {
     }
 }
 
-#[derive(Serialize)]
-struct ChatTranscriptResponse {
-    transcript: Vec<Message>,
-}
-
 async fn chat_session(
     State(state): State<SharedState>,
     // This is the session ID of the chat
     Path(id): Path<String>,
-) -> Result<impl IntoResponse, ApiError> {
+) -> Result<impl IntoResponse, public::ApiError> {
     let db = state.read().expect("Unable to read share state").db.clone();
     let transcript = find_chat_session_by_id(&db, &id).await?.to_owned();
 
@@ -129,13 +81,13 @@ async fn chat_session(
             .into_response());
     }
 
-    Ok(Json(ChatTranscriptResponse { transcript }).into_response())
+    Ok(Json(public::ChatTranscriptResponse { transcript }).into_response())
 }
 
 async fn chat_handler(
     State(state): State<SharedState>,
-    Json(payload): Json<ChatRequest>,
-) -> Result<impl IntoResponse, ApiError> {
+    Json(payload): Json<public::ChatRequest>,
+) -> Result<impl IntoResponse, public::ApiError> {
     let (
         note_search_tool,
         searx_search_tool,
@@ -208,7 +160,7 @@ async fn chat_handler(
     }
 
     let assistant_msg = transcript.last().expect("Transcript was empty").to_owned();
-    let resp = ChatResponse::new(&assistant_msg.content.unwrap());
+    let resp = public::ChatResponse::new(&assistant_msg.content.unwrap());
 
     Ok(Json(resp).into_response())
 }
@@ -239,24 +191,11 @@ async fn kv_set(State(state): State<SharedState>, Json(data): Json<LastSelection
     });
 }
 
-#[derive(Serialize)]
-struct SearchResponse {
-    raw_query: String,
-    parsed_query: String,
-    results: Vec<SearchResult>,
-}
-
-#[derive(Deserialize)]
-pub struct PushSubscriptionRequest {
-    pub endpoint: String,
-    pub keys: HashMap<String, String>,
-}
-
 // Register a client for push notifications
 async fn push_subscription(
     State(state): State<SharedState>,
-    Json(subscription): Json<PushSubscriptionRequest>,
-) -> Result<Json<Value>, ApiError> {
+    Json(subscription): Json<public::PushSubscriptionRequest>,
+) -> Result<Json<Value>, public::ApiError> {
     let p256dh = subscription
         .keys
         .get("p256dh")
@@ -288,33 +227,10 @@ async fn push_subscription(
     Ok(Json(json!({"success": true})))
 }
 
-fn default_limit() -> usize {
-    20
-}
-
-fn default_as_true() -> bool {
-    true
-}
-
-fn default_as_false() -> bool {
-    false
-}
-
-#[derive(Deserialize)]
-struct SearchParams {
-    query: String,
-    #[serde(default = "default_as_false")]
-    include_similarity: bool,
-    #[serde(default = "default_limit")]
-    limit: usize,
-    #[serde(default = "default_as_true")]
-    truncate: bool,
-}
-
 async fn search(
     State(state): State<SharedState>,
-    Query(params): Query<SearchParams>,
-) -> Result<Json<SearchResponse>, ApiError> {
+    Query(params): Query<public::SearchRequest>,
+) -> Result<Json<public::SearchResponse>, public::ApiError> {
     let raw_query = params.query;
     let query = aql::parse_query(&raw_query).expect("Parsing AQL failed");
     let (db, index_path) = {
@@ -334,7 +250,7 @@ async fn search(
         params.limit
     ).await?;
 
-    let resp = SearchResponse {
+    let resp = public::SearchResponse {
         raw_query: raw_query.to_string(),
         parsed_query: format!("{:?}", query),
         results,
@@ -344,7 +260,7 @@ async fn search(
 }
 
 // Build the index for all notes
-async fn index_notes(State(state): State<SharedState>) -> Result<Json<Value>, ApiError> {
+async fn index_notes(State(state): State<SharedState>) -> Result<Json<Value>, public::ApiError> {
     // Clone all of these vars so we don't pass data across await
     // calls below
     let (a_db, index_path, notes_path, deploy_key_path) = {
@@ -371,21 +287,13 @@ async fn index_notes(State(state): State<SharedState>) -> Result<Json<Value>, Ap
     Ok(Json(json!({ "success": true })))
 }
 
-#[derive(Serialize)]
-struct ViewNoteResult {
-    id: String,
-    title: String,
-    body: String,
-    tags: Option<String>,
-}
-
 // Render a note in org-mode format by ID
 // Fetch the contents of the note by ID using the DB
 async fn view_note(
     State(state): State<SharedState>,
     // This is the org-id of the note
     Path(id): Path<String>,
-) -> Result<Json<ViewNoteResult>, ApiError> {
+) -> Result<Json<public::ViewNoteResponse>, public::ApiError> {
     let db = state.read().unwrap().db.clone();
 
     let note_result = db
@@ -405,7 +313,7 @@ async fn view_note(
                 )
                 .expect("Failed to prepare sql statement")
                 .query_map([id], |i| {
-                    Ok(ViewNoteResult {
+                    Ok(public::ViewNoteResponse {
                         id: i.get(0)?,
                         title: i.get(1)?,
                         body: i.get(2)?,
@@ -424,16 +332,11 @@ async fn view_note(
     Ok(Json(note_result))
 }
 
-#[derive(Deserialize)]
-struct NotificationPayload {
-    message: String,
-}
-
 // Endpoint to send push notification to all subscriptions
 async fn send_notification(
     State(state): State<SharedState>,
-    Json(payload): Json<NotificationPayload>,
-) -> Result<Json<Value>, ApiError> {
+    Json(payload): Json<public::NotificationRequest>,
+) -> Result<Json<Value>, public::ApiError> {
     let vapid_key_path = state
         .read()
         .expect("Unable to read share state")
@@ -465,37 +368,10 @@ async fn send_notification(
     Ok(Json(json!({ "success": true })))
 }
 
-#[derive(Deserialize)]
-pub struct EmailUnreadQuery {
-    email: String,
-    limit: Option<i64>,
-}
-
-#[derive(Clone, Serialize)]
-pub struct EmailMessage {
-    id: String,
-    thread_id: String,
-    from: String,
-    to: String,
-    received: String,
-    subject: String,
-    body: String,
-}
-
-#[derive(Clone, Serialize)]
-pub struct EmailThread {
-    id: String,
-    received: String,
-    from: String,
-    to: String,
-    subject: String,
-    messages: Vec<EmailMessage>,
-}
-
 async fn email_unread_handler(
     State(state): State<SharedState>,
-    Query(params): Query<EmailUnreadQuery>,
-) -> Result<Json<Value>, ApiError> {
+    Query(params): Query<public::EmailUnreadQuery>,
+) -> Result<Json<Value>, public::ApiError> {
     let refresh_token: String = {
         let db = state.read().unwrap().db.clone();
 
@@ -541,9 +417,9 @@ async fn email_unread_handler(
         .collect();
 
     // Transform the threads and messages into a simpler format
-    let mut threads: Vec<EmailThread> = Vec::new();
+    let mut threads: Vec<public::EmailThread> = Vec::new();
     for t in results {
-        let mut messages: Vec<EmailMessage> = Vec::new();
+        let mut messages: Vec<public::EmailMessage> = Vec::new();
         for m in t.messages {
             let body = extract_body(&m);
             if body == "Failed to decode" {
@@ -569,7 +445,7 @@ async fn email_unread_handler(
                 .map(|h| h.value.clone())
                 .unwrap();
 
-            messages.push(EmailMessage {
+            messages.push(public::EmailMessage {
                 id: m.id,
                 thread_id: m.thread_id,
                 received: m.internal_date,
@@ -583,7 +459,7 @@ async fn email_unread_handler(
         // It's guaranteed there is at least one message per thread
         let latest_msg = messages[0].clone();
 
-        threads.push(EmailThread {
+        threads.push(public::EmailThread {
             id: t.id,
             received: latest_msg.received,
             subject: latest_msg.subject,

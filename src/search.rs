@@ -219,22 +219,39 @@ pub async fn search_notes(
             let mut stmt = conn.prepare(&sql).unwrap();
             let found = stmt
                 .query_map([result_ids_str.as_bytes()], |r| {
-                    let maybe_task_status: Option<String> = r.get(7)?;
-                    // TODO: Truncate the results
+                    let id = r.get(0)?;
+                    let r#type = r.get(1)?;
+                    let category = r.get(2)?;
+                    let file_name = r.get(3)?;
+                    let mut title: String = r.get(4)?;
+                    let tags = r.get(5)?;
+                    let mut body: String = r.get(6)?;
+                    let task_status: Option<String> = r.get(7)?;
+                    let is_task = task_status.is_some();
+                    let task_scheduled = r.get(8)?;
+                    let task_deadline = r.get(9)?;
+                    let task_closed = r.get(10)?;
+                    let meeting_date = r.get(11)?;
+
+                    if truncate {
+                        title.truncate(140);
+                        body.truncate(240);
+                    }
+
                     Ok(SearchResult {
-                        id: r.get(0)?,
-                        r#type: r.get(1)?,
-                        category: r.get(2)?,
-                        file_name: r.get(3)?,
-                        title: r.get(4)?,
-                        tags: r.get(5)?,
-                        body: r.get(6)?,
-                        is_task: maybe_task_status.is_some(),
-                        task_status: maybe_task_status,
-                        task_scheduled: r.get(8)?,
-                        task_deadline: r.get(9)?,
-                        task_closed: r.get(10)?,
-                        meeting_date: r.get(11)?,
+                        id,
+                        r#type,
+                        category,
+                        file_name,
+                        title,
+                        tags,
+                        body,
+                        is_task,
+                        task_status,
+                        task_scheduled,
+                        task_deadline,
+                        task_closed,
+                        meeting_date,
                     })
                 })?
                 .collect::<std::result::Result<Vec<SearchResult>, _>>()?;
@@ -243,32 +260,7 @@ pub async fn search_notes(
         .await
         .unwrap()
     } else {
-        db.call(move |conn| {
-            let mut stmt = conn.prepare(&sql).unwrap();
-            let found = stmt
-                .query_map([], |r| {
-                    let maybe_task_status: Option<String> = r.get(7)?;
-                    Ok(SearchResult {
-                        id: r.get(0)?,
-                        r#type: r.get(1)?,
-                        category: r.get(2)?,
-                        file_name: r.get(3)?,
-                        title: r.get(4)?,
-                        tags: r.get(5)?,
-                        body: r.get(6)?,
-                        is_task: maybe_task_status.is_some(),
-                        task_status: maybe_task_status,
-                        task_scheduled: r.get(8)?,
-                        task_deadline: r.get(9)?,
-                        task_closed: r.get(10)?,
-                        meeting_date: r.get(11)?,
-                    })
-                })?
-                .collect::<std::result::Result<Vec<SearchResult>, _>>()?;
-            Ok(found)
-        })
-        .await
-        .unwrap()
+        Vec::new()
     };
     Ok(results)
 }

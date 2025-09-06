@@ -93,7 +93,7 @@ document.addEventListener('DOMContentLoaded', () => {
       const messageHTML = marked.parse(message, { breaks: true });
 
       const messageText = document.createElement('div');
-      messageText.className = 'markdown text-sm lg:text-base font-normal';
+      messageText.className = 'markdown overflow-auto text-sm lg:text-base font-normal';
       messageText.innerHTML = messageHTML;
       messageBody.appendChild(messageText);
       messageContent.appendChild(messageBody);

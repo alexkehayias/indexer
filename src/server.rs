@@ -25,11 +25,12 @@ use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
 
 use crate::aql;
 use crate::chat::{chat, find_chat_session_by_id, insert_chat_message};
+use crate::gcal::list_events;
 use crate::config::AppConfig;
 use crate::indexing::index_all;
 use crate::openai::{BoxedToolCall, Message, Role};
 use crate::tool::{EmailUnreadTool, NoteSearchTool, SearxSearchTool};
-use crate::public;
+use crate::public::{self};
 
 use super::db::async_db;
 use super::git::{diff_last_commit_files, maybe_pull_and_reset_repo};
@@ -476,6 +477,75 @@ async fn email_unread_handler(
     Ok(Json(json!(threads)))
 }
 
+async fn calendar_handler(
+    State(state): State<SharedState>,
+    Query(params): Query<public::CalendarQuery>,
+) -> Result<Json<Vec<public::CalendarResponse>>, public::ApiError> {
+    let refresh_token: String = {
+        let db = state.read().unwrap().db.clone();
+
+        db.call(move |conn| {
+            let result = conn
+                .prepare("SELECT refresh_token FROM auth WHERE id = ?1")
+                .and_then(|mut stmt| stmt.query_row([&params.email], |row| row.get(0)))?;
+            Ok(result)
+        })
+        .await?
+    };
+
+    // Pull the config values out before the async call so that we
+    // don't get an error for holding the lock across awaits.
+    let (client_id, client_secret) = {
+        let shared_state = state.read().expect("Unable to read share state");
+        let AppConfig {
+            gmail_api_client_id,
+            gmail_api_client_secret,
+            ..
+        } = &shared_state.config;
+        (gmail_api_client_id.clone(), gmail_api_client_secret.clone())
+    };
+    let oauth = refresh_access_token(&client_id, &client_secret, &refresh_token).await?;
+    let access_token = oauth.access_token;
+
+    // Default to 7 days ahead if not specified
+    let days_ahead = params.days_ahead.unwrap_or(7);
+
+    // Default to primary calendar if not specified
+    let calendar_id = params.calendar_id.clone().unwrap_or_else(|| "primary".to_string());
+
+    // Get the current time and calculate the end time
+    let now = chrono::Utc::now();
+    let end_time = now + chrono::Duration::days(days_ahead);
+
+    // Fetch upcoming events
+    let events = list_events(&access_token, &calendar_id, now, end_time).await?;
+
+    // Transform events to a simpler format for the API response
+    let resp = events
+        .into_iter()
+        .map(|event| {
+            let summary = event.summary.unwrap_or_else(|| "No title".to_string());
+            public::CalendarResponse {
+                id: event.id,
+                summary,
+                start: event.start.to_rfc3339(),
+                end: event.end.to_rfc3339(),
+                attendees: event.attendees.map(|attendees| {
+                    attendees
+                        .into_iter()
+                        .map(|attendee| public::CalendarAttendee {
+                            email: attendee.email,
+                            display_name: attendee.display_name,
+                        })
+                        .collect::<Vec<_>>()
+                })
+            }
+        })
+        .collect();
+
+    Ok(Json(resp))
+}
+
 async fn set_static_cache_control(request: Request, next: middleware::Next) -> Response {
     let mut response = next.run(request).await;
     response
@@ -505,6 +575,8 @@ pub fn app(shared_state: Arc<RwLock<AppState>>) -> Router {
         .route("/push/notification", post(send_notification))
         // Get a list of unread emails
         .route("/email/unread", get(email_unread_handler))
+        // Get list of calender events
+        .route("/calendar", get(calendar_handler))
         // Static server of assets in ./web-ui
         .fallback_service(
             ServiceBuilder::new()

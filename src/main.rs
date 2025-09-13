@@ -370,7 +370,7 @@ async fn main() -> Result<()> {
                         .expect("Set INDEXER_GMAIL_CLIENT_SECRET in your environment");
                     let redirect_uri = std::env::var("INDEXER_GMAIL_REDIRECT_URI")
                         .unwrap_or_else(|_| "urn:ietf:wg:oauth:2.0:oob".to_string());
-                    let scope = "https://www.googleapis.com/auth/gmail.modify";
+                    let scope = "https://www.googleapis.com/auth/gmail.modify https://www.googleapis.com/auth/calendar.calendars.readonly https://www.googleapis.com/auth/calendar.events.readonly";
                     let auth_url = format!(
                         "https://accounts.google.com/o/oauth2/v2/auth?client_id={}&redirect_uri={}&response_type=code&scope={}&access_type=offline&prompt=consent",
                         urlencoding::encode(&client_id),

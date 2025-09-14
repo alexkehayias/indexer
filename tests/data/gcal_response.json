@@ -1,0 +1,266 @@
+{
+  "kind": "calendar#events",
+  "etag": "\"a1b2c3d4e5f6g7h8\"",
+  "summary": "Anonymous Calendar",
+  "description": "",
+  "updated": "2025-09-13T12:11:13.889Z",
+  "timeZone": "America/Los_Angeles",
+  "accessRole": "owner",
+  "defaultReminders": [
+    {
+      "method": "popup",
+      "minutes": 10
+    }
+  ],
+  "items": [
+    {
+      "kind": "calendar#event",
+      "etag": "\"9876543210987654\"",
+      "id": "a1b2c3d4e5f6g7h8i9j0k1l2m3",
+      "status": "confirmed",
+      "htmlLink": "https://www.google.com/calendar/event?eid=a1b2c3d4e5f6g7h8i9j0k1l2m3n4o5p6q7r8s9t0u1v2w3x4y5z6a7b8c9d0e1f2g3h4i5j6k7l8m9n0o1p2q3r4s5t6u7v8w9x0y1z2a3b4c5d6e7f8g9h0i1j2k3l4m5n6o7p8q9r0s1t2u3v4w5x6y7z8a9b0c1d2e3f4g5h6i7j8k9l0m1n2o3p4q5r6s7t8u9v0w1x2y3z4a5b6c7d8e9f0g1h2i3j4k5l6m7n8o9p0q1r2s3t4u5v6w7x8y9z0a1b2c3d4e5f6g7h8i9j0k1l2m3",
+      "created": "2025-09-10T16:34:19.000Z",
+      "updated": "2025-09-11T16:02:57.543Z",
+      "summary": "Company - Consultation",
+      "description": "<p>Reserving time to share more about Company, the easy way to do state and local compliance.</p>\nJohn Smith is inviting you to a scheduled Zoom meeting.\r\n\r\nTopic: Company - Consultation\r\nTime: Sep 15, 2025 12:00 PM Eastern Time (US and Canada)\r\nJoin Zoom Meeting\r\nhttps://us06web.zoom.us/j/12345678901?pwd=abcdefg1234567890\r\n\r\nMeeting ID: 123 4567 8901\r\nPasscode: 123456\r\n\r\n---\r\n\r\nOne tap mobile\r\n+13052241968,,12345678901#,,,,*123456# US\r\n+13092053325,,12345678901#,,,,*123456# US\r\n\r\nJoin instructions\r\nhttps://us06web.zoom.us/meetings/12345678901/invitations?signature=0Q_I7JSL1cnkwm_kgWgrLDu8q33nd7Jn7-TCpWVEa10\r\n<br><b>Need to make changes?</b><br><ul><li>Reschedule:&nbsp;<a href=\"https://app.hubspot.com/meetings/john-smith/consultation?rescheduleId=12345678901234567890123456789012&ms=1\">https://app.hubspot.com/meetings/john-smith/consultation?rescheduleId=12345678901234567890123456789012&ms=1</a></li><li>Cancel:&nbsp;<a href=\"https://app.hubspot.com/meetings/john-smith/consultation?cancelId=12345678901234567890123456789012&ms=1\">https://app.hubspot.com/meetings/john-smith/consultation?cancelId=12345678901234567890123456789012&ms=1</a></li></ul>\n\nCompany name: Anonymous Corp.",
+      "location": "https://us06web.zoom.us/j/12345678901?pwd=abcdefg1234567890",
+      "creator": {
+        "email": "john@company.com"
+      },
+      "organizer": {
+        "email": "john@company.com"
+      },
+      "start": {
+        "dateTime": "2025-09-15T09:00:00-07:00",
+        "timeZone": "America/New_York"
+      },
+      "end": {
+        "dateTime": "2025-09-15T09:30:00-07:00",
+        "timeZone": "America/New_York"
+      },
+      "iCalUID": "a1b2c3d4e5f6g7h8i9j0k1l2m3@google.com",
+      "sequence": 0,
+      "attendees": [
+        {
+          "email": "john@company.com",
+          "organizer": true,
+          "responseStatus": "accepted"
+        },
+        {
+          "email": "jane@anonymous.com",
+          "displayName": "Jane Doe",
+          "responseStatus": "accepted"
+        },
+        {
+          "email": "joe@company.com",
+          "responseStatus": "accepted"
+        },
+        {
+          "email": "ak@company.com",
+          "self": true,
+          "responseStatus": "needsAction"
+        }
+      ],
+      "reminders": {
+        "useDefault": true
+      },
+      "eventType": "default"
+    },
+    {
+      "kind": "calendar#event",
+      "etag": "\"8765432109876543\"",
+      "id": "n4o5p6q7r8s9t0u1v2w3x4y5z6a7b8c9d0e1f2g3h4i5j6k7l8m9n0o1p2q3r4s5t6u7v8w9x0y1z2a3b4c5d6e7f8g9h0i1j2k3l4m5n6o7p8q9r0s1t2u3v4w5x6y7z8a9b0c1d2e3f4g5h6i7j8k9l0m1n2o3p4q5r6s7t8u9v0w1x2y3z4a5b6c7d8e9f0g1h2i3j4k5l6m7n8o9p0q1r2s3t4u5v6w7x8y9z0a1b2c3d4e5f6g7h8i9j0k1l2m3",
+      "status": "confirmed",
+      "htmlLink": "https://www.google.com/calendar/event?eid=n4o5p6q7r8s9t0u1v2w3x4y5z6a7b8c9d0e1f2g3h4i5j6k7l8m9n0o1p2q3r4s5t6u7v8w9x0y1z2a3b4c5d6e7f8g9h0i1j2k3l4m5n6o7p8q9r0s1t2u3v4w5x6y7z8a9b0c1d2e3f4g5h6i7j8k9l0m1n2o3p4q5r6s7t8u9v0w1x2y3z4a5b6c7d8e9f0g1h2i3j4k5l6m7n8o9p0q1r2s3t4u5v6w7x8y9z0a1b2c3d4e5f6g7h8i9j0k1l2m3",
+      "created": "2025-09-11T21:18:43.000Z",
+      "updated": "2025-09-11T21:23:59.90\r\n\r\nMeeting ID: 234 5678 9012\r\nPasscode: 234567\r\n\r\n---\r\n\r\nOne tap mobile\r\n+13017158592,,23456789012#,,,,*234567# US (Washington DC)\r\n+13052241968,,23456789012#,,,,*234567# US\r\n\r\nJoin instructions\r\nhttps://us06web.zoom.us/meetings/23456789012/invitations?signature=67hUCA9WpbbMpY8aUfGGqXH7bGfIJymXwJ5PUD3D3Ic\r\n",
+      "location": "https://us06web.zoom.us/j/23456789012?pwd=hijklmn1234567890",
+      "creator": {
+        "email": "joe@company.com"
+      },
+      "organizer": {
+        "email": "joe@company.com"
+      },
+      "start": {
+        "dateTime": "2025-09-15T10:30:00-07:00",
+        "timeZone": "America/Toronto"
+      },
+      "end": {
+        "dateTime": "2025-09-15T11:00:00-07:00",
+        "timeZone": "America/Toronto"
+      },
+      "iCalUID": "n4o5p6q7r8s9t0u1v2w3x4y5z6a7b8c9d0e1f2g3h4i5j6k7l8m9n0o1p2q3r4s5t6u7v8w9x0y1z2a3b4c5d6e7f8g9h0i1j2k3l4m5n6o7p8q9r0s1t2u3v4w5x6y7z8a9b0c1d2e3f4g5h6i7j8k9l0m1n2o3p4q5r6s7t8u9v0w1x2y3z4a5b6c7d8e9f0g1h2i3j4k5l6m7n8o9p0q1r2s3t4u5v6w7x8y9z0a1b2c3d4e5f6g7h8i9j0k1l2m3@google.com",
+      "sequence": 0,
+      "attendees": [
+        {
+          "email": "joe@company.com",
+          "organizer": true,
+          "responseStatus": "accepted"
+        },
+        {
+          "email": "sarah@organization.org",
+          "displayName": "Sarah Williams",
+          "responseStatus": "accepted"
+        },
+        {
+          "email": "ak@company.com",
+          "self": true,
+          "responseStatus": "needsAction"
+        }
+      ],
+      "reminders": {
+        "useDefault": true
+      },
+      "eventType": "default"
+    },
+    {
+      "kind": "calendar#event",
+      "etag": "\"7654321098765432\"",
+      "id": "o4p5q6r7s8t9u0v1w2x3y4z5a6b7c8d9e0f1g2h3i4j5k6l7m8n9o0p1q2r3s4t5u6v7w8x9y0z1a2b3c4d5e6f7g8h9i0j1k2l3m4n5o6p7q8r9s0t1u2v3w4x5y6z7a8b9c0d1e2f3g4h5i6j7k8l9m0n1o2p3q4r5s6t7u8v9w0x1y2z3a4b5c6d7e8f9g0h1i2j3k4l5m6n7o8p9q0r1s2t3u4v5w6x7y8z9a0b1c2d3e4f5g6h7i8j9k0l1m2n3o4p5q6r7s8t9u0v1w2x3y4z5",
+      "status": "confirmed",
+      "htmlLink": "https://www.google.com/calendar/event?eid=o4p5q6r7s8t9u0v1w2x3y4z5a6b7c8d9e0f1g2h3i4j5k6l7m8n9o0p1q2r3s4t5u6v7w8x9y0z1a2b3c4d5e6f7g8h9i0j1k2l3m4n5o6p7q8r9s0t1u2v3w4x5y6z7a8b9c0d1e2f3g4h5i6j7k8l9m0n1o2p3q4r5s6t7u8v9w0x1y2z3a4b5c6d7e8f9g0h1i2j3k4l5m6n7o8p9q0r1s2t3u4v5w6x7y8z9a0b1c2d3e4f5g6h7i8j9k0l1m2n3o4p5q6r7s8t9u0v1w2x3y4z5",
+      "created": "2025-09-11T19:24:42.000Z",
+      "updated": "2025-09-11T20:20:43.021Z",
+      "summary": "Company - Consultation",
+      "creator": {
+        "email": "joe@company.com"
+      },
+      "organizer": {
+        "email": "joe@company.com"
+      },
+      "start": {
+        "dateTime": "2025-09-17T08:00:00-07:00",
+        "timeZone": "America/Toronto"
+      },
+      "end": {
+        "dateTime": "2025-09-17T08:30:00-07:00",
+        "timeZone": "America/Toronto"
+      },
+      "iCalUID": "o4p5q6r7s8t9u0v1w2x3y4z5a6b7c8d9e0f1g2h3i4j5k6l7m8n9o0p1q2r3s4t5u6v7w8x9y0z1a2b3c4d5e6f7g8h9i0j1k2l3m4n5o6p7q8r9s0t1u2v3w4x5y6z7a8b9c0d1e2f3g4h5i6j7k8l9m0n1o2p3q4r5s6t7u8v9w0x1y2z3a4b5c6d7e8f9g0h1i2j3k4l5m6n7o8p9q0r1s2t3u4v5w6x7y8z9a0b1c2d3e4f5g6h7i8j9k0l1m2n3o4p5q6r7s8t9u0v1w2x3y4z5@google.com",
+      "sequence": 0,
+      "attendees": [
+        {
+          "email": "joe@company.com",
+          "organizer": true,
+          "responseStatus": "accepted"
+        },
+        {
+          "email": "matt@anothercompany.com",
+          "displayName": "Matt Brown",
+          "responseStatus": "accepted"
+        },
+        {
+          "email": "ak@company.com",
+          "self": true,
+          "responseStatus": "needsAction"
+        }
+      ],
+      "extendedProperties": {
+        "shared": {
+          "meetingId": "98765432109",
+          "zmMeetingNum": "98765432109",
+          "meetingParams": "{\"topic\":\"Company - Consultation\",\"type\":2,\"start_time\":\"2025-09-17T11:00:00-04:00\",\"duration\":30,\"timezone\":\"America/Toronto\",\"invitees_hash\":\"TxFPQes3abeVCD7FgapmJw==\",\"all_day\":false}"
+        }
+      },
+      "conferenceData": {
+        "entryPoints": [
+          {
+            "entryPointType": "video",
+            "uri": "https://us06web.zoom.us/j/98765432109?pwd=xyz1234567890&jst=2",
+            "label": "us06web.zoom.us/j/98765432109?pwd=xyz1234567890&jst=2",
+            "meetingCode": "98765432109",
+            "passcode": "654321"
+          },
+          {
+            "regionCode": "US",
+            "entryPointType": "phone",
+            "uri": "tel:+19292056099,,98765432109#",
+            "label": "+1 929-205-6099",
+            "passcode": "654321"
+          },
+          {
+            "entryPointType": "more",
+            "uri": "https://www.google.com/url?q=https://applications.zoom.us/addon/invitation/detail?meetingUuid%3DsdZWbMJPTCusSlx9rbQ4Xw%253D%253D%26signature%3D3a98ab265431a93d734964095b4dceba01b15f1f261ab3a63109a6d5eb3f3af6%26v%3D1&sa=D&source=calendar&usg=AOvVaw2fLWpqWYTi8PIfXgkRuv3z"
+          }
+        ],
+        "conferenceSolution": {
+          "key": {
+            "type": "addOn"
+          },
+          "name": "Zoom Meeting",
+          "iconUri": "https://lh3.googleusercontent.com/pw/AM-JKLUkiyTEgH-6DiQP85RGtd_BORvAuFnS9katNMgwYQBJUTiDh12qtQxMJFWYH2Dj30hNsNUrr-kzKMl7jX-Qd0FR7JmVSx-Fhruf8xTPPI-wdsMYez6WJE7tz7KmqsORKBEnBTiILtMJXuMvphqKdB9X=s128-no"
+        },
+        "conferenceId": "98765432109",
+        "notes": "Meeting host: <a href=\"mailto:joe@company.com\" target=\"_blank\">joe@company.com</a><br /><br />Join Zoom Meeting: <br /><a href=\"https://www.google.com/url?q=https://us06web.zoom.us/j/98765432109?pwd%3Dxyz1234567890%26jst%3D2&amp;sa=D&amp;source=calendar&amp;usg=AOvVaw0eW63BWQWdf0JnO9b01LMv\" target=\"_blank\">https://us06web.zoom.us/j/98765432109?pwd=xyz1234567890&amp;jst=2</a>",
+        "parameters": {
+          "addOnParameters": {
+            "parameters": {
+              "scriptId": "1O_9DeEljSH2vrECr8XeFYYRxFFiowFKOivqSDz316BlBcDXrF00BXrkO",
+              "realMeetingId": "98765432109",
+              "creatorUserId": "UyGIBhcaTCitG6MST6M43g",
+              "meetingUuid": "sdZWbMJPTCusSlx9rbQ4Xw==",
+              "meetingType": "2",
+              "originalEventId": "o4p5q6r7s8t9u0v1w2x3y4z5a6b7c8d9e0f1g2h3i4j5k6l7m8n9o0p1q2r3s4t5u6v7w8x9y0z1a2b3c4d5e6f7g8h9i0j1k2l3m4n5o6p7q8r9s0t1u2v3w4x5y6z7a8b9c0d1e2f3g4h5i6j7k8l9m0n1o2p3q4r5s6t7u8v9w0x1y2z3a4b5c6d7e8f9g0h1i2j3k4l5m6n7o8p9q0r1s2t3u4v5w6x7y8z9a0b1c2d3e4f5g6h7i8j9k0l1m2n3o4p5q6r7s8t9u0v1w2x3y4z5"
+            }
+          }
+        }
+      },
+      "reminders": {
+        "useDefault": true
+      },
+      "eventType": "default"
+    },
+    {
+      "kind": "calendar#event",
+      "etag": "\"6543210987654321\"",
+      "id": "p5q6r7s8t9u0v1w2x3y4z5a6b7c8d9e0f1g2h3i4j5k6l7m8n9o0p1q2r3s4t5u6v7w8x9y0z1a2b3c4d5e6f7g8h9i0j1k2l3m4n5o6p7q8r9s0t1u2v3w4x5y6z7a8b9c0d1e2f3g4h5i6j7k8l9m0n1o2p3q4r5s6t7u8v9w0x1y2z3a4b5c6d7e8f9g0h1i2j3k4l5m6n7o8p9q0r1s2t3u4v5w6x7y8z9a0b1c2d3e4f5g6h7i8j9k0l1m2n3o4p5q6r7s8t9u0v1w2x3y4z5",
+      "status": "confirmed",
+      "htmlLink": "https://www.google.com/calendar/event?eid=p5q6r7s8t9u0v1w2x3y4z5a6b7c8d9e0f1g2h3i4j5k6l7m8n9o0p1q2r3s4t5u6v7w8x9y0z1a2b3c4d5e6f7g8h9i0j1k2l3m4n5o6p7q8r9s0t1u2v3w4x5y6z7a8b9c0d1e2f3g4h5i6j7k8l9m0n1o2p3q4r5s6t7u8v9w0x1y2z3a4b5c6d7e8f9g0h1i2j3k4l5m6n7o8p9q0r1s2t3u4v5w6x7y8z9a0b1c2d3e4f5g6h7i8j9k0l1m2n3o4p5q6r7s8t9u0v1w2x3y4z5",
+      "created": "2025-09-13T12:11:13.000Z",
+      "updated": "2025-09-13T12:11:13.889Z",
+      "summary": "Company - Consultation",
+      "description": "<p>Reserving time to share more about Company, the easy way to do state and local compliance.</p>\nAlex Smith (he/him) is inviting you to a scheduled Zoom meeting.\r\n\r\nTopic: Company - Consultation\r\nTime: Sep 17, 2025 10:15 AM Pacific Time (US and Canada)\r\nJoin Zoom Meeting\r\nhttps://us06web.zoom.us/j/34567890123?pwd=lmnopqr1234567890\r\n\r\nMeeting ID: 345 6789 0123\r\nPasscode: 456789\r\n\r\n---\r\n\r\nOne tap mobile\r\n+13092053325,,34567890123#,,,,*456789# US\r\n+13126266799,,34567890123#,,,,*456789# US (Chicago)\r\n\r\nJoin instructions\r\nhttps://us06web.zoom.us/meetings/34567890123/invitations?signature=Gmgb6IbFNn41iHP6_4DyP5aw_SZ6vdfuYv24GbFE4MQ\r\n<br><b>Need to make changes?</b><br><ul><li>Reschedule:&nbsp;<a href=\"https://app.hubspot.com/meetings/alex-smith/consultation?rescheduleId=34567890123456789012345678901234&ms=1\">https://app.hubspot.com/meetings/alex-smith/consultation?rescheduleId=34567890123456789012345678901234&ms=1</a></li><li>Cancel:&nbsp;<a href=\"https://app.hubspot.com/meetings/alex-smith/consultation?cancelId=34567890123456789012345678901234&ms=1\">https://app.hubspot.com/meetings/alex-smith/consultation?cancelId=34567890123456789012345678901234&ms=1</a></li></ul>\n\nCompany name: testing",
+      "location": "https://us06web.zoom.us/j/34567890123?pwd=lmnopqr1234567890",
+      "creator": {
+        "email": "ak@company.com",
+        "self": true
+      },
+      "organizer": {
+        "email": "ak@company.com",
+        "self": true
+      },
+      "start": {
+        "dateTime": "2025-09-17T10:15:00-07:00",
+        "timeZone": "America/Los_Angeles"
+      },
+      "end": {
+        "dateTime": "2025-09-17T10:45:00-07:00",
+        "timeZone": "America/Los_Angeles"
+      },
+      "iCalUID": "p5q6r7s8t9u0v1w2x3y4z5a6b7c8d9e0f1g2h3i4j5k6l7m8n9o0p1q2r3s4t5u6v7w8x9y0z1a2b3c4d5e6f7g8h9i0j1k2l3m4n5o6p7q8r9s0t1u2v3w4x5y6z7a8b9c0d1e2f3g4h5i6j7k8l9m0n1o2p3q4r5s6t7u8v9w0x1y2z3a4b5c6d7e8f9g0h1i2j3k4l5m6n7o8p9q0r1s2t3u4v5w6x7y8z9a0b1c2d3e4f5g6h7i8j9k0l1m2n3o4p5q6r7s8t9u0v1w2x3y4z5@google.com",
+      "sequence": 0,
+      "attendees": [
+        {
+          "email": "ak@company.com",
+          "organizer": true,
+          "self": true,
+          "responseStatus": "accepted"
+        },
+        {
+          "email": "ishan@testing.com",
+          "displayName": "Ishan Shah",
+          "responseStatus": "needsAction"
+        }
+      ],
+      "extendedProperties": {
+        "private": {
+          "source": "MEETINGS_PUBLIC"
+        }
+      },
+      "reminders": {
+        "useDefault": true
+      },
+      "eventType": "default"
+    }
+  ]
+}

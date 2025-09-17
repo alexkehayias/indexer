@@ -2,6 +2,10 @@
 @tailwind components;
 @tailwind utilities;
 
+.overflow-auto, .overflow-scroll, .overflow-x-auto, .overflow-x-scroll, .overflow-y-auto, .overflow-y-scroll {
+  scrollbar-color: var(--scrollbar-color) transparent;
+}
+
 .markdown {
   > * + * {
     @apply mt-6;
@@ -36,8 +40,11 @@
   > ul code {
     @apply text-sm font-bold text-gray-700 bg-gray-200;
   }
-  > pre {
-    @apply overflow-x-auto text-xs;
+  pre {
+    @apply overflow-auto text-xs bg-gray-200;
+  }
+  pre code {
+    @apply text-sm font-bold text-gray-700;
   }
   > ul li {
     @apply list-disc list-outside ml-4 pl-1 mt-2;
@@ -59,11 +66,6 @@
   }
   > table td {
     @apply px-4 py-2 border-t border-gray-200 text-sm text-gray-800 align-top;
-  }
-  @media (max-width: 640px) {
-    > table {
-      @apply block min-w-[600px];
-    }
   }
   > table caption {
     @apply mt-2 text-sm text-gray-500;

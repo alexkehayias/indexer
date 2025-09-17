@@ -320,14 +320,20 @@ impl ToolCall for CalendarTool {
         let mut accum = vec![];
         for event in calendar_resp.iter() {
             let attendees_str = if let Some(attendees) = &event.attendees {
-                let attendee_names: Vec<String> = attendees
+                let attendee_list: Vec<String> = attendees
                     .iter()
-                    .filter_map(|a| a.display_name.clone())
+                    .map(|a| {
+                        format!(
+                            "{} <{}>",
+                            a.display_name.clone().unwrap_or("No name".to_string()),
+                            a.email
+                        )
+                    })
                     .collect();
-                if attendee_names.is_empty() {
+                if attendee_list.is_empty() {
                     "No attendees".to_string()
                 } else {
-                    format!("Attendees: {}", attendee_names.join(", "))
+                    format!("Attendees: {}", attendee_list.join(", "))
                 }
             } else {
                 "No attendees".to_string()

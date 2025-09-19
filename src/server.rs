@@ -34,7 +34,7 @@ use crate::public::{self};
 
 use super::db::async_db;
 use super::git::{diff_last_commit_files, maybe_pull_and_reset_repo};
-use super::notification::{PushSubscription, broadcast_push_notification};
+use super::notification::{PushSubscription, PushNotificationPayload, broadcast_push_notification};
 use super::search::search_notes;
 use crate::gmail::{Thread, extract_body, fetch_thread, list_unread_messages};
 use crate::oauth::refresh_access_token;
@@ -367,7 +367,13 @@ async fn send_notification(
         .await?
     };
 
-    broadcast_push_notification(subscriptions, vapid_key_path, payload.message.clone()).await;
+    let payload = PushNotificationPayload::new(
+        "Indexer notification",
+        &payload.message,
+        None,
+        None,
+    );
+    broadcast_push_notification(subscriptions, vapid_key_path, payload).await;
 
     Ok(Json(json!({ "success": true })))
 }

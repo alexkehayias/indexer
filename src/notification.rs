@@ -13,12 +13,49 @@ pub struct PushSubscription {
     pub auth: String,
 }
 
+#[derive(Serialize, Clone)]
+/// If you need to add more application specific notification data, it
+/// should go in here and then the service-worker.js can access the
+/// data in the notification event.
+struct PushNotificationData {
+    // The URL to open when the notification is clicked
+    url: String,
+}
+
+#[derive(Serialize, Clone)]
+pub struct PushNotificationAction {
+    action: String,
+    title: String,
+    icon: String,
+}
+
+#[derive(Serialize, Clone)]
+pub struct PushNotificationPayload {
+    pub title: String,
+    pub body: String,
+    pub actions: Vec<PushNotificationAction>,
+    data: PushNotificationData,
+}
+
+impl PushNotificationPayload {
+    pub fn new(title: &str, body: &str, url: Option<&str>, actions: Option<Vec<PushNotificationAction>>) -> Self {
+        Self {
+            title: title.to_string(),
+            body: body.to_string(),
+            actions: actions.map_or(Vec::new(), |u| u),
+            data: PushNotificationData {
+                url: url.map(|u| u.to_string()).unwrap_or("/".to_string()),
+            },
+        }
+    }
+}
+
 pub async fn send_push_notification(
     vapid_private_pem_path: String,
     endpoint: String,
     p256dh: String,
     auth: String,
-    payload: String,
+    payload: PushNotificationPayload,
 ) -> Result<(), Error> {
     // Create subscription info
     let subscription_info = SubscriptionInfo::new(endpoint, p256dh, auth);
@@ -29,7 +66,8 @@ pub async fn send_push_notification(
 
     // Create the message with payload
     let mut builder = WebPushMessageBuilder::new(&subscription_info);
-    builder.set_payload(ContentEncoding::Aes128Gcm, payload.as_bytes());
+    let content = serde_json::to_string(&payload)?;
+    builder.set_payload(ContentEncoding::Aes128Gcm, content.as_bytes());
     builder.set_vapid_signature(sig_builder);
     let message = builder.build()?;
 
@@ -47,18 +85,17 @@ pub async fn send_push_notification(
 pub async fn broadcast_push_notification(
     subscriptions: Vec<PushSubscription>,
     vapid_key_path: String,
-    message: String,
+    payload: PushNotificationPayload,
 ) {
     let mut tasks = tokio::task::JoinSet::new();
     for sub in subscriptions {
         let vapid = vapid_key_path.clone();
-        let msg = message.clone();
         tasks.spawn(send_push_notification(
             vapid,
             sub.endpoint,
             sub.p256dh,
             sub.auth,
-            msg,
+            payload.clone(),
         ));
     }
     while let Some(_res) = tasks.join_next().await {}

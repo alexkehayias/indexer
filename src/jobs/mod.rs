@@ -23,8 +23,8 @@ where
 {
     tokio::spawn(async move {
         loop {
-            job.run_job(&config, &db_conn).await;
             tokio::time::sleep(job.interval()).await;
+            job.run_job(&config, &db_conn).await;
         }
     });
 }

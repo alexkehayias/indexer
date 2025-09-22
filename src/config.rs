@@ -12,4 +12,5 @@ pub struct AppConfig {
     pub openai_api_hostname: String,
     pub openai_api_key: String,
     pub system_message: String,
+    pub calendar_email: Option<String>,
 }

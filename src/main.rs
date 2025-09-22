@@ -184,10 +184,11 @@ async fn main() -> Result<()> {
                 .unwrap_or(format!("http://{}:{}", host, port));
             let searxng_api_url = env::var("INDEXER_SEARXNG_API_URL")
                 .unwrap_or(format!("http://{}:{}", host, "8080"));
-            let gmail_client_id =
+            let gmail_api_client_id =
                 std::env::var("INDEXER_GMAIL_CLIENT_ID").expect("Missing INDEXER_GMAIL_CLIENT_ID");
-            let gmail_client_secret = std::env::var("INDEXER_GMAIL_CLIENT_SECRET")
+            let gmail_api_client_secret = std::env::var("INDEXER_GMAIL_CLIENT_SECRET")
                 .expect("Missing INDEXER_GMAIL_CLIENT_SECRET");
+            let calendar_email = std::env::var("INDEXER_CALENDAR_EMAIL").ok();
 
             server::serve(
                 host.clone(),
@@ -199,8 +200,9 @@ async fn main() -> Result<()> {
                 vapid_key_path,
                 note_search_api_url,
                 searxng_api_url,
-                gmail_client_id,
-                gmail_client_secret,
+                gmail_api_client_id,
+                gmail_api_client_secret,
+                calendar_email,
             )
             .await;
         }

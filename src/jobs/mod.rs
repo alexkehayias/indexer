@@ -4,6 +4,8 @@ use std::time::Duration;
 use tokio_rusqlite::Connection;
 pub mod process_email;
 pub use process_email::ProcessEmail;
+pub mod research_meeting_attendees;
+pub use research_meeting_attendees::ResearchMeetingAttendees;
 
 #[async_trait]
 pub trait PeriodicJob: Send + Sync + 'static {

@@ -8,7 +8,7 @@ use crate::{
     chat::insert_chat_message, config::AppConfig, notification::{broadcast_push_notification, find_all_notification_subscriptions, PushNotificationPayload}, openai::BoxedToolCall, tool::{CalendarTool, SearxSearchTool}
 };
 
-#[derive(Default)]
+#[derive(Default, Debug)]
 pub struct ResearchMeetingAttendees;
 
 #[async_trait]

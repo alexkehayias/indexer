@@ -11,7 +11,7 @@ use crate::{
     oauth::find_all_gmail_auth_emails,
 };
 
-#[derive(Default)]
+#[derive(Default, Debug)]
 pub struct ProcessEmail;
 
 #[async_trait]

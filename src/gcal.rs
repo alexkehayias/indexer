@@ -55,15 +55,32 @@ pub struct EventAttendee {
 
 impl From<CalendarEvent> for Event {
     fn from(calendar_event: CalendarEvent) -> Self {
+        let start = &calendar_event.start.date_time.expect("Event missing start datetime");
+        let end = &calendar_event.end.date_time.expect("Event missing end datetime");
+
         Event {
             id: calendar_event.id,
             summary: calendar_event.summary,
             start: DateTime::parse_from_rfc3339(
-                &calendar_event.start.date_time.unwrap_or_default(),
+                start,
             )
-            .unwrap()
-            .with_timezone(&Utc),
-            end: DateTime::parse_from_rfc3339(&calendar_event.end.date_time.unwrap_or_default())
+                .inspect_err( |e| {
+                    tracing::error!(
+                        "Error {} while parsing start date {}",
+                        start,
+                        e.to_string()
+                    );
+                })
+                .unwrap()
+                .with_timezone(&Utc),
+            end: DateTime::parse_from_rfc3339(end)
+                .inspect_err( |e| {
+                    tracing::error!(
+                        "Error {} while parsing end date {}",
+                        start,
+                        e.to_string()
+                    );
+                })
                 .unwrap()
                 .with_timezone(&Utc),
             attendees: calendar_event

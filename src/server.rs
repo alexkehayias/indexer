@@ -25,21 +25,20 @@ use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
 
 use crate::aql;
 use crate::chat::{chat, find_chat_session_by_id, insert_chat_message};
-use crate::gcal::list_events;
 use crate::config::AppConfig;
+use crate::gcal::list_events;
 use crate::indexing::index_all;
-use crate::jobs::{spawn_periodic_job, ResearchMeetingAttendees};
+use crate::jobs::{ResearchMeetingAttendees, spawn_periodic_job};
 use crate::openai::{BoxedToolCall, Message, Role};
-use crate::tool::{CalendarTool, EmailUnreadTool, NoteSearchTool, SearxSearchTool};
 use crate::public::{self};
+use crate::tool::{CalendarTool, EmailUnreadTool, NoteSearchTool, SearxSearchTool};
 
 use super::db::async_db;
 use super::git::{diff_last_commit_files, maybe_pull_and_reset_repo};
-use super::notification::{PushSubscription, PushNotificationPayload, broadcast_push_notification};
+use super::notification::{PushNotificationPayload, PushSubscription, broadcast_push_notification};
 use super::search::search_notes;
 use crate::gmail::{Thread, extract_body, fetch_thread, list_unread_messages};
 use crate::oauth::refresh_access_token;
-
 
 type SharedState = Arc<RwLock<AppState>>;
 
@@ -252,8 +251,9 @@ async fn search(
         params.include_similarity,
         params.truncate,
         &query,
-        params.limit
-    ).await?;
+        params.limit,
+    )
+    .await?;
 
     let resp = public::SearchResponse {
         raw_query: raw_query.to_string(),
@@ -368,12 +368,8 @@ async fn send_notification(
         .await?
     };
 
-    let payload = PushNotificationPayload::new(
-        "Indexer notification",
-        &payload.message,
-        None,
-        None,
-    );
+    let payload =
+        PushNotificationPayload::new("Indexer notification", &payload.message, None, None);
     broadcast_push_notification(subscriptions, vapid_key_path, payload).await;
 
     Ok(Json(json!({ "success": true })))
@@ -521,7 +517,10 @@ async fn calendar_handler(
     let days_ahead = params.days_ahead.unwrap_or(7);
 
     // Default to primary calendar if not specified
-    let calendar_id = params.calendar_id.clone().unwrap_or_else(|| "primary".to_string());
+    let calendar_id = params
+        .calendar_id
+        .clone()
+        .unwrap_or_else(|| "primary".to_string());
 
     // Get the current time and calculate the end time
     let now = chrono::Utc::now();
@@ -548,7 +547,7 @@ async fn calendar_handler(
                             display_name: attendee.display_name,
                         })
                         .collect::<Vec<_>>()
-                })
+                }),
             }
         })
         .collect();
@@ -642,7 +641,8 @@ pub async fn serve(
         env::var("INDEXER_LOCAL_LLM_HOST").unwrap_or_else(|_| "https://api.openai.com".to_string());
     let openai_api_key =
         env::var("OPENAI_API_KEY").unwrap_or_else(|_| "thiswontworkforopenai".to_string());
-    let openai_model = env::var("INDEXER_LOCAL_LLM_MODEL").unwrap_or_else(|_| "gpt-4.1-mini".to_string());
+    let openai_model =
+        env::var("INDEXER_LOCAL_LLM_MODEL").unwrap_or_else(|_| "gpt-4.1-mini".to_string());
 
     let system_message = env::var("INDEXER_SYSTEM_MESSAGE")
         .unwrap_or_else(|_| "You are a helpful assistant.".to_string());

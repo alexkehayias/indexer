@@ -66,7 +66,7 @@ impl Traverser for MarkdownExport {
                 if !self.inside_list {
                     self.output += "\n"
                 }
-            },
+            }
 
             Event::Enter(Container::Section(_)) => self.follows_newline(),
             Event::Leave(Container::Section(_)) => {}
@@ -138,7 +138,7 @@ impl Traverser for MarkdownExport {
             Event::Leave(Container::OrgTableCell(_)) => {}
 
             Event::Enter(Container::Keyword(_)) => ctx.skip(),
-            Event::Leave(Container::Keyword(_)) => {},
+            Event::Leave(Container::Keyword(_)) => {}
 
             Event::Enter(Container::Link(link)) => {
                 let path = link.path();

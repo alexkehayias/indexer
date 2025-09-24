@@ -16,7 +16,7 @@ use indexer::indexing::index_all;
 use indexer::openai::{Message, Role, ToolCall};
 use indexer::search::search_notes;
 use indexer::server;
-use indexer::tool::{EmailUnreadTool, NoteSearchTool, SearxSearchTool, CalendarTool};
+use indexer::tool::{CalendarTool, EmailUnreadTool, NoteSearchTool, SearxSearchTool};
 
 #[derive(ValueEnum, Clone)]
 enum ServiceKind {
@@ -338,11 +338,12 @@ async fn main() -> Result<()> {
             ]);
 
             // Get OpenAI API configuration from environment variables (similar to AppConfig)
-            let openai_api_hostname =
-                env::var("INDEXER_LOCAL_LLM_HOST").unwrap_or_else(|_| "https://api.openai.com".to_string());
+            let openai_api_hostname = env::var("INDEXER_LOCAL_LLM_HOST")
+                .unwrap_or_else(|_| "https://api.openai.com".to_string());
             let openai_api_key =
                 env::var("OPENAI_API_KEY").unwrap_or_else(|_| "thiswontworkforopenai".to_string());
-            let openai_model = env::var("INDEXER_LOCAL_LLM_MODEL").unwrap_or_else(|_| "gpt-4.1-mini".to_string());
+            let openai_model =
+                env::var("INDEXER_LOCAL_LLM_MODEL").unwrap_or_else(|_| "gpt-4.1-mini".to_string());
 
             // TODO: Window the list of history
             let mut history = vec![Message::new(Role::System, "You are a helpful assistant.")];

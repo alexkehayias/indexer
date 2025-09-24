@@ -1,5 +1,5 @@
 use crate::openai::{Function, Parameters, Property, ToolCall, ToolType};
-use crate::public::{SearchResponse, CalendarResponse};
+use crate::public::{CalendarResponse, SearchResponse};
 use anyhow::{Error, Result};
 use async_trait::async_trait;
 use reqwest;
@@ -35,7 +35,10 @@ impl ToolCall for NoteSearchTool {
         // By default, only include search results from notes. This
         // avoids low quality content like tasks, meetings, and
         // journal entries from polluting the results.
-        let query = format!("{} type:note -tags:project -title:journal -category:work -category:personal", &fn_args.query);
+        let query = format!(
+            "{} type:note -tags:project -title:journal -category:work -category:personal",
+            &fn_args.query
+        );
         url.query_pairs_mut().append_pair("query", &query);
 
         let resp = reqwest::Client::new()
@@ -295,17 +298,19 @@ impl ToolCall for CalendarTool {
     async fn call(&self, args: &str) -> Result<String, Error> {
         let fn_args: CalendarArgs = serde_json::from_str(args).unwrap();
 
-        let mut url = reqwest::Url::parse(&format!("{}/calendar", self.api_base_url))
-            .expect("Invalid URL");
+        let mut url =
+            reqwest::Url::parse(&format!("{}/calendar", self.api_base_url)).expect("Invalid URL");
 
         url.query_pairs_mut().append_pair("email", &fn_args.email);
 
         if let Some(days_ahead) = fn_args.days_ahead {
-            url.query_pairs_mut().append_pair("days_ahead", &days_ahead.to_string());
+            url.query_pairs_mut()
+                .append_pair("days_ahead", &days_ahead.to_string());
         }
 
         if let Some(calendar_id) = fn_args.calendar_id {
-            url.query_pairs_mut().append_pair("calendar_id", &calendar_id);
+            url.query_pairs_mut()
+                .append_pair("calendar_id", &calendar_id);
         }
 
         let resp = reqwest::Client::new()
@@ -339,11 +344,10 @@ impl ToolCall for CalendarTool {
                 "No attendees".to_string()
             };
 
-            accum.push(format!("## {}\nStart: {}\nEnd: {}\n{}\n",
-                event.summary,
-                event.start,
-                event.end,
-                attendees_str))
+            accum.push(format!(
+                "## {}\nStart: {}\nEnd: {}\n{}\n",
+                event.summary, event.start, event.end, attendees_str
+            ))
         }
 
         let out = accum.join("\n\n");
@@ -371,11 +375,15 @@ impl CalendarTool {
                     },
                     days_ahead: Property {
                         r#type: String::from("integer"),
-                        description: String::from("Number of days ahead to fetch events for (default is 7)."),
+                        description: String::from(
+                            "Number of days ahead to fetch events for (default is 7).",
+                        ),
                     },
                     calendar_id: Property {
                         r#type: String::from("string"),
-                        description: String::from("The calendar ID to fetch events from (default is 'primary')."),
+                        description: String::from(
+                            "The calendar ID to fetch events from (default is 'primary').",
+                        ),
                     },
                 },
                 required: vec![String::from("email")],
@@ -410,7 +418,11 @@ mod tests {
         let url = server.url();
 
         let mock_resp = fs::read_to_string("./tests/data/searxng_search_results.json").unwrap();
-        let _mock = server.mock("GET", "/search?q=stormlight+archive&categories=general&format=json")
+        let _mock = server
+            .mock(
+                "GET",
+                "/search?q=stormlight+archive&categories=general&format=json",
+            )
             .with_status(200)
             .with_header("content-type", "application/json")
             .with_body(mock_resp)

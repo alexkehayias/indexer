@@ -2,10 +2,10 @@
 
 use std::collections::HashMap;
 
+use crate::openai::Message;
 use axum::response::{IntoResponse, Response};
 use http::StatusCode;
 use serde::{Deserialize, Serialize};
-use crate::openai::Message;
 
 // Errors
 
@@ -32,7 +32,6 @@ where
         Self(err.into())
     }
 }
-
 
 // Search
 

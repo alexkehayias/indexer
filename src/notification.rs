@@ -38,7 +38,12 @@ pub struct PushNotificationPayload {
 }
 
 impl PushNotificationPayload {
-    pub fn new(title: &str, body: &str, url: Option<&str>, actions: Option<Vec<PushNotificationAction>>) -> Self {
+    pub fn new(
+        title: &str,
+        body: &str,
+        url: Option<&str>,
+        actions: Option<Vec<PushNotificationAction>>,
+    ) -> Self {
         Self {
             title: title.to_string(),
             body: body.to_string(),

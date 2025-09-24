@@ -5,7 +5,13 @@ use uuid::Uuid;
 
 use super::PeriodicJob;
 use crate::{
-    chat::insert_chat_message, config::AppConfig, notification::{broadcast_push_notification, find_all_notification_subscriptions, PushNotificationPayload}, openai::BoxedToolCall, tool::{CalendarTool, SearxSearchTool}
+    chat::insert_chat_message,
+    config::AppConfig,
+    notification::{
+        PushNotificationPayload, broadcast_push_notification, find_all_notification_subscriptions,
+    },
+    openai::BoxedToolCall,
+    tool::{CalendarTool, SearxSearchTool},
 };
 
 #[derive(Default, Debug)]
@@ -105,7 +111,10 @@ Frank is the VP of People at Acme. He was previously HR Manager at Acme and befo
 
         // Get the final response from the chat
         let summary = if let Some(last_msg) = history.last() {
-            last_msg.content.clone().unwrap_or_else(|| "No summary available".to_string())
+            last_msg
+                .content
+                .clone()
+                .unwrap_or_else(|| "No summary available".to_string())
         } else {
             "No response from chat".to_string()
         };
@@ -119,11 +128,6 @@ Frank is the VP of People at Acme. He was previously HR Manager at Acme and befo
 
         // Broadcast push notification to all subscribers
         let subscriptions = find_all_notification_subscriptions(db).await.unwrap();
-        broadcast_push_notification(
-            subscriptions,
-            vapid_key_path.to_string(),
-            payload,
-        )
-        .await;
+        broadcast_push_notification(subscriptions, vapid_key_path.to_string(), payload).await;
     }
 }

@@ -369,7 +369,7 @@ async fn send_notification(
     };
 
     let payload =
-        PushNotificationPayload::new("Indexer notification", &payload.message, None, None);
+        PushNotificationPayload::new("Notification", &payload.message, None, None);
     broadcast_push_notification(subscriptions, vapid_key_path, payload).await;
 
     Ok(Json(json!({ "success": true })))

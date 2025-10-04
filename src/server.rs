@@ -369,7 +369,7 @@ async fn send_notification(
     };
 
     let payload =
-        PushNotificationPayload::new("Notification", &payload.message, None, None, None);
+        PushNotificationPayload::new("Notification", &payload.message, None, None, Some("indexer_updated"));
     broadcast_push_notification(subscriptions, vapid_key_path, payload).await;
 
     Ok(Json(json!({ "success": true })))

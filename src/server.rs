@@ -31,7 +31,7 @@ use crate::indexing::index_all;
 use crate::jobs::{ResearchMeetingAttendees, spawn_periodic_job};
 use crate::openai::{BoxedToolCall, Message, Role};
 use crate::public::{self};
-use crate::tool::{CalendarTool, EmailUnreadTool, NoteSearchTool, SearxSearchTool};
+use crate::tools::{CalendarTool, EmailUnreadTool, NoteSearchTool, SearxSearchTool};
 
 use super::db::async_db;
 use super::git::{diff_last_commit_files, maybe_pull_and_reset_repo};

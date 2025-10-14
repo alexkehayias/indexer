@@ -1,8 +1,10 @@
 use std::time::Duration;
+use tokio::sync::mpsc;
 
 use anyhow::{Error, Result};
 use async_trait::async_trait;
 use erased_serde;
+use futures_util::StreamExt;
 use serde::{Deserialize, Serialize};
 use serde_json::{Value, json};
 
@@ -165,4 +167,109 @@ pub async fn completion(
         .await?;
 
     Ok(response)
+}
+
+#[derive(Debug, Deserialize)]
+struct CompletionChunkDelta {
+    role: Option<String>,
+    content: Option<String>,
+    refusal: Option<String>,
+}
+
+#[derive(Debug, Deserialize)]
+struct CompletionChunkChoice {
+    index: usize,
+    delta: CompletionChunkDelta,
+    finish_reason: Option<String>,
+}
+
+#[derive(Debug, Deserialize)]
+struct CompletionChunk {
+    id: String,
+    object: String,
+    created: usize,
+    model: String,
+    choices: Vec<CompletionChunkChoice>,
+}
+
+pub async fn completion_stream(
+    tx: mpsc::UnboundedSender<String>,
+    messages: &Vec<Message>,
+    tools: &Option<Vec<BoxedToolCall>>,
+    api_hostname: &str,
+    api_key: &str,
+    model: &str,
+) -> Result<Value, Error> {
+    let mut payload = json!({
+        "model": model,
+        "messages": messages,
+        "stream": true,
+    });
+    if let Some(tools) = tools {
+        payload["tools"] = json!(tools);
+    }
+    let url = format!("{}/v1/chat/completions", api_hostname.trim_end_matches("/"));
+    let response = reqwest::Client::new()
+        .post(url)
+        .bearer_auth(api_key)
+        .header("Content-Type", "application/json")
+        .timeout(Duration::from_secs(60 * 5))
+        .json(&payload)
+        .send()
+        .await?;
+
+    let mut stream = response.bytes_stream();
+
+    let mut content_buf = String::from("");
+    while let Some(chunk) = stream.next().await {
+        let chunk = chunk.expect("Invalid chunk");
+        let chunk_str = std::str::from_utf8(&chunk)?.trim();
+        let _ = tx.send(chunk_str.strip_prefix("data: ").expect("Failed to strip prefix").to_string());
+
+        // Parse SSE events
+        if chunk_str.starts_with("data: ") {
+            // Sometimes there are multiple json rows within the same chunk
+            let data: Vec<&str> = chunk_str.split("data: ").collect();
+
+            for d in data.into_iter() {
+                let d = d.trim();
+
+                // Data can sometimes be empty. Not sure why.
+                if d.is_empty() {
+                    continue;
+                }
+
+                // Handle the end of the stream
+                if d == "[DONE]" {
+                    break;
+                }
+
+                // Process the delta
+                let r = serde_json::from_str::<CompletionChunk>(d)?;
+
+                // Handle content deltas
+                let c = r.choices.first().expect("Missing choices");
+
+                // TODO: handle tool call delta
+
+                if c.finish_reason.is_some() {
+                    break;
+                } else {
+                    // TODO handle a delta where there is no content from the assistant
+                    let c = c.delta
+                        .content
+                        .clone()
+                        .unwrap_or("".to_string());
+                    content_buf += &c;
+                }
+            }
+        }
+    }
+
+    let out = json!({
+        "choices": [
+            {"message": {"content": content_buf}}
+        ]
+    });
+    Ok(out)
 }

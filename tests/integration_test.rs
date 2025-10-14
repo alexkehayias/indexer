@@ -7,6 +7,7 @@ mod tests {
     use std::time::SystemTime;
 
     use anyhow::{Error, Result};
+    use anyhow::bail;
     use async_trait::async_trait;
     use axum::{
         Router,
@@ -216,6 +217,29 @@ mod tests {
         )
         .await;
         assert!(response.is_ok());
+    }
+
+    #[tokio::test]
+    async fn it_makes_openai_streaming_request() {
+        let messages = vec![
+            openai::Message::new(openai::Role::System, "You are a helpful assistant."),
+            openai::Message::new(
+                openai::Role::User,
+                "Write a haiku that explains the concept of recursion.",
+            ),
+        ];
+        let tools = None;
+        let response = openai::completion_stream(
+            &messages,
+            &tools,
+            "https://api.openai.com",
+            "testing",
+            "gpt-4o",
+        )
+            .await;
+
+        assert!(response.is_ok());
+        assert_eq!(response.unwrap(), "Testing");
     }
 
     #[tokio::test]

@@ -101,7 +101,7 @@ pub async fn chat_stream(
     api_key: &str,
     model: &str,
 ) {
-    let mut resp = completion_stream(tx, history, tools, api_hostname, api_key, model)
+    let mut resp = completion_stream(tx.clone(), history, tools, api_hostname, api_key, model)
         .await
         .expect("OpenAI API call failed");
 
@@ -113,10 +113,11 @@ pub async fn chat_stream(
         let tools_ref = tools
             .as_ref()
             .expect("Received tool call but no tools were specified");
+        // TODO: Update this to be streaming
         handle_tool_calls(tools_ref, history, accum_new, tool_calls).await;
 
         // Provide the results of the tool calls back to the chat
-        resp = completion(history, tools, api_hostname, api_key, model)
+        resp = completion_stream(tx.clone(), history, tools, api_hostname, api_key, model)
             .await
             .expect("OpenAI API call failed");
     }

@@ -50,6 +50,8 @@ embedding float[384]
 pub fn migrate_db(db: &Connection) -> Result<()> {
     // 2024-12-29 Add columns for type and status
     // 2025-03-30 Add column for category
+    // 2025-04-05 Add columns for task scheduled, deadline, and
+    // closed dates
     let migrated_note_meta_table = db.execute_batch(
         r"BEGIN;
 
@@ -68,7 +70,7 @@ CREATE TABLE IF NOT EXISTS note_meta_new (
 );
 
 INSERT INTO note_meta_new (id, file_name, title, category, tags, body)
-SELECT id, file_name, title, catgory, tags, body FROM note_meta;
+SELECT id, file_name, title, category, tags, body FROM note_meta;
 
 DROP TABLE note_meta;
 

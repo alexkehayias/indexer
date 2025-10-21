@@ -35,8 +35,14 @@ fn parse_date_to_timestamp(date_str: &str) -> u64 {
     (days * 24 * 60 * 60) as u64
 }
 
-pub fn aql_to_index_query(expr: &Expr, schema: &Schema) -> Box<dyn Query> {
+pub fn aql_to_index_query(expr: &Expr, schema: &Schema) -> Option<Box<dyn Query>> {
+    fn is_sql_only_field(field: &str) -> bool {
+        matches!(field, "scheduled" | "deadline" | "closed" | "date")
+    }
+
     match expr {
+        Expr::Term { field: Some(field), .. } if is_sql_only_field(field) => None,
+        Expr::Range { field, .. } if is_sql_only_field(field) => None,
         Expr::Term { field, value, phrase: _, negated } => {
             let field_names = field.clone().unwrap_or_else(|| "__default".into());
             let fields: Vec<Field> = if field_names == "__default" {
@@ -58,9 +64,9 @@ pub fn aql_to_index_query(expr: &Expr, schema: &Schema) -> Box<dyn Query> {
             }).collect();
 
             if terms.len() > 1 {
-                Box::new(BooleanQuery::from(terms.into_iter().map(|q| (Occur::Should, q)).collect::<Vec<(Occur, Box<dyn Query>)>>()))
+                Some(Box::new(BooleanQuery::from(terms.into_iter().map(|q| (Occur::Should, q)).collect::<Vec<(Occur, Box<dyn Query>)>>())))
             } else {
-                terms.into_iter().next().unwrap()
+                Some(terms.into_iter().next().unwrap())
             }
         },
         Expr::Range { field, op, value, negated } => {
@@ -78,25 +84,140 @@ pub fn aql_to_index_query(expr: &Expr, schema: &Schema) -> Box<dyn Query> {
             );
 
             if *negated {
-                Box::new(BooleanQuery::from(vec![(Occur::MustNot, Box::new(range_query) as Box<dyn Query>)]))
+                Some(Box::new(BooleanQuery::from(vec![(Occur::MustNot, Box::new(range_query) as Box<dyn Query>)])))
             } else {
-                Box::new(range_query)
+                Some(Box::new(range_query))
             }
         },
         Expr::And(left, right) => {
+            // This handles the following cases:
+            // - Left and right expressions have a query term
+            // - Only the left expression has a query term
+            // - Only the right expression has a query term
+            // - Neither left or right expressions have a query term
             let left_query = aql_to_index_query(left, schema);
             let right_query = aql_to_index_query(right, schema);
-            Box::new(BooleanQuery::from(vec![(Occur::Must, left_query), (Occur::Must, right_query)]))
+            if let Some(lq) = left_query {
+                if let Some(rq) = right_query {
+                    Some(Box::new(BooleanQuery::from(vec![(Occur::Must, lq), (Occur::Must, rq)])))
+                } else {
+                    Some(Box::new(BooleanQuery::from(vec![(Occur::Must, lq)])))
+                }
+            } else {
+                if let Some(rq) = right_query {
+                    Some(Box::new(BooleanQuery::from(vec![(Occur::Must, rq)])))
+                } else {
+                    None
+                }
+            }
         },
         Expr::Or(left, right) => {
             let left_query = aql_to_index_query(left, schema);
             let right_query = aql_to_index_query(right, schema);
-            Box::new(BooleanQuery::from(vec![(Occur::Should, left_query), (Occur::Should, right_query)]))
+            if let Some(lq) = left_query {
+                if let Some(rq) = right_query {
+                    Some(Box::new(BooleanQuery::from(vec![(Occur::Should, lq), (Occur::Must, rq)])))
+                } else {
+                    Some(Box::new(BooleanQuery::from(vec![(Occur::Should, lq)])))
+                }
+            } else {
+                if let Some(rq) = right_query {
+                    Some(Box::new(BooleanQuery::from(vec![(Occur::Should, rq)])))
+                } else {
+                    None
+                }
+            }
         },
         Expr::Group(exprs) => {
-            let queries: Vec<(Occur, Box<dyn Query>)> = exprs.iter().map(|e| (Occur::Must, aql_to_index_query(e, schema))).collect();
-            Box::new(BooleanQuery::from(queries))
+            // TODO fix this doesn't work with SQL related terms
+            let queries: Vec<(Occur, Box<dyn Query>)> = exprs.iter().map(|e| (Occur::Must, aql_to_index_query(e, schema).unwrap())).collect();
+            Some(Box::new(BooleanQuery::from(queries)))
         },
+    }
+}
+
+pub fn expr_to_sql(expr: &Expr) -> Option<String> {
+    fn is_allowed(field: &str) -> bool {
+        matches!(field, "scheduled" | "deadline" | "closed" | "date")
+    }
+
+    match expr {
+        Expr::Term { field: Some(field), value, negated, .. } if is_allowed(field) => {
+            let cmp = if *negated { "!=" } else { "=" };
+            Some(format!(r#"{} {} '{}'"#, field, cmp, value.replace('\'', "''")))
+        }
+        Expr::Range { field, op, value, negated } if is_allowed(field) => {
+            let op_str = match op {
+                RangeOp::Lt => if *negated { ">=" } else { "<" },
+                RangeOp::Lte => if *negated { ">" } else { "<=" },
+                RangeOp::Gt => if *negated { "<=" } else { ">" },
+                RangeOp::Gte => if *negated { "<" } else { ">=" },
+            };
+            Some(format!(r#"{} {} '{}'"#, field, op_str, value.replace('\'', "''")))
+        }
+        Expr::And(left, right) => {
+            let l = expr_to_sql(left);
+            let r = expr_to_sql(right);
+            match (l, r) {
+                (Some(l), Some(r)) => Some(format!("({} AND {})", l, r)),
+                (Some(l), None) => Some(l),
+                (None, Some(r)) => Some(r),
+                _ => None
+            }
+        }
+        Expr::Or(left, right) => {
+            let l = expr_to_sql(left);
+            let r = expr_to_sql(right);
+            match (l, r) {
+                (Some(l), Some(r)) => Some(format!("({} OR {})", l, r)),
+                (Some(l), None) => Some(l),
+                (None, Some(r)) => Some(r),
+                _ => None
+            }
+        }
+        Expr::Group(exprs) => {
+            let clauses: Vec<String> = exprs.iter().filter_map(expr_to_sql).collect();
+            if clauses.is_empty() { None }
+            else { Some(clauses.join(" AND "))}
+        }
+        _ => None,
+    }
+}
+
+pub fn query_to_similarity(expr: &Expr) -> Option<String> {
+    fn is_allowed(field: &str) -> bool {
+        matches!(field, "title" | "body")
+    }
+
+    match expr {
+        Expr::Term { field: Some(field), value, negated, .. } if is_allowed(field) => {
+            if *negated {
+                None
+            } else {
+                Some(value.to_owned())
+            }
+        }
+        Expr::And(left, right) => {
+            let l = query_to_similarity(left);
+            let r = query_to_similarity(right);
+            match (l, r) {
+                (Some(l), Some(r)) => Some(format!("({} {})", l, r)),
+                (Some(l), None) => Some(l),
+                (None, Some(r)) => Some(r),
+                _ => None
+            }
+        }
+        Expr::Or(left, right) => {
+            let l = expr_to_sql(left);
+            let r = expr_to_sql(right);
+            match (l, r) {
+                (Some(l), Some(r)) => Some(format!("({} {})", l, r)),
+                (Some(l), None) => Some(l),
+                (None, Some(r)) => Some(r),
+                _ => None
+            }
+        }
+        _ => None,
     }
 }
 
@@ -119,6 +240,65 @@ mod tests {
         let query = aql_to_index_query(&expr, &schema);
 
         // Assertions
-        assert!(matches!(query.as_any().downcast_ref::<BooleanQuery>(), Some(_)));
+        assert!(query.unwrap().as_any().downcast_ref::<BooleanQuery>().is_some());
     }
+
+    #[test]
+    fn test_expr_to_sql_term() {
+        let expr = parse_query("scheduled:2025-04-20").unwrap();
+        assert_eq!(expr_to_sql(&expr), Some("scheduled = '2025-04-20'".to_string()));
+
+        let expr = parse_query("-closed:2024-01-01").unwrap();
+        assert_eq!(expr_to_sql(&expr), Some("closed != '2024-01-01'".to_string()));
+    }
+
+    #[test]
+    fn test_expr_to_sql_range() {
+        let expr = parse_query("date:>2021-10-10").unwrap();
+        assert_eq!(expr_to_sql(&expr), Some("date > '2021-10-10'".to_string()));
+
+        let expr = parse_query("-deadline:<=2022-12-31").unwrap();
+        assert_eq!(expr_to_sql(&expr), Some("deadline > '2022-12-31'".to_string()));
+    }
+
+    #[test]
+    fn test_expr_to_sql_and_or_group() {
+        let expr = parse_query("scheduled:2025-04-20 AND deadline:<2023-01-01").unwrap();
+        assert_eq!(
+            expr_to_sql(&expr),
+            Some("(scheduled = '2025-04-20' AND deadline < '2023-01-01')".to_string())
+        );
+
+        // This parses as AND within group
+        let expr = parse_query("(scheduled:2025-01-10 deadline:2024-01-01)").unwrap();
+        assert_eq!(
+            expr_to_sql(&expr),
+            Some("(scheduled = '2025-01-10' AND deadline = '2024-01-01')".to_string())
+        );
+
+        // NOTE: OR with non-group terms is not supported by parser and is omitted.
+    }
+
+    #[test]
+    fn test_expr_to_sql_drops_unknown() {
+        // 'priority' is not an allowed field; should yield None when it's alone.
+        let expr = parse_query("priority:high").unwrap();
+        assert_eq!(expr_to_sql(&expr), None);
+
+        // If mixed with a valid field, only valid one appears in output.
+        let expr = parse_query("priority:high scheduled:2024-12-12").unwrap();
+        assert_eq!(expr_to_sql(&expr), Some("scheduled = '2024-12-12'".to_string()));
+    }
+
+    // #[test]
+    // fn test_expr_to_sql_nested_and_or() {
+    //     // Use only top-level OR without parenthesis nesting.
+    //     let expr = parse_query("scheduled:2025-06-01 OR deadline:2024-02-02").unwrap();
+    //     assert_eq!(
+    //         expr_to_sql(&expr),
+    //         Some(r#"(\"scheduled\" = '2025-06-01' OR \"deadline\" = '2024-02-02')"#.to_string())
+    //     );
+
+    //     // NOTE: Nested parenthesis and mixed AND/OR is not supported by parser and is omitted.
+    // }
 }

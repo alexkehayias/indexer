@@ -222,7 +222,8 @@ async fn kv_set(State(state): State<SharedState>, Json(data): Json<LastSelection
 
 #[derive(Serialize)]
 struct SearchResponse {
-    query: String,
+    raw_query: String,
+    parsed_query: String,
     results: Vec<SearchResult>,
 }
 
@@ -251,7 +252,8 @@ async fn search(
     let results = search_notes(index_path, &db, include_similarity, &query, 20);
 
     let resp = SearchResponse {
-        query: raw_query.to_owned(),
+        raw_query: raw_query.to_string(),
+        parsed_query: format!("{:?}", query),
         results,
     };
 

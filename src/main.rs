@@ -90,7 +90,7 @@ async fn main() -> tantivy::Result<()> {
 
     if let Some(query) = args.query {
         let db = vector_db(vec_db_path).expect("Failed to connect to db");
-        let fts_results = search_notes(&db, &query, true);
+        let fts_results = search_notes(index_path, &db, &query, true);
         println!(
             "{}",
             json!({

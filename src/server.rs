@@ -30,17 +30,24 @@ use super::search::search_notes;
 
 type SharedState = Arc<RwLock<AppState>>;
 
+struct AppConfig {
+    notes_path: &'static str,
+    index_path: &'static str,
+}
+
 struct AppState {
     // Stores the latest search hit selected by the user
     latest_selection: HashMap<String, String>,
     db: Mutex<Connection>,
+    config: AppConfig,
 }
 
 impl AppState {
-    fn new(db: Connection) -> Self {
+    fn new(db: Connection, config: AppConfig) -> Self {
         Self {
             latest_selection: HashMap::new(),
             db: Mutex::new(db),
+            config
         }
     }
 }
@@ -87,6 +94,7 @@ async fn search(
     let query = params.get("query");
     let results = if let Some(query) = query {
         let shared_state = state.read().unwrap();
+        let index_path = shared_state.config.index_path;
         let db = shared_state
             .db
             .lock()
@@ -99,9 +107,9 @@ async fn search(
             // TODO: Handle search query arguments like this default
             // argument that comes from the search UI
             let similarity_query = query.replace("-title:journal ", "");
-            search_notes(&db, &similarity_query, include_similarity)
+            search_notes(index_path, &db, &similarity_query, include_similarity)
         } else {
-            search_notes(&db, query, include_similarity)
+            search_notes(index_path, &db, query, include_similarity)
         }
     } else {
         Vec::new()
@@ -115,9 +123,8 @@ async fn search(
 }
 
 // Build the index for all notes
-async fn index_notes() -> Json<Value> {
-    let index_path = "./.index";
-    let notes_path = "./notes";
+async fn index_notes(State(state): State<SharedState>) -> Json<Value> {
+    let AppConfig {index_path, notes_path} = &state.read().expect("Failed to read state").config;
     let deploy_key_path = env::var("INDEXER_NOTES_DEPLOY_KEY_PATH")
         .expect("Missing env var INDEXER_NOTES_DEPLOY_KEY_PATH");
     maybe_pull_and_reset_repo(notes_path, deploy_key_path);
@@ -137,7 +144,9 @@ async fn view_note(
     // This is the org-id of the note
     Path(id): Path<String>
 ) -> Html<String> {
-    let shared_state = state.read().unwrap();
+    let shared_state = state.read().expect("Unable to read share state");
+    let notes_path = shared_state.config.notes_path;
+
     let db = shared_state
         .db
         .lock()
@@ -165,8 +174,6 @@ async fn view_note(
         .expect("Query failed");
     let file_name = result.first();
     if let Some(f) = file_name {
-        // TODO: Add this to shared state so it's not hardcoded
-        let notes_path = "./notes";
         let note_path = format!("{}/{}", notes_path, f);
         let content = fs::read_to_string(&note_path).expect("Failed to get file content");
 
@@ -203,7 +210,11 @@ pub async fn serve(host: String, port: String) {
 
     let vec_db_path = "./db";
     let db = vector_db(vec_db_path).expect("Failed to connect to db");
-    let app_state = AppState::new(db);
+    let app_config = AppConfig {
+        notes_path: "./notes",
+        index_path: "./.index",
+    };
+    let app_state = AppState::new(db, app_config);
     let shared_state = SharedState::new(RwLock::new(app_state));
     let cors = CorsLayer::permissive();
     let serve_dir = ServeDir::new("./web-ui/src");

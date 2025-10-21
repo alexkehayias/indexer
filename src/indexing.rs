@@ -203,7 +203,7 @@ fn parse_note(content: &str) -> Note {
         }
 
         // Handle tasks
-        if let Some(status) = i.todo_keyword().map(|j| j.to_string()) {
+        if let Some(status) = i.todo_keyword().map(|j| j.to_string().to_lowercase()) {
             let mut scheduled = None;
             let mut deadline = None;
             let mut closed = None;

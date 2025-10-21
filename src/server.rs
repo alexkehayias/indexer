@@ -88,8 +88,11 @@ async fn search(
             .db
             .lock()
             .expect("Failed to get db connection from app state");
-        let include_similarity = params.contains_key("similarity");
-        search_notes(&db, query, include_similarity)
+        let include_similarity = params.contains_key("include_similarity") && params.get("include_similarity").unwrap() == "true";
+        // TODO: Handle search query arguments like this default
+        // argument that comes from the search UI
+        let similarity_query = query.replace("-title:journal ", "");
+        search_notes(&db, &similarity_query, include_similarity)
     } else {
         Vec::new()
     };

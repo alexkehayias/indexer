@@ -3,7 +3,7 @@
   const resultList = document.getElementById("results");
   const emptyState = document.getElementById("empty-state");
 
-  const handleSearch = async (val) => {
+  const handleSearch = async (includeSimilarity, val) => {
     try {
       // Auto hide results from journal entries
       const query = `-title:journal ${val.trim()}`
@@ -11,7 +11,7 @@
       headers.append("Content-Type", "application/json");
 
       const response = await fetch(
-        `/notes/search?query=${query}`,
+        `/notes/search?query=${query}&include_similarity=${includeSimilarity}`,
         {
           method: "GET",
           headers,
@@ -116,9 +116,10 @@
   // If there is already a query, initiate the search
   const urlParams = new URLSearchParams(window.location.search);
   const initQuery = urlParams.get("query");
+  const includeSimilarity = urlParams.get("include_similarity") === "true";
   if (initQuery) {
     searchInput.value = initQuery;
-    handleSearch(initQuery);
+    handleSearch(includeSimilarity, initQuery);
   }
 
   // Handle search as you type
@@ -126,7 +127,7 @@
     const val = e.target.value;
 
     if (val) {
-      await handleSearch(val);
+      await handleSearch(includeSimilarity, val);
     }
   });
 })();

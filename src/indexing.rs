@@ -118,7 +118,12 @@ pub fn index_notes_all(index_path: &str, notes_path: &str) {
     index_writer.commit().expect("Index write failed");
 }
 
-pub fn index_note_vector(db: &mut Connection, embeddings_model: &TextEmbedding, splitter: &TextSplitter<CoreBPE>, note_path: &str) -> Result<()> {
+pub fn index_note_vector(
+    db: &mut Connection,
+    embeddings_model: &TextEmbedding,
+    splitter: &TextSplitter<CoreBPE>,
+    note_path: &str,
+) -> Result<()> {
     // Generate embeddings and store it in the DB
     let mut note_meta_stmt = db.prepare(
         "REPLACE INTO note_meta(id, file_name, title, tags, body) VALUES (?, ?, ?, ?, ?)",
@@ -143,9 +148,9 @@ pub fn index_note_vector(db: &mut Connection, embeddings_model: &TextEmbedding, 
 
     let embeddings: Vec<Vec<Vec<f32>>> = splitter
         .chunks(&content)
-        .map(|chunk|{
+        .map(|chunk| {
             embeddings_model
-                .embed(vec!(chunk), None)
+                .embed(vec![chunk], None)
                 .expect("Failed to generate embeddings")
         })
         .collect();
@@ -166,7 +171,6 @@ pub fn index_note_vector(db: &mut Connection, embeddings_model: &TextEmbedding, 
 
     Ok(())
 }
-
 
 /// Index each note's embeddings
 /// Target model has N tokens or roughly a M sized context window

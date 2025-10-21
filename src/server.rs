@@ -139,7 +139,7 @@ async fn chat_session(
     State(state): State<SharedState>,
     // This is the session ID of the chat
     Path(id): Path<String>,
-) -> Json<ChatTranscriptResponse> {
+) -> impl IntoResponse {
     let session = {
         let sessions = state
             .read()
@@ -148,16 +148,17 @@ async fn chat_session(
             .clone();
         sessions.get(&id).cloned()
     };
-    // FIX: Yuck! Figure out how to return a result that maps to a 404
-    // or a response.
+
     if let Some(s) = session {
         Json(ChatTranscriptResponse {
             transcript: s.transcript,
-        })
+        }).into_response()
     } else {
-        Json(ChatTranscriptResponse {
-            transcript: Vec::new(),
-        })
+        (
+            StatusCode::NOT_FOUND,
+            format!("Chat session not found for {}", id),
+        )
+            .into_response()
     }
 }
 

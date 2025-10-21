@@ -8,6 +8,7 @@ use orgize::{SyntaxElement, SyntaxNode};
 pub struct MarkdownExport {
     output: String,
     inside_blockquote: bool,
+    inside_list: bool,
 }
 
 impl MarkdownExport {
@@ -61,10 +62,14 @@ impl Traverser for MarkdownExport {
             Event::Leave(Container::Headline(_)) => {}
 
             Event::Enter(Container::Paragraph(_)) => {}
-            Event::Leave(Container::Paragraph(_)) => {}
+            Event::Leave(Container::Paragraph(_)) => {
+                if !self.inside_list {
+                    self.output += "\n"
+                }
+            },
 
             Event::Enter(Container::Section(_)) => self.follows_newline(),
-            Event::Leave(Container::Section(_)) => self.output += "\n",
+            Event::Leave(Container::Section(_)) => {}
 
             Event::Enter(Container::Italic(_)) => self.output += "*",
             Event::Leave(Container::Italic(_)) => self.output += "*",
@@ -111,8 +116,12 @@ impl Traverser for MarkdownExport {
             Event::Enter(Container::Superscript(_)) => self.output += "<sup>",
             Event::Leave(Container::Superscript(_)) => self.output += "</sup>",
 
-            Event::Enter(Container::List(_list)) => {}
-            Event::Leave(Container::List(_list)) => {}
+            Event::Enter(Container::List(_list)) => {
+                self.inside_list = true;
+            }
+            Event::Leave(Container::List(_list)) => {
+                self.inside_list = false;
+            }
 
             Event::Enter(Container::ListItem(list_item)) => {
                 self.follows_newline();
@@ -127,6 +136,9 @@ impl Traverser for MarkdownExport {
             Event::Leave(Container::OrgTableRow(_row)) => {}
             Event::Enter(Container::OrgTableCell(_)) => {}
             Event::Leave(Container::OrgTableCell(_)) => {}
+
+            Event::Enter(Container::Keyword(_)) => ctx.skip(),
+            Event::Leave(Container::Keyword(_)) => {},
 
             Event::Enter(Container::Link(link)) => {
                 let path = link.path();

@@ -96,11 +96,9 @@ fn parse_note(content: &str) -> Note {
         .trim()
         .to_owned();
 
-    // TODO: Remove the title and the tasks when indexing the body so it's
-    // not duplicated
-    // let title_text_range = org_doc.first_headline()?.text_range();
-    // p.replace_range(title_text_range, "");
-    let note_body = d.raw();
+    let mut note_body_md = MarkdownExport::default();
+    note_body_md.render(d.syntax());
+    let note_body = note_body_md.finish();
 
     let filetags: Vec<Vec<String>> = p
         .keywords()
@@ -162,8 +160,6 @@ fn parse_note(content: &str) -> Note {
             default_id
         };
 
-        // Extract note body into markdown format This is
-        // useful since LLMs are typically tune for markdown
         let mut plain_text = MarkdownExport::default();
         plain_text.render(i.syntax());
         let body = plain_text.finish();

@@ -35,7 +35,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const messageHTML = marked.parse(message, { breaks: true });
 
     const messageText = document.createElement('p');
-    messageText.className = 'text-sm font-normal';
+    messageText.className = 'markdown text-sm font-normal';
     messageText.innerHTML = messageHTML;
     messageBody.appendChild(messageText);
     messageContent.appendChild(messageBody);

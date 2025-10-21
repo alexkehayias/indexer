@@ -29,7 +29,7 @@ use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
 use crate::aql;
 use crate::chat::chat;
 use crate::indexing::index_all;
-use crate::notification::find_notification_subscriptions;
+use crate::notification::find_all_notification_subscriptions;
 use crate::openai::{BoxedToolCall, Message, Role};
 use crate::tool::{NoteSearchTool, SearxSearchTool, EmailUnreadTool};
 
@@ -39,7 +39,7 @@ use super::notification::{PushSubscription, broadcast_push_notification};
 use uuid::Uuid;
 use super::search::{SearchResult, search_notes};
 use crate::gmail::{Thread, extract_body, fetch_thread, list_unread_messages};
-use crate::oauth::refresh_access_token;
+use crate::oauth::{find_all_gmail_auth_emails, refresh_access_token};
 
 
 // Top level API error
@@ -678,7 +678,7 @@ pub async fn serve(
         index_path,
         deploy_key_path,
         vapid_key_path,
-        note_search_api_url,
+        note_search_api_url: note_search_api_url.clone(),
         searxng_api_url,
         gmail_api_client_id,
         gmail_api_client_secret,
@@ -698,20 +698,19 @@ pub async fn serve(
 
     // Run periodic tasks in the background
     let state_clone = Arc::clone(&shared_state);
+
     tokio::spawn(async move {
         let mut ticker = interval(Duration::from_secs(10));
         loop {
             ticker.tick().await;
 
-            let system_msg = "You are an email assistant AI. Summarize, search, and analyze emails on behalf of the user.";
-            let user_msg = "Summarize my unread emails.";
+            let emails = {
+                let db = db_async.write().expect("Failed to get connection").clone();
+                find_all_gmail_auth_emails(&db).await.expect("Query failed")
+            };
+
             let session_id = Uuid::new_v4().to_string();
-            let mut history = vec![
-                Message::new(Role::System, system_msg),
-                Message::new(Role::User, user_msg),
-            ];
-            let resp = crate::agents::email::email_chat_response(user_msg, None).await;
-            history.push(Message::new(Role::Assistant, &resp));
+            let history = crate::agents::email::email_chat_response(&note_search_api_url, emails).await;
 
             // Store in AppState
             {
@@ -732,15 +731,13 @@ pub async fn serve(
             };
             let subscriptions = {
                 let db = db_async.write().expect("Failed to get connection").clone();
-                find_notification_subscriptions(&db).await.unwrap()
+                find_all_notification_subscriptions(&db).await.unwrap()
             };
             broadcast_push_notification(
                 subscriptions,
                 vapid_key_path,
                 "Emails processed!".to_string(),
             ).await;
-
-            tracing::debug!("Periodic agent: {}", resp);
         }
     });
 

@@ -2,6 +2,8 @@
 
 use reqwest::Client;
 use serde::{Deserialize, Serialize};
+use tokio_rusqlite::Connection;
+use anyhow::{Result, Error};
 
 /// Response from Google's token endpoint
 #[derive(Debug, Deserialize, Serialize, Clone)]
@@ -76,4 +78,16 @@ pub async fn refresh_access_token(
     // The refresh endpoint does not always return refresh_token, so preserve the old one.
     token.refresh_token = Some(refresh_token.to_string());
     Ok(token)
+}
+
+pub async fn find_all_gmail_auth_emails(db: &Connection) -> Result<Vec<String>, Error> {
+    let auths = db.call(|conn| {
+        let result: Vec<String> = conn
+            .prepare("SELECT id FROM auth WHERE service = 'gmail'")?
+            .query_map([], |row| row.get(0))?
+            .filter_map(Result::ok)
+            .collect();
+        Ok(result)
+    });
+    Ok(auths.await?)
 }

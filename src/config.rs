@@ -8,7 +8,8 @@ pub struct AppConfig {
     pub searxng_api_url: String,
     pub gmail_api_client_id: String,
     pub gmail_api_client_secret: String,
+    pub openai_model: String,
     pub openai_api_hostname: String,
     pub openai_api_key: String,
-    pub openai_model: String,
+    pub system_message: String,
 }

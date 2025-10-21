@@ -176,7 +176,11 @@ async fn chat_handler(
 
     // Initialize a new transcript
     if transcript.is_empty() {
-        let default_system_msg = Message::new(Role::System, "You are a helpful assistant.");
+        let shared_state = state.read().expect("Unable to read share state");
+        let default_system_msg = Message::new(
+    Role::System,
+    &shared_state.config.system_message,
+);
         transcript.push(default_system_msg.clone());
         accum_new.push(default_system_msg);
     }
@@ -632,6 +636,9 @@ pub async fn serve(
     let openai_api_key = env::var("OPENAI_API_KEY").expect("OPENAI_API_KEY environment variable is not set");
     let openai_model = env::var("OPENAI_MODEL").unwrap_or_else(|_| "gpt-4.1-mini".to_string());
 
+    let system_message = env::var("INDEXER_SYSTEM_MESSAGE")
+        .unwrap_or_else(|_| "You are a helpful assistant.".to_string());
+
     let app_config = AppConfig {
         notes_path,
         index_path,
@@ -644,6 +651,7 @@ pub async fn serve(
         openai_api_hostname,
         openai_api_key,
         openai_model,
+        system_message,
     };
     let app_state = AppState::new(db.clone(), app_config.clone());
     let shared_state = Arc::new(RwLock::new(app_state));

@@ -62,9 +62,9 @@ pub fn search_similar_notes(db: &Connection, query: &str) -> Result<Vec<(String,
             distance
           FROM vec_items
           JOIN note_meta on note_meta_id=note_meta.id
-          WHERE embedding MATCH ? AND k = 3
+          WHERE embedding MATCH ? AND k = 10
           ORDER BY distance
-          LIMIT 3
+          LIMIT 10
         ",
         )?
         .query_map([q.as_bytes()], |r| Ok((r.get(0)?, r.get(1)?)))?

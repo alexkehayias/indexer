@@ -10,6 +10,9 @@ RUN cargo build --release
 # Run stage
 FROM debian:bookworm-slim AS runner
 
+RUN apt update
+RUN apt install -y git
+
 # Use the compiled binary rather than cargo
 COPY --from=builder /target/release/indexer /indexer
 

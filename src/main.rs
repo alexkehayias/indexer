@@ -217,7 +217,7 @@ fn maybe_clone_repo(url: String) {
 
     let stdout = std::str::from_utf8(&git_clone.stdout).expect("Failed to parse stdout");
     let stderr = std::str::from_utf8(&git_clone.stderr).expect("Failed to parse stderr");
-    println!("stdout{}\nstderr{}", stdout, stderr);
+    println!("stdout: {}\nstderr: {}", stdout, stderr);
 }
 
 // Build the index for all notes

@@ -340,7 +340,6 @@ fn index_note_vector(
     db: &mut Connection,
     embeddings_model: &TextEmbedding,
     splitter: &TextSplitter<CoreBPE>,
-    file_name: &str,
     note: &Note,
 ) -> Result<()> {
     // Generate embeddings and store it in the DB
@@ -473,7 +472,7 @@ pub fn index_all(
         // other indices to diverge which will eventually break search
         index_note_meta(db, file_name, &note).expect("Upserting note meta failed");
         if index_vector {
-            index_note_vector(db, &embeddings_model, &splitter, file_name, &note)
+            index_note_vector(db, &embeddings_model, &splitter, &note)
                 .expect("Upserting note vector failed");
         }
         if index_full_text {

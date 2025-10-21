@@ -64,8 +64,7 @@ mod tests {
             index_path: index_path.display().to_string(),
             deploy_key_path: String::from("test_deploy_key_path"),
             vapid_key_path: String::from("test_vapid_key_path"),
-            host: String::from("localhost"),
-            port: String::from("2222"),
+            note_search_api_url: String::from("http://localhost:2222"),
         };
         let app_state = AppState::new(db, app_config);
         app(app_state)

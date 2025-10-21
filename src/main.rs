@@ -96,6 +96,9 @@ async fn main() -> Result<()> {
     // matches just as you would the top level cmd
     match args.command {
         Some(Command::Serve { host, port }) => {
+            let note_search_api_url =
+                env::var("INDEXER_NOTE_SEARCH_API_URL").unwrap_or(format!("http://{}:{}", host, port));
+
             server::serve(
                 host,
                 port,
@@ -104,6 +107,7 @@ async fn main() -> Result<()> {
                 vec_db_path,
                 deploy_key_path,
                 vapid_key_path,
+                note_search_api_url,
             )
             .await;
         }

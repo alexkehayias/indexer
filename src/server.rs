@@ -69,8 +69,7 @@ pub struct AppConfig {
     pub index_path: String,
     pub deploy_key_path: String,
     pub vapid_key_path: String,
-    pub host: String,
-    pub port: String,
+    pub note_search_api_url: String,
 }
 
 #[derive(Debug, Deserialize)]
@@ -108,8 +107,8 @@ async fn chat_handler(
 ) -> Json<ChatResponse> {
     let note_search_tool = {
         let shared_state = state.read().expect("Unable to read share state");
-        let AppConfig { host, port, .. } = &shared_state.config;
-        NoteSearchTool::new(&format!("http://{}:{}", host, port))
+        let AppConfig { note_search_api_url,.. } = &shared_state.config;
+        NoteSearchTool::new(note_search_api_url)
     };
 
     let tools: Option<Vec<BoxedToolCall>> = Some(vec![Box::new(note_search_tool)]);
@@ -401,6 +400,7 @@ pub async fn serve(
     vec_db_path: String,
     deploy_key_path: String,
     vapid_key_path: String,
+    note_search_api_url: String,
 ) {
     tracing_subscriber::registry()
         .with(
@@ -422,8 +422,7 @@ pub async fn serve(
         index_path,
         deploy_key_path,
         vapid_key_path,
-        host: host.clone(),
-        port: port.clone(),
+        note_search_api_url,
     };
     let app_state = AppState::new(db, app_config);
     let app = app(app_state);

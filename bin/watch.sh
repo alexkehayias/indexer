@@ -1,1 +1,1 @@
-watchexec -r -e js,css,html ./bin/run.sh
+watchexec -r -e js,css,html,rs ./bin/run.sh

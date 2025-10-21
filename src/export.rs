@@ -11,10 +11,6 @@ pub struct PlainTextExport {
 }
 
 impl PlainTextExport {
-    pub fn push_str(&mut self, s: impl AsRef<str>) {
-        self.output += s.as_ref();
-    }
-
     /// Render syntax node to markdown string
     ///
     /// ```rust
@@ -172,8 +168,8 @@ impl Traverser for PlainTextExport {
 
             Event::Timestamp(_timestamp) => {}
 
-            Event::LatexFragment(latex) => {}
-            Event::LatexEnvironment(latex) => {}
+            Event::LatexFragment(_) => {}
+            Event::LatexEnvironment(_) => {}
 
             Event::Entity(entity) => self.output += entity.utf8(),
 

@@ -7,7 +7,7 @@ use base64::{engine::general_purpose, Engine as _};
 
 /// Message and thread structures from Gmail API documentation
 #[derive(Debug, Serialize, Deserialize, Clone)]
-pub struct Message {
+pub struct MessageResponse {
     pub id: String,
     #[serde(rename = "threadId")]
     pub thread_id: String,
@@ -15,7 +15,7 @@ pub struct Message {
 
 #[derive(Debug, Deserialize)]
 pub struct ListMessagesResponse {
-    pub messages: Option<Vec<Message>>,
+    pub messages: Option<Vec<MessageResponse>>,
     #[serde(rename = "nextPageToken")]
     pub next_page_token: Option<String>,
 }
@@ -23,11 +23,11 @@ pub struct ListMessagesResponse {
 #[derive(Debug, Serialize, Deserialize)]
 pub struct Thread {
     pub id: String,
-    pub messages: Vec<MessageDetail>,
+    pub messages: Vec<Message>,
 }
 
 #[derive(Debug, Serialize, Deserialize)]
-pub struct MessageDetail {
+pub struct Message {
     pub id: String,
     #[serde(rename = "threadId")]
     pub thread_id: String,
@@ -73,7 +73,7 @@ pub struct MessageHeader {
 pub async fn list_unread_messages(
     access_token: &str,
     n_days: i64,
-) -> Result<Vec<Message>, anyhow::Error> {
+) -> Result<Vec<MessageResponse>, anyhow::Error> {
     let client = Client::new();
     let after_date = (Utc::now() - Duration::days(n_days)).format("%Y/%m/%d").to_string();
     let url = format!(

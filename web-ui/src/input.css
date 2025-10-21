@@ -45,4 +45,27 @@
   > ol li {
     @apply list-decimal list-outside ml-4 pl-1 mt-2;
   }
+  > table {
+    @apply w-full border-collapse overflow-x-auto block rounded-lg bg-white;
+  }
+  > table thead {
+    @apply bg-gray-800 text-white;
+  }
+  > table th {
+    @apply px-4 py-2 text-left font-semibold text-sm;
+  }
+  > table tbody tr:nth-child(even) {
+    @apply bg-gray-50;
+  }
+  > table td {
+    @apply px-4 py-2 border-t border-gray-200 text-sm text-gray-800 align-top;
+  }
+  @media (max-width: 640px) {
+    > table {
+      @apply block min-w-[600px];
+    }
+  }
+  > table caption {
+    @apply mt-2 text-sm text-gray-500;
+  }
 }

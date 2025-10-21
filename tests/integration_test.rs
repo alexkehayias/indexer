@@ -5,7 +5,6 @@ mod tests {
     use std::path::PathBuf;
     use std::time::SystemTime;
 
-    use serial_test::serial;
     use anyhow::{Error, Result};
     use axum::{
         body::Body,
@@ -14,12 +13,13 @@ mod tests {
     };
     use indexer::db::migrate_db;
     use indexer::db::vector_db;
+    use indexer::indexing::index_all;
     use indexer::openai;
     use indexer::prompt::{self, Prompt};
     use indexer::server::{app, AppConfig, AppState};
-    use indexer::indexing::index_all;
     use serde::Serialize;
     use serde_json::json;
+    use serial_test::serial;
     use tower::util::ServiceExt;
 
     async fn body_to_string(body: Body) -> String {
@@ -88,11 +88,10 @@ mod tests {
 #+TITLE: this is a test
 #+DATE: 2025-01-28
 "#,
-        ).unwrap();
+        )
+        .unwrap();
 
-        index_all(
-            db, index_dir_path, notes_dir_path, true, true, Some(paths)
-        ).unwrap();
+        index_all(db, index_dir_path, notes_dir_path, true, true, Some(paths)).unwrap();
     }
 
     #[tokio::test]

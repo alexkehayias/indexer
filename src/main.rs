@@ -7,13 +7,13 @@ use std::env;
 use std::fs;
 use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
 
+use indexer::chat::chat;
 use indexer::db::{migrate_db, vector_db};
 use indexer::git::{maybe_clone_repo, maybe_pull_and_reset_repo};
 use indexer::indexing::index_all;
 use indexer::openai::{Message, Role, ToolCall};
 use indexer::search::search_notes;
 use indexer::server;
-use indexer::chat::chat;
 use indexer::tool::NoteSearchTool;
 
 #[derive(Subcommand)]
@@ -68,10 +68,10 @@ async fn main() -> Result<()> {
     let index_path = format!("{}/index", storage_path);
     let notes_path = format!("{}/notes", storage_path);
     let vec_db_path = format!("{}/db", storage_path);
-    let deploy_key_path = env::var("INDEXER_NOTES_DEPLOY_KEY_PATH")
-        .expect("Missing env var INDEXER_NOTES_REPO_URL");
-    let vapid_key_path = env::var("INDEXER_VAPID_KEY_PATH")
-        .expect("Missing env var INDEXER_VAPID_KEY_PATH");
+    let deploy_key_path =
+        env::var("INDEXER_NOTES_DEPLOY_KEY_PATH").expect("Missing env var INDEXER_NOTES_REPO_URL");
+    let vapid_key_path =
+        env::var("INDEXER_VAPID_KEY_PATH").expect("Missing env var INDEXER_VAPID_KEY_PATH");
 
     // Default command
     if args.init {
@@ -96,7 +96,16 @@ async fn main() -> Result<()> {
     // matches just as you would the top level cmd
     match args.command {
         Some(Command::Serve { host, port }) => {
-            server::serve(host, port, notes_path.clone(), index_path, vec_db_path, deploy_key_path, vapid_key_path).await;
+            server::serve(
+                host,
+                port,
+                notes_path.clone(),
+                index_path,
+                vec_db_path,
+                deploy_key_path,
+                vapid_key_path,
+            )
+            .await;
         }
         Some(Command::Index {
             all,
@@ -156,13 +165,9 @@ async fn main() -> Result<()> {
             let mut rl = DefaultEditor::new().expect("Editor failed");
 
             let note_search_tool = NoteSearchTool::default();
-            let tools: Option<Vec<Box<dyn ToolCall>>> =
-                Some(vec![Box::new(note_search_tool)]);
+            let tools: Option<Vec<Box<dyn ToolCall>>> = Some(vec![Box::new(note_search_tool)]);
             // TODO: Window the list of history
-            let mut history = vec![Message::new(
-                Role::System,
-                "You are a helpful assistant.",
-            )];
+            let mut history = vec![Message::new(Role::System, "You are a helpful assistant.")];
 
             loop {
                 let readline = rl.readline("> ");

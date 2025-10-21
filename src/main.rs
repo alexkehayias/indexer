@@ -16,7 +16,7 @@ use indexer::indexing::index_all;
 use indexer::openai::{Message, Role, ToolCall};
 use indexer::search::search_notes;
 use indexer::server;
-use indexer::tool::{EmailUnreadTool, NoteSearchTool, SearxSearchTool};
+use indexer::tool::{EmailUnreadTool, NoteSearchTool, SearxSearchTool, CalendarTool};
 
 #[derive(ValueEnum, Clone)]
 enum ServiceKind {
@@ -306,11 +306,13 @@ async fn main() -> Result<()> {
             let note_search_tool = NoteSearchTool::new(&note_search_api_url);
             let email_unread_tool = EmailUnreadTool::new(&note_search_api_url);
             let searx_search_tool = SearxSearchTool::new(&searxng_api_url);
+            let calendar_tool = CalendarTool::new(&note_search_api_url);
 
             let tools: Option<Vec<Box<dyn ToolCall + Send + Sync + 'static>>> = Some(vec![
                 Box::new(note_search_tool),
                 Box::new(searx_search_tool),
                 Box::new(email_unread_tool),
+                Box::new(calendar_tool),
             ]);
 
             // Get OpenAI API configuration from environment variables (similar to AppConfig)

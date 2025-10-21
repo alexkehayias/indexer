@@ -29,7 +29,7 @@ use crate::gcal::list_events;
 use crate::config::AppConfig;
 use crate::indexing::index_all;
 use crate::openai::{BoxedToolCall, Message, Role};
-use crate::tool::{EmailUnreadTool, NoteSearchTool, SearxSearchTool};
+use crate::tool::{CalendarTool, EmailUnreadTool, NoteSearchTool, SearxSearchTool};
 use crate::public::{self};
 
 use super::db::async_db;
@@ -93,6 +93,7 @@ async fn chat_handler(
         note_search_tool,
         searx_search_tool,
         email_unread_tool,
+        calendar_tool,
         openai_api_hostname,
         openai_api_key,
         openai_model,
@@ -110,6 +111,7 @@ async fn chat_handler(
             NoteSearchTool::new(note_search_api_url),
             SearxSearchTool::new(searxng_api_url),
             EmailUnreadTool::new(note_search_api_url),
+            CalendarTool::new(note_search_api_url),
             openai_api_hostname.clone(),
             openai_api_key.clone(),
             openai_model.clone(),
@@ -120,6 +122,7 @@ async fn chat_handler(
         Box::new(note_search_tool),
         Box::new(searx_search_tool),
         Box::new(email_unread_tool),
+        Box::new(calendar_tool),
     ]);
     let user_msg = Message::new(Role::User, &payload.message);
     let mut accum_new: Vec<Message> = vec![];

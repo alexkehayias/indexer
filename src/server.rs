@@ -1,7 +1,6 @@
 use std::collections::HashMap;
 use std::env;
 use std::fs;
-use std::process::Command;
 use std::sync::{Arc, RwLock};
 
 use tantivy::{doc, Index, IndexWriter};
@@ -24,6 +23,7 @@ use super::schema::note_schema;
 use super::search::search_notes;
 use super::indexing::index_note;
 use super::source::notes;
+use super::git::maybe_pull_and_reset_repo;
 
 type SharedState = Arc<RwLock<AppState>>;
 
@@ -82,24 +82,12 @@ async fn search(Query(params): Query<HashMap<String, String>>) -> Json<Value> {
     Json(resp)
 }
 
-// Pull and reset to origin main branch
-fn maybe_pull_and_reset_repo(deploy_key_path: String) {
-    let git_clone = Command::new("sh")
-        .arg("-c")
-        .arg(format!("cd ./notes && GIT_SSH_COMMAND='ssh -i {} -o IdentitiesOnly=yes' git fetch origin && git reset --hard origin/main", deploy_key_path))
-        .output()
-        .expect("failed to execute process");
-
-    let stdout = std::str::from_utf8(&git_clone.stdout).expect("Failed to parse stdout");
-    let stderr = std::str::from_utf8(&git_clone.stderr).expect("Failed to parse stderr");
-    tracing::debug!("stdout: {}\nstderr: {}", stdout, stderr);
-}
-
 // Build the index for all notes
 async fn index_notes() -> Json<Value> {
+    let notes_path = "./notes";
     let deploy_key_path = env::var("INDEXER_NOTES_DEPLOY_KEY_PATH")
         .expect("Missing env var INDEXER_NOTES_DEPLOY_KEY_PATH");
-    maybe_pull_and_reset_repo(deploy_key_path);
+    maybe_pull_and_reset_repo(notes_path, deploy_key_path);
 
     let index_path = "./.index";
     fs::remove_dir_all(index_path).expect("Failed to remove index directory");
@@ -113,7 +101,6 @@ async fn index_notes() -> Json<Value> {
         .writer(50_000_000)
         .expect("Index writer failed to initialize");
 
-    let notes_path = "./notes";
     for note in notes(notes_path) {
         let _ = index_note(&mut index_writer, &schema, note);
     }

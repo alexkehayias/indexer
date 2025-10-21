@@ -31,7 +31,7 @@ pub struct SearchHit {
     body: Option<String>,
 }
 
-fn fulltext_search(index_path: &str, include_body: bool, query: &str) -> Vec<SearchHit> {
+fn fulltext_search(index_path: &str, include_body: bool, query: &str, limit: usize) -> Vec<SearchHit> {
     let schema = note_schema();
     let index_path = tantivy::directory::MmapDirectory::open(index_path).expect("Index not found");
     let idx =
@@ -52,7 +52,7 @@ fn fulltext_search(index_path: &str, include_body: bool, query: &str) -> Vec<Sea
         .expect("Failed to parse query");
 
     searcher
-        .search(&query, &TopDocs::with_limit(10))
+        .search(&query, &TopDocs::with_limit(limit))
         .expect("Search failed")
         .iter()
         .map(|(score, doc_addr)| {
@@ -114,7 +114,7 @@ fn fulltext_search(index_path: &str, include_body: bool, query: &str) -> Vec<Sea
 /// Returns the note ID and similarity distance for the query. Results
 /// are ordered by ascending distance because sqlite-vec only supports
 /// ascending distance.
-pub fn search_similar_notes(db: &Connection, include_body: bool, query: &str) -> Result<Vec<SearchHit>> {
+pub fn search_similar_notes(db: &Connection, include_body: bool, query: &str, limit: usize) -> Result<Vec<SearchHit>> {
     let embeddings_model = TextEmbedding::try_new(
         InitOptions::new(EmbeddingModel::BGESmallENV15).with_show_download_progress(true),
     )
@@ -134,12 +134,12 @@ pub fn search_similar_notes(db: &Connection, include_body: bool, query: &str) ->
           FROM vec_items
           JOIN note_meta on note_meta_id=note_meta.id
           AND LOWER(note_meta.title) NOT LIKE LOWER('%journal%')
-          WHERE embedding MATCH ? AND k = 10
+          WHERE embedding MATCH ? AND k = ?
           ORDER BY distance
-          LIMIT 10
+          LIMIT ?
         ",
         )?
-        .query_map([q.as_bytes()], |r| {
+        .query_map([q.as_bytes(), limit.as_bytes(), limit.as_bytes()], |r| {
             Ok(SearchHit {
                 r#type: SearchHitType::Similarity,
                 id: r.get(0)?,
@@ -168,16 +168,17 @@ pub fn search_notes(
     include_similarity: bool,
     include_body: bool,
     query: &str,
+    limit: usize,
 ) -> Vec<SearchHit> {
     if include_similarity {
-        let mut result = fulltext_search(index_path, include_body, query);
+        let mut result = fulltext_search(index_path, include_body, query, limit);
         let similarity_query = query.replace("-title:journal ", "");
-        let mut vec_search_result = search_similar_notes(db, include_body, &similarity_query).unwrap_or_default();
+        let mut vec_search_result = search_similar_notes(db, include_body, &similarity_query, limit).unwrap_or_default();
 
         // Combine the results, dedupe, then sort by score
         result.append(&mut vec_search_result);
         result.into_iter().unique_by(|i| i.id.clone()).collect()
     } else {
-        fulltext_search(index_path, include_body, query)
+        fulltext_search(index_path, include_body, query, limit)
     }
 }

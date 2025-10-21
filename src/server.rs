@@ -113,7 +113,7 @@ async fn search(
 
         let include_similarity = params.contains_key("include_similarity")
             && params.get("include_similarity").unwrap() == "true";
-        search_notes(index_path, &db, include_similarity, include_body, query)
+        search_notes(index_path, &db, include_similarity, include_body, query, 20)
     } else {
         Vec::new()
     };

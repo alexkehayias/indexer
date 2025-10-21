@@ -31,7 +31,12 @@ impl ToolCall for NoteSearchTool {
 
         let mut url = reqwest::Url::parse(&format!("{}/notes/search", self.api_base_url))
             .expect("Invalid URL");
-        url.query_pairs_mut().append_pair("query", &fn_args.query);
+
+        // By default, only include search results from notes. This
+        // avoids low quality content like tasks, meetings, and
+        // journal entries from polluting the results.
+        let query = format!("{} type:note -tags:project -title:journal -category:work -category:personal", &fn_args.query);
+        url.query_pairs_mut().append_pair("query", &query);
 
         let resp = reqwest::Client::new()
             .get(url.as_str())

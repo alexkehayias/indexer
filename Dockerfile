@@ -20,6 +20,7 @@ FROM debian:bookworm-slim AS runner
 
 RUN apt update
 RUN apt install -y git
+RUN apt install -y curl
 
 # Use the compiled binary rather than cargo
 COPY --from=builder /target/release/indexer /indexer

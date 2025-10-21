@@ -394,7 +394,7 @@ struct NotificationPayload {
 async fn send_notification(
     State(state): State<SharedState>,
     Json(payload): Json<NotificationPayload>,
-) -> Json<Value> {
+) -> Result<Json<Value>, ApiError> {
     let vapid_key_path = state
         .read()
         .expect("Unable to read share state")
@@ -403,29 +403,31 @@ async fn send_notification(
         .clone();
 
     let subscriptions = {
-        let shared_state = state.read().unwrap();
-        let db = shared_state.db.lock().unwrap_or_else(|e| e.into_inner());
-        let mut stmt = db.prepare(
-            "SELECT endpoint, p256dh, auth FROM push_subscription"
-        ).expect("prepare failed");
-        stmt.query_map([], |i| {
-            Ok(PushSubscription {
-                endpoint: i.get(0)?,
-                p256dh: i.get(1)?,
-                auth: i.get(2)?,
-            })
-        })
-        .expect("query_map failed")
-        .filter_map(Result::ok)
-        .collect::<Vec<_>>()
+        let db = state.read().unwrap().a_db.clone();
+        db.call(move |conn| {
+            let mut stmt = conn.prepare(
+                "SELECT endpoint, p256dh, auth FROM push_subscription"
+            )?;
+            let result = stmt.query_map([], |i| {
+                Ok(PushSubscription {
+                    endpoint: i.get(0)?,
+                    p256dh: i.get(1)?,
+                    auth: i.get(2)?,
+                })
+            })?
+                .filter_map(Result::ok)
+                .collect::<Vec<_>>();
+            Ok(result)
+        }).await?
     };
+
     broadcast_push_notification(
         subscriptions,
         vapid_key_path,
         payload.message.clone(),
     ).await;
 
-    Json(json!({ "success": true }))
+    Ok(Json(json!({ "success": true })))
 }
 
 #[derive(Deserialize)]

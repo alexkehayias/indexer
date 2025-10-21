@@ -16,7 +16,10 @@
             <input id="search" type="text" autofocus autocapitalize="none" class="h-12 w-full border-0 bg-transparent pl-11 pr-4 text-gray-900 placeholder:text-gray-400 focus:ring-0 sm:text-sm" placeholder="Search...">
           </div>
 
-          <ul id="results" class="hidden max-h-96 overflow-y-auto p-2 text-sm text-gray-700"></ul>
+          <!-- Set the height of the search results based on screen
+          size so that we use up the full height of the screen without
+          double scroll bars -->
+          <ul id="results" class="hidden overflow-y-auto p-2 text-sm text-gray-700 max-h-[calc(100vh-5rem)] sm:max-h-[calc(100vh-6rem)] md:max-h-[calc(100vh-13rem)]"></ul>
 
           <div id="empty-state" class="hidden px-6 py-14 text-center sm:px-14">
             <svg class="mx-auto h-6 w-6 text-gray-400" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" aria-hidden="true">

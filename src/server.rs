@@ -348,14 +348,13 @@ async fn view_note(
     State(state): State<SharedState>,
     // This is the org-id of the note
     Path(id): Path<String>,
-) -> Json<ViewNoteResult> {
-    let shared_state = state.read().expect("Unable to read share state");
+) -> Result<Json<ViewNoteResult>, ApiError> {
+    let db = state.read().unwrap().a_db.clone();
 
-    let db = shared_state.db.lock().unwrap_or_else(|e| e.into_inner());
-
-    let result = db
-        .prepare(
-            r"
+    let note_result = db.call(move |conn| {
+        let result = conn
+            .prepare(
+                r"
           SELECT
             id,
             title,
@@ -365,23 +364,25 @@ async fn view_note(
           WHERE id = ?
           LIMIT 1
         ",
-        )
-        .expect("Failed to prepare sql statement")
-        .query_map([id], |i| {
-            Ok(ViewNoteResult {
-                id: i.get(0)?,
-                title: i.get(1)?,
-                body: i.get(2)?,
-                tags: i.get(3)?,
+            )
+            .expect("Failed to prepare sql statement")
+            .query_map([id], |i| {
+                Ok(ViewNoteResult {
+                    id: i.get(0)?,
+                    title: i.get(1)?,
+                    body: i.get(2)?,
+                    tags: i.get(3)?,
+                })
             })
-        })
         // lol wat?
-        .unwrap()
-        .last()
-        .unwrap()
-        .unwrap();
+            .unwrap()
+            .last()
+            .unwrap()
+            .unwrap();
+        Ok(result)
+    }).await?;
 
-    Json(result)
+    Ok(Json(note_result))
 }
 
 #[derive(Deserialize)]

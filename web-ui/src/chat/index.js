@@ -64,12 +64,12 @@ document.addEventListener('DOMContentLoaded', () => {
 
       const messageBody = document.createElement('div');
       messageBody.className = isUserMessage
-        ? 'flex flex-col leading-1.5 p-4 bg-blue-500 text-white rounded-e-xl rounded-es-xl'
-        : 'flex flex-col leading-1.5 p-4 border-gray-200 bg-gray-100 text-gray-900 dark:bg-gray-700 rounded-e-xl rounded-es-xl';
+        ? 'flex flex-col leading-1.5 p-4 bg-blue-100 rounded-e-xl rounded-es-xl'
+        : 'flex flex-col leading-1.5 p-4 border-gray-200 bg-gray-100 rounded-e-xl rounded-es-xl';
 
       const messageHTML = marked.parse(message, { breaks: true });
 
-      const messageText = document.createElement('p');
+      const messageText = document.createElement('div');
       messageText.className = 'markdown text-sm font-normal';
       messageText.innerHTML = messageHTML;
       messageBody.appendChild(messageText);

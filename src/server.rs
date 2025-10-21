@@ -1,12 +1,14 @@
+use std::fs;
 use std::collections::HashMap;
 use std::env;
 use std::sync::{Arc, Mutex, RwLock};
 
+use axum::response::Html;
 use tantivy::doc;
 
 use axum::extract::Query;
 use axum::{
-    extract::State,
+    extract::{State, Path},
     response::Json,
     routing::{get, post},
     Router,
@@ -18,6 +20,7 @@ use tower_http::cors::CorsLayer;
 use tower_http::services::ServeDir;
 use tower_http::trace::TraceLayer;
 use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
+use orgize::ParseConfig;
 
 use crate::indexing::index_notes_all;
 
@@ -124,6 +127,53 @@ async fn index_notes() -> Json<Value> {
     Json(resp)
 }
 
+// Render a note in org-mode format by ID
+// Fetch the contents of the note by ID using the DB
+async fn view_note(
+    State(state): State<SharedState>,
+    // This is the org-id of the note
+    Path(id): Path<String>
+) -> Html<String> {
+    let shared_state = state.read().unwrap();
+    let db = shared_state
+        .db
+        .lock()
+        .expect("Failed to get db connection from app state");
+
+    let result: Vec<String> = db
+        .prepare(
+            r"
+          SELECT
+            id,
+            file_name,
+            title,
+            tags
+          FROM note_meta
+          WHERE id = ?
+          LIMIT 1
+        ",
+        )
+        .expect("Failed to prepare sql statement")
+        .query_map([id], |i| Ok(i.get(1).expect("Invalid row returned")))
+        .expect("Query failed")
+        .collect::<Result<Vec<String>, _>>()
+        .expect("Query failed");
+    let file_name = result.first().unwrap();
+    // TODO: Add this to shared state so it's not hardcoded
+    let notes_path = "./notes";
+    let note_path = format!("{}/{}", notes_path, file_name);
+    let content = fs::read_to_string(&note_path).expect("Failed to get file content");
+
+    // Render the org-mode content in HTML
+    let config = ParseConfig {
+        ..Default::default()
+    };
+    // TODO: replace org-id links with note viewer links
+    let output = config.parse(content).to_html();
+
+    Html(output)
+}
+
 // Run the server
 pub async fn serve(host: String, port: String) {
     tracing_subscriber::registry()
@@ -155,6 +205,8 @@ pub async fn serve(host: String, port: String) {
         .route("/notes/search/latest", get(kv_get).post(kv_set))
         // Index content endpoint
         .route("/notes/index", post(index_notes))
+    // Static server of assets in ./web-ui
+        .route("/notes/:id/view", get(view_note))
         // Static server of assets in ./web-ui
         .nest_service("/", serve_dir.clone())
         .layer(TraceLayer::new_for_http())

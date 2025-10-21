@@ -174,7 +174,6 @@ mod tests {
         }
     }
 
-
     #[derive(Serialize)]
     pub struct DummyProps2 {
         dummy_arg: openai::Property,

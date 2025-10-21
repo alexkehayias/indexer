@@ -10,8 +10,8 @@ use zerocopy::IntoBytes;
 
 use crate::aql::{self};
 use crate::fts::schema::note_schema;
-use crate::query::{aql_to_index_query, expr_to_sql, query_to_similarity};
 use crate::public::SearchResult;
+use crate::query::{aql_to_index_query, expr_to_sql, query_to_similarity};
 
 #[derive(Serialize)]
 pub enum SearchHitType {

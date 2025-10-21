@@ -31,8 +31,8 @@ use super::search::search_notes;
 type SharedState = Arc<RwLock<AppState>>;
 
 struct AppConfig {
-    notes_path: &'static str,
-    index_path: &'static str,
+    notes_path: String,
+    index_path: String,
 }
 
 struct AppState {
@@ -94,7 +94,7 @@ async fn search(
     let query = params.get("query");
     let results = if let Some(query) = query {
         let shared_state = state.read().unwrap();
-        let index_path = shared_state.config.index_path;
+        let index_path = &shared_state.config.index_path;
         let db = shared_state
             .db
             .lock()
@@ -120,7 +120,7 @@ async fn index_notes(State(state): State<SharedState>) -> Json<Value> {
     let AppConfig {index_path, notes_path} = &state.read().expect("Failed to read state").config;
     let deploy_key_path = env::var("INDEXER_NOTES_DEPLOY_KEY_PATH")
         .expect("Missing env var INDEXER_NOTES_DEPLOY_KEY_PATH");
-    maybe_pull_and_reset_repo(notes_path, deploy_key_path);
+    maybe_pull_and_reset_repo(&deploy_key_path, notes_path);
 
     index_notes_all(index_path, notes_path);
 
@@ -138,7 +138,7 @@ async fn view_note(
     Path(id): Path<String>
 ) -> Html<String> {
     let shared_state = state.read().expect("Unable to read share state");
-    let notes_path = shared_state.config.notes_path;
+    let notes_path = &shared_state.config.notes_path;
 
     let db = shared_state
         .db
@@ -185,7 +185,7 @@ async fn view_note(
 }
 
 // Run the server
-pub async fn serve(host: String, port: String) {
+pub async fn serve(host: String, port: String, notes_path: String, index_path: String, vec_db_path: String) {
     tracing_subscriber::registry()
         .with(
             tracing_subscriber::EnvFilter::try_from_default_env().unwrap_or_else(|_| {
@@ -201,11 +201,10 @@ pub async fn serve(host: String, port: String) {
         .with(tracing_subscriber::fmt::layer())
         .init();
 
-    let vec_db_path = "./db";
-    let db = vector_db(vec_db_path).expect("Failed to connect to db");
+    let db = vector_db(&vec_db_path).expect("Failed to connect to db");
     let app_config = AppConfig {
-        notes_path: "./notes",
-        index_path: "./.index",
+        notes_path,
+        index_path
     };
     let app_state = AppState::new(db, app_config);
     let shared_state = SharedState::new(RwLock::new(app_state));

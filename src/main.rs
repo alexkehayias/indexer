@@ -10,7 +10,7 @@ use clap::Parser;
 use tantivy::collector::TopDocs;
 use tantivy::query::QueryParser;
 use tantivy::schema::*;
-use tantivy::{doc, Index, IndexWriter, ReloadPolicy};
+use tantivy::{Index, IndexWriter, ReloadPolicy};
 
 use axum::extract::Query;
 use axum::{
@@ -32,6 +32,8 @@ use schema::note_schema;
 mod search;
 use search::search_notes;
 mod server;
+mod indexing;
+mod source;
 
 // Clone a repo if it doesn't already exist
 fn maybe_clone_repo(url: String, deploy_key_path: String) {
@@ -82,15 +84,15 @@ async fn main() -> tantivy::Result<()> {
     let index_path = tantivy::directory::MmapDirectory::open("./.index")?;
     let idx = Index::open_or_create(index_path, schema.clone())?;
 
-    // if let Some(notes_path) = args.path {
-    //     let mut index_writer: IndexWriter = idx.writer(50_000_000)?;
+    if let Some(notes_path) = args.path {
+        let mut index_writer: IndexWriter = idx.writer(50_000_000)?;
 
-    //     for note in notes(&notes_path) {
-    //         let _ = index_note(&mut index_writer, &schema, note);
-    //     }
+        for note in source::notes(&notes_path) {
+            let _ = indexing::index_note(&mut index_writer, &schema, note);
+        }
 
-    //     index_writer.commit()?;
-    // }
+        index_writer.commit()?;
+    }
 
     if let Some(query) = args.query {
         let reader = idx

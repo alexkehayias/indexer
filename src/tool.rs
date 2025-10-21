@@ -28,6 +28,8 @@ pub struct NoteSearchTool {
 impl ToolCall for NoteSearchTool {
     async fn call(&self, args: &str) -> Result<String, Error> {
         let fn_args: NoteSearchArgs = serde_json::from_str(args).unwrap();
+        // Always exclude journal entries
+        let query = format!("-title:journal {}", &fn_args.query);
 
         // Construct the URL with query parameters encoded
         let mut url = reqwest::Url::parse(

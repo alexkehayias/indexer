@@ -11,10 +11,13 @@ use tantivy::{doc, Index, IndexWriter, ReloadPolicy};
 
 use axum::{
     routing::get,
-    response::Json,
+    response::{Html, Json},
     Router,
 };
+use tower_http::cors::CorsLayer;
+use tower_http::trace::TraceLayer;
 use axum::extract::Query;
+
 use serde_json::{Value, json};
 use orgize::ParseConfig;
 
@@ -174,9 +177,19 @@ async fn search(Query(params): Query<HashMap<String, String>>) -> Json<Value> {
 }
 
 
+async fn webview() -> Html<&'static str> {
+    Html("<p>Hello, World!</p><a onClick=\"javascript:window.close('','_parent','');\">Close</a>")
+}
+
+
 async fn serve(host: String, port: String) {
+    let cors = CorsLayer::permissive();
+
     let app = Router::new()
-        .route("/notes/search", get(search));
+        .route("/webview", get(webview))
+        .route("/notes/search", get(search))
+        .layer(TraceLayer::new_for_http())
+        .layer(cors);
 
     let listener = tokio::net::TcpListener::bind(format!("{}:{}", host, port))
         .await

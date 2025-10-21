@@ -288,12 +288,35 @@ async fn push_subscription(
     Ok(Json(json!({"success": true})))
 }
 
+fn default_limit() -> usize {
+    20
+}
+
+fn default_as_true() -> bool {
+    true
+}
+
+fn default_as_false() -> bool {
+    false
+}
+
+#[derive(Deserialize)]
+struct SearchParams {
+    query: String,
+    #[serde(default = "default_as_false")]
+    include_similarity: bool,
+    #[serde(default = "default_limit")]
+    limit: usize,
+    #[serde(default = "default_as_true")]
+    truncate: bool,
+}
+
 async fn search(
     State(state): State<SharedState>,
-    Query(params): Query<HashMap<String, String>>,
+    Query(params): Query<SearchParams>,
 ) -> Result<Json<SearchResponse>, ApiError> {
-    let raw_query = params.get("query").expect("Missing query param");
-    let query = aql::parse_query(raw_query).expect("Parsing AQL failed");
+    let raw_query = params.query;
+    let query = aql::parse_query(&raw_query).expect("Parsing AQL failed");
     let (db, index_path) = {
         let shared_state = state.read().unwrap();
         (
@@ -302,9 +325,14 @@ async fn search(
         )
     };
 
-    let include_similarity = params.contains_key("include_similarity")
-        && params.get("include_similarity").unwrap() == "true";
-    let results = search_notes(&index_path, &db, include_similarity, &query, 20).await?;
+    let results = search_notes(
+        &index_path,
+        &db,
+        params.include_similarity,
+        params.truncate,
+        &query,
+        params.limit
+    ).await?;
 
     let resp = SearchResponse {
         raw_query: raw_query.to_string(),

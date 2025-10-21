@@ -288,7 +288,7 @@ async fn main() -> Result<()> {
                 .await
                 .expect("Failed to connect to async db");
             let query = aql::parse_query(&term).expect("Parsing AQL failed");
-            let results = search_notes(&index_path, &db, vector, &query, 20).await?;
+            let results = search_notes(&index_path, &db, vector, false, &query, 20).await?;
             println!(
                 "{}",
                 json!({

@@ -1,4 +1,4 @@
-use rusqlite::{ffi::sqlite3_auto_extension, Connection, Result};
+use rusqlite::{Connection, Result, ffi::sqlite3_auto_extension};
 use sqlite_vec::sqlite3_vec_init;
 
 /// Initialize the db by creating all tables. This function should

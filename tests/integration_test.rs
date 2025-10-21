@@ -8,9 +8,9 @@ mod tests {
     use anyhow::{Error, Result};
     use async_trait::async_trait;
     use axum::{
+        Router,
         body::Body,
         http::{Request, StatusCode},
-        Router,
     };
     use indexer::db::initialize_db;
     use indexer::db::vector_db;
@@ -18,7 +18,7 @@ mod tests {
     use indexer::openai;
     use indexer::openai::BoxedToolCall;
     use indexer::prompt::{self, Prompt};
-    use indexer::server::{app, AppConfig, AppState};
+    use indexer::server::{AppConfig, AppState, app};
     use serde::Serialize;
     use serde_json::json;
     use serial_test::serial;

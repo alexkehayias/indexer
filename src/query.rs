@@ -1,9 +1,9 @@
 use crate::aql::{Expr, RangeOp};
 use std::ops::Bound;
+use tantivy::Term;
 use tantivy::query::{AllQuery, BooleanQuery, TermQuery};
 use tantivy::query::{Occur, Query};
 use tantivy::schema::{Field, IndexRecordOption, Schema};
-use tantivy::Term;
 
 fn parse_date_to_timestamp(date_str: &str) -> u64 {
     let parts: Vec<u32> = date_str.split('-').map(|s| s.parse().unwrap()).collect();
@@ -311,11 +311,13 @@ mod tests {
         let query = aql_to_index_query(&expr, &schema);
 
         // Assertions
-        assert!(query
-            .unwrap()
-            .as_any()
-            .downcast_ref::<BooleanQuery>()
-            .is_some());
+        assert!(
+            query
+                .unwrap()
+                .as_any()
+                .downcast_ref::<BooleanQuery>()
+                .is_some()
+        );
     }
 
     #[test]

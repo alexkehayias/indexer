@@ -10,15 +10,15 @@ use tantivy::doc;
 
 use axum::extract::Query;
 use axum::{
+    Router,
     extract::{Path, State},
     response::Json,
     routing::{get, post},
-    Router,
 };
 use orgize::ParseConfig;
 use rusqlite::Connection;
 use serde::{Deserialize, Serialize};
-use serde_json::{json, Value};
+use serde_json::{Value, json};
 use tokio::task::JoinSet;
 use tower_http::cors::CorsLayer;
 use tower_http::services::ServeDir;
@@ -33,8 +33,8 @@ use crate::tool::{NoteSearchTool, SearxSearchTool};
 
 use super::db::vector_db;
 use super::git::{diff_last_commit_files, maybe_pull_and_reset_repo};
-use super::notification::{send_push_notification, PushSubscription};
-use super::search::{search_notes, SearchResult};
+use super::notification::{PushSubscription, send_push_notification};
+use super::search::{SearchResult, search_notes};
 
 type SharedState = Arc<RwLock<AppState>>;
 

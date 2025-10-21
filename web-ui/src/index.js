@@ -61,7 +61,7 @@
             // Map the status to an icon
             switch (r.task_status.toLowerCase()) {
               case "todo":
-                taskIconContainer.innerText = "📝";
+                taskIconContainer.innerText = "⬜";
                 break;
               case "waiting":
                 taskIconContainer.innerText = "⏳";

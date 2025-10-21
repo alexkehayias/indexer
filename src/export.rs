@@ -4,7 +4,6 @@ use std::fmt::Write as _;
 use orgize::export::{Container, Event, TraversalContext, Traverser};
 use orgize::{SyntaxElement, SyntaxNode};
 
-
 #[derive(Default)]
 pub struct PlainTextExport {
     output: String,
@@ -46,6 +45,11 @@ impl PlainTextExport {
 impl Traverser for PlainTextExport {
     fn event(&mut self, event: Event, ctx: &mut TraversalContext) {
         match event {
+            Event::Enter(Container::Drawer(_)) => {}
+            Event::Leave(Container::Drawer(_)) => {}
+            Event::Enter(Container::PropertyDrawer(_)) => {}
+            Event::Leave(Container::PropertyDrawer(_)) => {}
+
             Event::Enter(Container::Document(_)) => {}
             Event::Leave(Container::Document(_)) => {}
 
@@ -60,10 +64,10 @@ impl Traverser for PlainTextExport {
             Event::Leave(Container::Headline(_)) => {}
 
             Event::Enter(Container::Paragraph(_)) => {}
-            Event::Leave(Container::Paragraph(_)) => self.output += "\n",
+            Event::Leave(Container::Paragraph(_)) => {}
 
             Event::Enter(Container::Section(_)) => self.follows_newline(),
-            Event::Leave(Container::Section(_)) => {}
+            Event::Leave(Container::Section(_)) => self.output += "\n",
 
             Event::Enter(Container::Italic(_)) => self.output += "*",
             Event::Leave(Container::Italic(_)) => self.output += "*",

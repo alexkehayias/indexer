@@ -1,7 +1,9 @@
 use super::schema::note_schema;
 use super::source::notes;
+use crate::export::PlainTextExport;
 use fastembed::{EmbeddingModel, InitOptions, TextEmbedding};
-use orgize::ParseConfig;
+use orgize::rowan::ast::AstNode;
+use orgize::{ParseConfig, SyntaxNode};
 use rusqlite::{Connection, Result};
 use std::fs;
 use std::path::PathBuf;
@@ -13,10 +15,11 @@ use zerocopy::AsBytes;
 
 #[derive(Debug)]
 struct Task {
-    id: Option<String>,
+    id: String,
     title: String,
     body: String,
     status: String,
+    tags: Option<String>,
     // TODO: Change to a date
     scheduled: Option<String>,
     // TODO: Change to a date
@@ -28,13 +31,20 @@ struct Note {
     title: String,
     body: String,
     tags: Option<String>,
-    tasks: Vec<Task>
+    tasks: Vec<Task>,
 }
 
 /// Parse the content into a `Note`
 fn parse_note(content: &str) -> Note {
     let config = ParseConfig {
-        todo_keywords: (vec!("TODO".to_string(), "WAITING".to_string()), vec!("DONE".to_string(), "CANCELED".to_string(), "SOMEDAY".to_string())),
+        todo_keywords: (
+            vec!["TODO".to_string(), "WAITING".to_string()],
+            vec![
+                "DONE".to_string(),
+                "CANCELED".to_string(),
+                "SOMEDAY".to_string(),
+            ],
+        ),
         ..Default::default()
     };
     let p = config.parse(content);
@@ -45,7 +55,13 @@ drawer",
     );
     let id = props.get("ID").expect("Missing org-id").to_string();
     let title = p.title().expect("No title found");
+
+    // TODO: Remove the title and the tasks when indexing the body so it's
+    // not duplicated
+    // let title_text_range = org_doc.first_headline()?.text_range();
+    // p.replace_range(title_text_range, "");
     let body = p.document().raw();
+
     let filetags: Vec<Vec<String>> = p
         .keywords()
         .filter_map(|k| match k.key().to_string().as_str() {
@@ -69,47 +85,72 @@ drawer",
         Some(filetags[0].to_owned().join(","))
     };
 
-    // TODO collect nested tasks
-    let tasks: Vec<Task> = p.document().headlines().filter_map(|i| -> Option<Task> {
-        if i.todo_type().is_some() {
-            let id = i.properties()?.get("ID").map(|j| j.to_string());
-            let title = i.title_raw().trim().to_string();
-            let body = i.raw();
-            let status = i.todo_keyword().map(|j| j.to_string()).expect("Task missing status");
+    // Collect all of the tasks in the note file
+    let tasks: Vec<Task> = p
+        .document()
+        .headlines()
+        .filter_map(|i| -> Option<Task> {
+            if i.todo_type().is_some() {
+                let task_title = i.title_raw().trim().to_string();
+                // Tasks sometimes don't have an org-id. These tasks are ignored.
+                let id = i.properties()?.get("ID").map(|j| j.to_string())?;
+                let mut plain_text = PlainTextExport::default();
+                plain_text.render(i.syntax());
+                let task_body = plain_text.finish();
 
-            let mut scheduled = None;
-            let mut deadline = None;
-            if let Some(planning) = i.planning() {
-                tracing::debug!("Found planning: {:?}", &planning);
-                scheduled = planning.scheduled().map(|t| format!(
-                    "{}-{}-{}",
-                    t.year_start().unwrap(),
-                    t.month_start().unwrap(),
-                    t.day_start().unwrap()
-                ));
-                deadline = planning.deadline().map(|t| format!(
-                    "{}-{}-{}",
-                    t.year_start().unwrap(),
-                    t.month_start().unwrap(),
-                    t.day_start().unwrap()
-                ));
+                let status = i
+                    .todo_keyword()
+                    .map(|j| j.to_string())
+                    .expect("Task missing status");
+                let tag_string = i
+                    .tags()
+                    .map(|j| j.to_string())
+                    .collect::<Vec<String>>()
+                    .join(",");
+                let tags = if tag_string.is_empty() {
+                    None
+                } else {
+                    Some(tag_string)
+                };
+
+                let mut scheduled = None;
+                let mut deadline = None;
+                if let Some(planning) = i.planning() {
+                    scheduled = planning.scheduled().map(|t| {
+                        format!(
+                            "{}-{}-{}",
+                            t.year_start().unwrap(),
+                            t.month_start().unwrap(),
+                            t.day_start().unwrap()
+                        )
+                    });
+                    deadline = planning.deadline().map(|t| {
+                        format!(
+                            "{}-{}-{}",
+                            t.year_start().unwrap(),
+                            t.month_start().unwrap(),
+                            t.day_start().unwrap()
+                        )
+                    });
+                }
+
+                let task = Task {
+                    id,
+                    title: task_title,
+                    body: task_body,
+                    tags,
+                    status,
+                    scheduled,
+                    deadline,
+                };
+
+                tracing::debug!("Found task {}", task.body);
+
+                return Some(task);
             }
-
-            let task = Task {
-                id,
-                title,
-                body,
-                status,
-                scheduled,
-                deadline
-            };
-
-            tracing::debug!("Found task {:?}", task);
-
-            return Some(task)
-        }
-        None
-    }).collect();
+            None
+        })
+        .collect();
 
     Note {
         id,
@@ -117,6 +158,20 @@ drawer",
         body,
         tags,
         tasks,
+    }
+}
+
+enum DocType {
+    Note,
+    Task,
+}
+
+impl DocType {
+    fn to_str(&self) -> &'static str {
+        match self {
+            DocType::Note => "note",
+            DocType::Task => "task",
+        }
     }
 }
 
@@ -130,28 +185,55 @@ pub fn index_note(
     tracing::debug!("Indexing note: {}", &path.display());
 
     let id = schema.get_field("id")?;
+    let r#type = schema.get_field("type")?;
     let title = schema.get_field("title")?;
     let body = schema.get_field("body")?;
     let tags = schema.get_field("tags")?;
+    let status = schema.get_field("status")?;
     let file_name = schema.get_field("file_name")?;
 
     // Parse the file from the path
     let content = fs::read_to_string(&path)?;
     let file_name_value = path.file_name().unwrap().to_string_lossy().into_owned();
-    let note = parse_note(&content);
+    let note_type = DocType::Note.to_str();
+    let Note {
+        id: note_id,
+        title: note_title,
+        body: note_body,
+        tags: note_tags,
+        tasks: note_tasks,
+    } = parse_note(&content);
 
     let mut doc = doc!(
-        id => note.id,
-        title => note.title,
-        body => note.body,
-        file_name => file_name_value,
+        id => note_id,
+        r#type => note_type,
+        title => note_title,
+        body => note_body,
+        file_name => file_name_value.clone(),
     );
 
     // This needs to be done outside of the `doc!` macro
-    if let Some(t) = note.tags {
-        doc.add_text(tags, t);
+    if let Some(tag_list) = note_tags {
+        doc.add_text(tags, tag_list);
     }
     index_writer.add_document(doc)?;
+
+    // Index each task
+    for t in note_tasks.into_iter() {
+        let task_type = DocType::Task.to_str();
+        let mut doc = doc!(
+            id => t.id,
+            r#type => task_type,
+            title => t.title,
+            body => t.body,
+            status => t.status,
+            file_name => file_name_value.clone(),
+        );
+        if let Some(tag_list) = t.tags {
+            doc.add_text(tags, tag_list);
+        }
+        index_writer.add_document(doc)?;
+    }
 
     Ok(())
 }

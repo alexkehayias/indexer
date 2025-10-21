@@ -1,12 +1,12 @@
 //! Gmail API client for listing unread mail, fetching threads, sending replies
 
 use reqwest::Client;
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
 use chrono::{Duration, Utc};
 use base64::{engine::general_purpose, Engine as _};
 
 /// Message and thread structures from Gmail API documentation
-#[derive(Debug, Deserialize, Clone)]
+#[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct Message {
     pub id: String,
     #[serde(rename = "threadId")]
@@ -20,13 +20,13 @@ pub struct ListMessagesResponse {
     pub next_page_token: Option<String>,
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Serialize, Deserialize)]
 pub struct Thread {
     pub id: String,
     pub messages: Vec<MessageDetail>,
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Serialize, Deserialize)]
 pub struct MessageDetail {
     pub id: String,
     #[serde(rename = "threadId")]
@@ -35,13 +35,13 @@ pub struct MessageDetail {
     pub payload: Option<MessagePayload>,
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Serialize, Deserialize)]
 pub struct MessagePayload {
     pub headers: Option<Vec<MessageHeader>>,
     // ... Additional fields as needed
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Serialize, Deserialize)]
 pub struct MessageHeader {
     pub name: String,
     pub value: String,
@@ -76,8 +76,8 @@ pub async fn list_unread_messages(
 /// Fetch full thread for a given threadId
 /// curl: see spec
 pub async fn fetch_thread(
-    access_token: &str,
-    thread_id: &str,
+    access_token: String,
+    thread_id: String,
 ) -> Result<Thread, anyhow::Error> {
     let client = Client::new();
     let url = format!(

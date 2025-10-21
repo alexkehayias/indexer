@@ -33,6 +33,8 @@ use super::db::vector_db;
 use super::git::{diff_last_commit_files, maybe_pull_and_reset_repo};
 use super::notification::{PushSubscription, send_push_notification};
 use super::search::{SearchResult, search_notes};
+use crate::oauth::refresh_access_token;
+use crate::gmail::{fetch_thread, list_unread_messages, Thread};
 
 type SharedState = Arc<RwLock<AppState>>;
 
@@ -399,6 +401,71 @@ async fn send_notification(
     Json(resp)
 }
 
+#[derive(Deserialize)]
+pub struct EmailUnreadQuery {
+    email: String,
+    limit: Option<i64>,
+}
+
+pub async fn email_unread_handler(
+    State(state): State<SharedState>,
+    Query(params): Query<EmailUnreadQuery>,
+) -> Json<Value> {
+    let refresh_token: String = {
+        let shared_state = state.read().expect("Unable to read share state");
+        let db = shared_state
+            .db
+            .lock()
+            .unwrap_or_else(|e| e.into_inner());
+
+        match db
+            .prepare("SELECT refresh_token FROM auth WHERE id = ?1")
+            .and_then(|mut stmt| stmt.query_row([&params.email], |row| row.get(0)))
+        {
+            Ok(token) => token,
+            Err(_) => {
+                return Json(serde_json::Value::from(""))
+            },
+        }
+    };
+
+    let client_id = std::env::var("INDEXER_GMAIL_CLIENT_ID")
+        .expect("Missing INDEXER_GMAIL_CLIENT_ID");
+    let client_secret = std::env::var("INDEXER_GMAIL_CLIENT_SECRET")
+        .expect("Missing INDEXER_GMAIL_CLIENT_SECRET");
+
+    let refresh_token = refresh_access_token(&client_id, &client_secret, &refresh_token).await;
+
+    let oauth = match refresh_token {
+        Ok(token) => token,
+        Err(e) => {
+            eprintln!("OAuth error: {e:?}");
+            return Json(serde_json::Value::from(""))
+        }
+    };
+
+    let limit = params.limit.unwrap_or(7); // Default 7 days if not specified
+
+    // Query Gmail for unread messages
+    let messages = match list_unread_messages(&oauth.access_token, limit).await {
+        Ok(x) => x,
+        Err(e) => {
+            eprintln!("Gmail API error: {e:?}");
+            return Json(serde_json::Value::from(""))
+        },
+    };
+
+    let mut threads = JoinSet::new();
+    for message in messages.into_iter() {
+        let access_token = oauth.access_token.clone();
+        let thread_id = message.thread_id;
+        threads.spawn(fetch_thread(access_token, thread_id));
+    };
+    let results: Vec<Thread> = threads.join_all().await.into_iter().map(|i| i.unwrap()).collect();
+
+    Json(json!(results))
+}
+
 async fn set_static_cache_control(request: Request, next: middleware::Next) -> Response {
     let mut response = next.run(request).await;
     response.headers_mut().insert(
@@ -428,6 +495,8 @@ pub fn app(app_state: AppState) -> Router {
         // Storage for push subscriptions
         .route("/push/subscribe", post(push_subscription))
         .route("/push/notification", post(send_notification))
+        // Get a list of unread emails
+        .route("/email/unread", get(email_unread_handler))
         // Static server of assets in ./web-ui
         .fallback_service(
             ServiceBuilder::new()

@@ -25,4 +25,4 @@ COPY ./web-ui/src/output.css ./web-ui/src/output.css
 EXPOSE 2222
 
 # Initialize the index and run the server
-ENTRYPOINT ["./indexer", "--init", "--serve", "--host", "0.0.0.0", "--port", "2222"]
+ENTRYPOINT ["./indexer", "--init", "serve", "--host", "0.0.0.0", "--port", "2222"]

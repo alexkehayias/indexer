@@ -1,9 +1,10 @@
 use std::env;
 use std::fs;
 
-use clap::Parser;
+use clap::{Parser, Subcommand};
 use serde_json::json;
 use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
+use anyhow::{anyhow, Result};
 
 mod indexing;
 mod schema;
@@ -18,55 +19,58 @@ mod source;
 use db::{migrate_db, vector_db};
 mod export;
 
-#[derive(Parser, Debug)]
-#[command(version, about, long_about = None)]
-struct Args {
-    /// Path to notes to index
-    #[arg(long, action)]
-    index: bool,
 
-    /// Search notes with query
-    #[arg(long)]
-    query: Option<String>,
+#[derive(Subcommand)]
+enum Command {
+    /// Adds files to myapp
+    Serve {
+        /// Set the server host address
+        #[arg(long, default_value = "127.0.0.1")]
+        host: String,
+
+        /// Set the server port
+        #[arg(long, default_value = "2222")]
+        port: String,
+    },
+    Index {
+        #[arg(long, default_value = "false")]
+        all: bool,
+        #[arg(long, default_value = "false")]
+        full_text: bool,
+        #[arg(long, default_value = "false")]
+        vector: bool,
+    },
+    Query {
+        #[arg(long)]
+        term: String,
+        #[arg(long, default_value = "false")]
+        vector: bool,
+    },
+}
+
+#[derive(Parser)]
+#[command(author, version, about, long_about = None)]
+#[command(propagate_version = true)]
+struct Cli {
+    #[command(subcommand)]
+    command: Option<Command>,
 
     /// Clone notes from version control
     #[arg(long, action)]
     init: bool,
 
-    /// Run the server
-    #[arg(long, action)]
-    serve: bool,
-
-    /// Set the server host address
-    #[arg(long, default_value = "127.0.0.1")]
-    host: String,
-
-    /// Set the server port
-    #[arg(long, default_value = "1111")]
-    port: String,
 }
 
 #[tokio::main]
-async fn main() -> tantivy::Result<()> {
-    let args = Args::parse();
-
-    // If using the CLI only and not the webserver, set up tracing to
-    // output to stdout and stderr
-    if !args.serve {
-        tracing_subscriber::registry()
-            .with(
-                tracing_subscriber::EnvFilter::try_from_default_env()
-                    .unwrap_or_else(|_| format!("{}=debug", env!("CARGO_CRATE_NAME")).into()),
-            )
-            .with(tracing_subscriber::fmt::layer())
-            .init();
-    }
+async fn main() -> Result<()> {
+    let args = Cli::parse();
 
     let storage_path = env::var("INDEXER_STORAGE_PATH").unwrap_or("./".to_string());
     let index_path = format!("{}/index", storage_path);
     let notes_path = format!("{}/notes", storage_path);
     let vec_db_path = format!("{}/db", storage_path);
 
+    // Default command
     if args.init {
         // Initialize the vector DB
         fs::create_dir_all(&vec_db_path)
@@ -87,42 +91,72 @@ async fn main() -> tantivy::Result<()> {
         maybe_clone_repo(&deploy_key_path, &repo_url, &notes_path);
     }
 
-    if args.index {
-        // Clone the notes repo
-        let deploy_key_path = env::var("INDEXER_NOTES_DEPLOY_KEY_PATH")
-            .expect("Missing env var INDEXER_NOTES_REPO_URL");
-        maybe_pull_and_reset_repo(&deploy_key_path, &notes_path);
+    // You can check for the existence of subcommands, and if found use their
+    // matches just as you would the top level cmd
+    match args.command {
+        Some(Command::Serve { host, port }) => {
+            server::serve(
+                host,
+                port,
+                notes_path.clone(),
+                index_path,
+                vec_db_path,
+            )
+                .await;
+        }
+        Some(Command::Index { all, full_text, vector }) => {
+            if !all && !full_text && !vector {
+                return Err(anyhow!("Missing value for index \"all\", \"full-text\", and/or \"vector\""));
+            }
+            // If using the CLI only and not the webserver, set up tracing to
+            // output to stdout and stderr
+            tracing_subscriber::registry()
+                .with(
+                    tracing_subscriber::EnvFilter::try_from_default_env()
+                        .unwrap_or_else(|_| format!("{}=debug", env!("CARGO_CRATE_NAME")).into()),
+                )
+                .with(tracing_subscriber::fmt::layer())
+                .init();
 
-        // Index for full text search
-        index_notes_all(&index_path, &notes_path);
+            // Clone the notes repo
+            let deploy_key_path = env::var("INDEXER_NOTES_DEPLOY_KEY_PATH")
+                .expect("Missing env var INDEXER_NOTES_REPO_URL");
+            maybe_pull_and_reset_repo(&deploy_key_path, &notes_path);
 
-        // Index for vector search
-        let mut db = vector_db(&vec_db_path).expect("Failed to connect to db");
-        index_notes_vector_all(&mut db, &notes_path).expect("Failed to vector index notes");
-    }
+            if full_text {
+                // Index for full text search
+                index_notes_all(&index_path, &notes_path);
+            }
+            if vector {
+                // Index for vector search
+                let mut db = vector_db(&vec_db_path).expect("Failed to connect to db");
+                index_notes_vector_all(&mut db, &notes_path).expect("Failed to vector index notes");
+            }
 
-    if let Some(query) = args.query {
-        let db = vector_db(&vec_db_path).expect("Failed to connect to db");
-        let fts_results = search_notes(&index_path, &db, &query, true);
-        println!(
-            "{}",
-            json!({
-                "query": query,
-                "type": "full_text",
-                "results": fts_results,
-            })
-        );
-    }
+            if all {
+                // Index for full text search
+                index_notes_all(&index_path, &notes_path);
 
-    if args.serve {
-        server::serve(
-            args.host,
-            args.port,
-            notes_path.clone(),
-            index_path,
-            vec_db_path,
-        )
-        .await;
+                // Index for vector search
+                let mut db = vector_db(&vec_db_path).expect("Failed to connect to db");
+                index_notes_vector_all(&mut db, &notes_path).expect("Failed to vector index notes");
+            }
+        }
+        Some(Command::Query { term, vector }) => {
+            let db = vector_db(&vec_db_path).expect("Failed to connect to db");
+            let fts_results = search_notes(&index_path, &db, &term, vector);
+            println!(
+                "{}",
+                json!({
+                    "query": term,
+                    "type": "full_text",
+                    "results": fts_results,
+                })
+            );
+
+        }
+        None => {
+        }
     }
 
     Ok(())

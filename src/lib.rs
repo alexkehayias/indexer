@@ -7,6 +7,7 @@ pub mod export;
 pub mod fts;
 pub mod git;
 pub mod gmail;
+pub mod gcal;
 pub mod indexing;
 pub mod jobs;
 pub mod notification;

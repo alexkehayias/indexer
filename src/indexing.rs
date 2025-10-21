@@ -93,6 +93,7 @@ fn parse_note(content: &str) -> Note {
         .collect::<Vec<String>>()
         .first()
         .unwrap_or(&note_title.to_lowercase().replace(" ", "_"))
+        .trim()
         .to_owned();
 
     // TODO: Remove the title and the tasks when indexing the body so it's

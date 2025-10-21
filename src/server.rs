@@ -266,21 +266,22 @@ async fn push_subscription(
     Ok(Json(json!({"success": true})))
 }
 
+#[axum::debug_handler]
 async fn search(
     State(state): State<SharedState>,
     Query(params): Query<HashMap<String, String>>,
-) -> Json<SearchResponse> {
+) -> Result<Json<SearchResponse>, ApiError> {
     let raw_query = params.get("query").expect("Missing query param");
     let query = aql::parse_query(raw_query).expect("Parsing AQL failed");
-    let shared_state = state.read().unwrap();
-    let index_path = &shared_state.config.index_path;
-    // Ignoring any previous panics since we are trying to get the
-    // db connection and it's probably fine
-    let db = shared_state.db.lock().unwrap_or_else(|e| e.into_inner());
+    let (db, index_path) = {
+        let shared_state = state.read().unwrap();
+        (shared_state.a_db.clone(), shared_state.config.index_path.clone())
+    };
 
     let include_similarity = params.contains_key("include_similarity")
         && params.get("include_similarity").unwrap() == "true";
-    let results = search_notes(index_path, &db, include_similarity, &query, 20);
+    let results = search_notes(&index_path, &db, include_similarity, &query, 20)
+        .await?;
 
     let resp = SearchResponse {
         raw_query: raw_query.to_string(),
@@ -288,7 +289,7 @@ async fn search(
         results,
     };
 
-    Json(resp)
+    Ok(Json(resp))
 }
 
 // Build the index for all notes

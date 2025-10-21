@@ -9,7 +9,7 @@ use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
 
 use indexer::aql;
 use indexer::chat::chat;
-use indexer::db::{initialize_db, migrate_db, vector_db};
+use indexer::db::{initialize_db, migrate_db, vector_db, async_db};
 use indexer::fts::utils::recreate_index;
 use indexer::git::{maybe_clone_repo, maybe_pull_and_reset_repo};
 use indexer::indexing::index_all;
@@ -266,9 +266,9 @@ async fn main() -> Result<()> {
                 .expect("Indexing failed");
         }
         Some(Command::Query { term, vector }) => {
-            let db = vector_db(&vec_db_path).expect("Failed to connect to db");
+            let db = async_db(&vec_db_path).await.expect("Failed to connect to async db");
             let query = aql::parse_query(&term).expect("Parsing AQL failed");
-            let results = search_notes(&index_path, &db, vector, &query, 20);
+            let results = search_notes(&index_path, &db, vector, &query, 20).await?;
             println!(
                 "{}",
                 json!({

@@ -9,7 +9,7 @@ use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
 
 use indexer::aql;
 use indexer::chat::chat;
-use indexer::db::{initialize_db, migrate_db, vector_db, async_db};
+use indexer::db::{initialize_db, migrate_db, async_db};
 use indexer::fts::utils::recreate_index;
 use indexer::git::{maybe_clone_repo, maybe_pull_and_reset_repo};
 use indexer::indexing::index_all;
@@ -122,8 +122,11 @@ async fn main() -> Result<()> {
                 fs::create_dir_all(&vec_db_path)
                     .unwrap_or_else(|err| println!("Ignoring vector DB create failed: {}", err));
 
-                let db = vector_db(&vec_db_path).expect("Failed to connect to db");
-                initialize_db(&db).expect("DB initialization failed");
+                let db = async_db(&vec_db_path).await.expect("Failed to connect to db");
+                db.call(|conn| {
+                    initialize_db(conn).expect("DB initialization failed");
+                    Ok(())
+                }).await?;
                 println!("Finished initializing db");
             }
 
@@ -152,8 +155,11 @@ async fn main() -> Result<()> {
             // Run the DB migration script
             if db {
                 println!("Migrating db...");
-                let db = vector_db(&vec_db_path).expect("Failed to connect to db");
-                migrate_db(&db).unwrap_or_else(|err| eprintln!("DB migration failed {}", err));
+                let db = async_db(&vec_db_path).await.expect("Failed to connect to db");
+                db.call(|conn| {
+                    migrate_db(conn).unwrap_or_else(|err| eprintln!("DB migration failed {}", err));
+                    Ok(())
+                }).await?;
                 println!("Finished migrating db");
             }
 
@@ -329,7 +335,7 @@ async fn main() -> Result<()> {
                     io::stdin()
                         .read_line(&mut user_email)
                         .expect("Failed to read email address");
-                    let user_email = user_email.trim();
+                    let user_email = user_email.trim().to_owned();
 
                     let client_id = std::env::var("INDEXER_GMAIL_CLIENT_ID")
                         .expect("Set INDEXER_GMAIL_CLIENT_ID in your environment");
@@ -361,20 +367,22 @@ async fn main() -> Result<()> {
                             .await?;
 
                     // Store the refresh token in the DB and use that to fetch an access token from now on.
-                    let db = vector_db(&vec_db_path).expect("Failed to connect to db");
+                    let db = async_db(&vec_db_path).await.expect("Failed to connect to db");
                     let refresh_token = token
                         .refresh_token
                         .clone()
                         .ok_or(anyhow!("No refresh token in response"))?;
 
-                    db.execute(
-                        "INSERT INTO auth (id, service, refresh_token) VALUES (?1, ?2, ?3)
+                    db.call(move |conn| {
+                        conn.execute(
+                            "INSERT INTO auth (id, service, refresh_token) VALUES (?1, ?2, ?3)
                          ON CONFLICT(id) DO UPDATE SET service = excluded.service, refresh_token = excluded.refresh_token",
-                        (&user_email, service.to_str(), &refresh_token),
-                    )
-                    .expect("Failed to insert/update refresh token in DB");
-
-                    println!("Refresh token for {} saved to DB.", user_email);
+                            (&user_email, service.to_str(), &refresh_token),
+                        )
+                            .expect("Failed to insert/update refresh token in DB");
+                        println!("Refresh token for {} saved to DB.", user_email);
+                        Ok(())
+                    }).await?;
                 }
             }
         }

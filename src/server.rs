@@ -4,7 +4,7 @@ use std::fs;
 use std::path::PathBuf;
 use std::sync::{Arc, Mutex, RwLock};
 
-use anyhow::{anyhow, Result, Error};
+use anyhow::Result;
 use axum::response::Html;
 use tantivy::doc;
 
@@ -408,16 +408,16 @@ pub fn app(app_state: AppState) -> Router {
         // Index content endpoint
         .route("/notes/index", post(index_notes))
         // View a specific note
-        .route("/notes/:id/view", get(view_note))
+        .route("/notes/{id}/view", get(view_note))
         // Chat with notes
         .route("/notes/chat", post(chat_handler))
         // Retrieve a past chat session
-        .route("/notes/chat/:id", get(chat_session))
+        .route("/notes/chat/{id}", get(chat_session))
         // Storage for push subscriptions
         .route("/push/subscribe", post(push_subscription))
         .route("/push/notification", post(send_notification))
         // Static server of assets in ./web-ui
-        .nest_service("/", serve_dir)
+        .fallback_service(serve_dir)
         .layer(TraceLayer::new_for_http())
         .layer(cors)
         .with_state(Arc::clone(&shared_state))

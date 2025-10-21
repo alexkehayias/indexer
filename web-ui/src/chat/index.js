@@ -33,8 +33,12 @@ document.addEventListener('DOMContentLoaded', () => {
         data.transcript.map(message => {
           const isUser = message.role === 'user';
           const isAssistant = message.role === 'assistant';
+          const isSystem = message.role === 'system';
           const isToolCall = (message.role === 'tool') || (isAssistant && !message.content);
-          renderMessageBubble(message.content, isUser, isToolCall);
+
+          if (!isSystem) {
+            renderMessageBubble(message.content, isUser, isToolCall);
+          }
         });
       }
     })

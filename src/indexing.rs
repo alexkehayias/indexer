@@ -29,12 +29,23 @@ struct Task {
     deadline: Option<String>,
 }
 
+#[derive(Debug)]
+struct Meeting {
+    id: String,
+    title: String,
+    body: String,
+    tags: Option<String>,
+    #[allow(dead_code)]
+    date: Option<String>,
+}
+
 struct Note {
     id: String,
     title: String,
     body: String,
     tags: Option<String>,
     tasks: Vec<Task>,
+    meetings: Vec<Meeting>,
 }
 
 /// Parse the content into a `Note`
@@ -56,14 +67,14 @@ fn parse_note(content: &str) -> Note {
         "Missing property
 drawer",
     );
-    let id = props.get("ID").expect("Missing org-id").to_string();
-    let title = p.title().expect("No title found");
+    let note_id = props.get("ID").expect("Missing org-id").to_string();
+    let note_title = p.title().expect("No title found");
 
     // TODO: Remove the title and the tasks when indexing the body so it's
     // not duplicated
     // let title_text_range = org_doc.first_headline()?.text_range();
     // p.replace_range(title_text_range, "");
-    let body = p.document().raw();
+    let note_body = p.document().raw();
 
     let filetags: Vec<Vec<String>> = p
         .keywords()
@@ -82,104 +93,133 @@ drawer",
 
     // For now, tags are a comma separated string which should
     // allow it to still be searchable
-    let tags = if filetags.is_empty() {
+    let note_tags = if filetags.is_empty() {
         None
     } else {
         Some(filetags[0].to_owned().join(","))
     };
 
-    // Collect all of the tasks in the note file
-    let tasks: Vec<Task> = p
-        .document()
-        .headlines()
-        .filter_map(|i| -> Option<Task> {
-            if let Some(status) = i.todo_keyword().map(|j| j.to_string()) {
-                let task_title = i.title_raw().trim().to_string();
+    let mut tasks: Vec<Task> = Vec::new();
+    let mut meetings: Vec<Meeting> = Vec::new();
 
-                // Tasks sometimes don't have an org-id. These tasks are ignored.
-                let mut hasher = DefaultHasher::new();
-                task_title.hash(&mut hasher);
-                let default_id = hasher.finish().to_string();
-
-                // Note: Can't use a question mark operator as that
-                // will cause an early return rather than handling the
-                // case where properties don't exist
-                let task_properties = i.properties();
-                let id = if let Some(task_props) = task_properties {
-                    // Properties might exist but the ID might be missing
-                    task_props
-                        .get("ID")
-                        .map(|j| j.to_string())
-                        .unwrap_or(default_id)
-                } else {
-                    default_id
-                };
-
-                // Extract note body into markdown format This is
-                // useful since LLMs are typically tune for markdown
-                let mut plain_text = MarkdownExport::default();
-                plain_text.render(i.syntax());
-                let task_body = plain_text.finish();
-
-                let tag_string = i
-                    .tags()
-                    .map(|j| j.to_string())
-                    .collect::<Vec<String>>()
-                    .join(",");
-                let tags = if tag_string.is_empty() {
-                    None
-                } else {
-                    Some(tag_string)
-                };
-
-                let mut scheduled = None;
-                let mut deadline = None;
-                if let Some(planning) = i.planning() {
-                    scheduled = planning.scheduled().map(|t| {
-                        format!(
-                            "{}-{}-{}",
-                            t.year_start().unwrap(),
-                            t.month_start().unwrap(),
-                            t.day_start().unwrap()
-                        )
-                    });
-                    deadline = planning.deadline().map(|t| {
-                        format!(
-                            "{}-{}-{}",
-                            t.year_start().unwrap(),
-                            t.month_start().unwrap(),
-                            t.day_start().unwrap()
-                        )
-                    });
-                }
-
-                let task = Task {
-                    id,
-                    title: task_title,
-                    body: task_body,
-                    tags,
-                    status,
-                    scheduled,
-                    deadline,
-                };
-                return Some(task);
-            }
+    for i in p.document().headlines() {
+        let tag_string = i
+            .tags()
+            .map(|j| j.to_string())
+            .collect::<Vec<String>>()
+            .join(",");
+        let tags = if tag_string.is_empty() {
             None
-        })
-        .collect();
+        } else {
+            Some(tag_string.clone())
+        };
+        let title = i.title_raw().trim().to_string();
+
+        // Tasks sometimes don't have an org-id. These tasks are ignored.
+        let mut hasher = DefaultHasher::new();
+        title.hash(&mut hasher);
+        let default_id = hasher.finish().to_string();
+
+        // Note: Can't use a question mark operator as that
+        // will cause an early return rather than handling the
+        // case where properties don't exist
+        let task_properties = i.properties();
+        let id = if let Some(task_props) = task_properties {
+            // Properties might exist but the ID might be missing
+            task_props
+                .get("ID")
+                .map(|j| j.to_string())
+                .unwrap_or(default_id)
+        } else {
+            default_id
+        };
+
+        // Extract note body into markdown format This is
+        // useful since LLMs are typically tune for markdown
+        let mut plain_text = MarkdownExport::default();
+        plain_text.render(i.syntax());
+        let body = plain_text.finish();
+
+        // Handle meetings
+        if tag_string.contains("meeting") {
+            let date = i.clocks()
+                .filter_map(|c| {
+                    if let Some(cv) = c.value() {
+                        if cv.is_inactive() {
+                            Some(format!("{}-{}-{}", cv.year_start().unwrap(), cv.month_start().unwrap(), cv.day_start().unwrap()))
+                        } else {
+                            None
+                        }
+                    } else {
+                        None
+                    }
+                })
+                .collect::<Vec<String>>()
+                .first()
+                .map(|f| f.to_owned());
+
+            let meeting = Meeting {
+                id,
+                title,
+                body,
+                tags,
+                date,
+            };
+            meetings.push(meeting);
+            continue
+        }
+
+        // Handle tasks
+        if let Some(status) = i.todo_keyword().map(|j| j.to_string()) {
+            let mut scheduled = None;
+            let mut deadline = None;
+            if let Some(planning) = i.planning() {
+                scheduled = planning.scheduled().map(|t| {
+                    format!(
+                        "{}-{}-{}",
+                        t.year_start().unwrap(),
+                        t.month_start().unwrap(),
+                        t.day_start().unwrap()
+                    )
+                });
+                deadline = planning.deadline().map(|t| {
+                    format!(
+                        "{}-{}-{}",
+                        t.year_start().unwrap(),
+                        t.month_start().unwrap(),
+                        t.day_start().unwrap()
+                    )
+                });
+            }
+
+            let task = Task {
+                id,
+                title,
+                body,
+                tags,
+                status,
+                scheduled,
+                deadline,
+            };
+            tasks.push(task);
+            continue
+        }
+    }
 
     Note {
-        id,
-        title,
-        body,
-        tags,
+        id: note_id,
+        title: note_title,
+        body: note_body,
+        tags: note_tags,
         tasks,
+        meetings,
     }
 }
 
 enum DocType {
     Note,
     Task,
+    Meeting,
 }
 
 impl DocType {
@@ -187,6 +227,7 @@ impl DocType {
         match self {
             DocType::Note => "note",
             DocType::Task => "task",
+            DocType::Meeting => "meeting",
         }
     }
 }
@@ -221,6 +262,7 @@ fn index_note_full_text(
         body: note_body,
         tags: note_tags,
         tasks: note_tasks,
+        meetings: note_meetings,
     } = parse_note(content);
 
     let mut doc = doc!(
@@ -236,6 +278,26 @@ fn index_note_full_text(
         doc.add_text(tags, tag_list);
     }
     index_writer.add_document(doc)?;
+
+    // Index each meeting
+    for m in note_meetings.into_iter() {
+        // Delete first to get upsert behavior
+        let meeting_term_id = Term::from_field_text(id, &m.id);
+        index_writer.delete_term(meeting_term_id);
+
+        let meeting_type = DocType::Meeting.to_str();
+        let mut doc = doc!(
+            id => m.id,
+            r#type => meeting_type,
+            title => m.title,
+            body => m.body,
+            file_name => file_name_value,
+        );
+        if let Some(tag_list) = m.tags {
+            doc.add_text(tags, tag_list);
+        }
+        index_writer.add_document(doc)?;
+    }
 
     // Index each task
     for t in note_tasks.into_iter() {
@@ -329,9 +391,21 @@ fn index_note_meta(db: &mut Connection, file_name: &str, note: &Note) -> Result<
         ])
         .expect("Note meta upsert failed");
 
+    let mut meeting_meta_stmt = db.prepare(
+        "REPLACE INTO note_meta(id, type, file_name, title, tags, body) VALUES (?, ?, ?, ?, ?, ?)",
+    )?;
+
     let mut task_meta_stmt = db.prepare(
         "REPLACE INTO note_meta(id, type, file_name, title, tags, body, status) VALUES (?, ?, ?, ?, ?, ?, ?)",
     )?;
+
+    for m in note.meetings.iter() {
+        meeting_meta_stmt
+            .execute(rusqlite::params![
+                m.id, "meeting", file_name, m.title, m.tags, m.body
+            ])
+            .expect("Note meta upsert failed for meeting");
+    }
 
     for t in note.tasks.iter() {
         task_meta_stmt

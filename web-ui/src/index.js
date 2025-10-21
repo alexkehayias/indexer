@@ -39,15 +39,20 @@ const emptyState = document.getElementById("empty-state");
               "rounded-md",
               "px-3",
               "py-2",
+              "hover:cursor-pointer",
             ]);
             hit.innerText = r.title;
             hit.addEventListener("click", async (clickEvent) => {
               console.log(`Clicked result with id ${r.id}`);
+              hit.classList.add(...["bg-indigo-700", "text-white"]);
               const resp = await fetch(
                 `/notes/search/latest`,
                 {
                   method: "POST",
-                  body: JSON.stringify({id: r.id[0]}),
+                  body: JSON.stringify({
+                    id: r.id[0],
+                    title: r.title[0],
+                  }),
                   headers: {
                     'Accept': 'application/json',
                     'Content-Type': 'application/json'

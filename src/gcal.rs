@@ -41,6 +41,7 @@ pub struct CalendarEvent {
 /// DateTime structure from Google Calendar API
 #[derive(Debug, Deserialize)]
 pub struct EventDateTime {
+    pub date: Option<String>,
     #[serde(rename = "dateTime")]
     pub date_time: Option<String>,
 }
@@ -130,6 +131,9 @@ pub async fn list_events(
         .items
         .unwrap_or_default()
         .into_iter()
+        // Ignore meetings that have a date but not a time since those
+        // are usually calendar blocks or events.
+        .filter(|ev| ev.start.date_time.is_some())
         .map(|e| e.into())
         .collect();
 

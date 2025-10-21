@@ -11,7 +11,7 @@ use crate::{
         PushNotificationPayload, broadcast_push_notification, find_all_notification_subscriptions,
     },
     openai::BoxedToolCall,
-    tool::{CalendarTool, SearxSearchTool},
+    tools::{CalendarTool, SearxSearchTool},
 };
 
 #[derive(Default, Debug)]

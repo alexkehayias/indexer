@@ -16,7 +16,7 @@ use indexer::indexing::index_all;
 use indexer::openai::{Message, Role, ToolCall};
 use indexer::search::search_notes;
 use indexer::server;
-use indexer::tool::{CalendarTool, EmailUnreadTool, NoteSearchTool, SearxSearchTool};
+use indexer::tools::{CalendarTool, EmailUnreadTool, NoteSearchTool, SearxSearchTool};
 
 #[derive(ValueEnum, Clone)]
 enum ServiceKind {

@@ -51,12 +51,12 @@ enum Command {
 #[command(author, version, about, long_about = None)]
 #[command(propagate_version = true)]
 struct Cli {
+    /// Clone notes from version control
+    #[arg(long, action, default_value = "false")]
+    init: bool,
+
     #[command(subcommand)]
     command: Option<Command>,
-
-    /// Clone notes from version control
-    #[arg(long, action)]
-    init: bool,
 }
 
 #[tokio::main]

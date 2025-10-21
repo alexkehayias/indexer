@@ -63,6 +63,9 @@
               case "todo":
                 taskIconContainer.innerText = "⬜";
                 break;
+              case "next":
+                taskIconContainer.innerText = "⏭️";
+                break;
               case "waiting":
                 taskIconContainer.innerText = "⏳";
                 break;
@@ -99,10 +102,10 @@
               const tagDiv = document.createElement("div");
               tagDiv.classList.add(...[
                 "bg-gray-200",
-                "text-gray-800",
+                "text-gray-700",
                 "text-xs",
                 "px-2",
-                "py-1",
+                "py-0.5",
                 "rounded-full",
                 "mr-2",
               ]);

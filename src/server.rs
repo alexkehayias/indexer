@@ -1,9 +1,8 @@
 use std::collections::HashMap;
 use std::env;
-use std::fs;
 use std::sync::{Arc, RwLock};
 
-use tantivy::{doc, Index, IndexWriter};
+use tantivy::doc;
 
 use axum::extract::Query;
 use axum::{
@@ -19,10 +18,9 @@ use tower_http::services::ServeDir;
 use tower_http::trace::TraceLayer;
 use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
 
-use super::schema::note_schema;
+use crate::indexing::index_notes_all;
+
 use super::search::search_notes;
-use super::indexing::index_note;
-use super::source::notes;
 use super::git::maybe_pull_and_reset_repo;
 
 type SharedState = Arc<RwLock<AppState>>;
@@ -88,25 +86,7 @@ async fn index_notes() -> Json<Value> {
     let deploy_key_path = env::var("INDEXER_NOTES_DEPLOY_KEY_PATH")
         .expect("Missing env var INDEXER_NOTES_DEPLOY_KEY_PATH");
     maybe_pull_and_reset_repo(notes_path, deploy_key_path);
-
-    let index_path = "./.index";
-    fs::remove_dir_all(index_path).expect("Failed to remove index directory");
-    fs::create_dir(index_path).expect("Failed to recreate index directory");
-
-    let index_path = tantivy::directory::MmapDirectory::open(index_path).expect("Index not found");
-    let schema = note_schema();
-    let idx =
-        Index::open_or_create(index_path, schema.clone()).expect("Unable to open or create index");
-    let mut index_writer: IndexWriter = idx
-        .writer(50_000_000)
-        .expect("Index writer failed to initialize");
-
-    for note in notes(notes_path) {
-        let _ = index_note(&mut index_writer, &schema, note);
-    }
-
-    index_writer.commit().expect("Index write failed");
-
+    index_notes_all();
     let resp = json!({
         "success": true,
     });

@@ -8,8 +8,8 @@ use tantivy::schema::*;
 use tantivy::{Index, ReloadPolicy};
 use zerocopy::IntoBytes;
 
-use crate::fts::schema::note_schema;
 use crate::aql::{self};
+use crate::fts::schema::note_schema;
 use crate::query::{aql_to_index_query, expr_to_sql, query_to_similarity};
 
 #[derive(Serialize)]
@@ -91,7 +91,7 @@ pub fn search_similar_notes(
     // a date field.
     let similarity_string = query_to_similarity(query);
     if similarity_string.is_none() {
-        return Ok(Vec::new())
+        return Ok(Vec::new());
     }
 
     let embeddings_model = TextEmbedding::try_new(

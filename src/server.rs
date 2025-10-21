@@ -3,19 +3,19 @@ use std::env;
 use std::path::PathBuf;
 use std::sync::{Arc, Mutex, RwLock};
 
-use axum::middleware;
-use http::{header, HeaderValue};
-use tantivy::doc;
 use axum::extract::Query;
+use axum::middleware;
 use axum::{
     Router,
-    extract::{Path, State, Request},
+    extract::{Path, Request, State},
     response::{Json, Response},
     routing::{get, post},
 };
+use http::{HeaderValue, header};
 use rusqlite::Connection;
 use serde::{Deserialize, Serialize};
 use serde_json::{Value, json};
+use tantivy::doc;
 use tokio::task::JoinSet;
 use tower::ServiceBuilder;
 use tower_http::cors::CorsLayer;
@@ -33,8 +33,8 @@ use super::db::vector_db;
 use super::git::{diff_last_commit_files, maybe_pull_and_reset_repo};
 use super::notification::{PushSubscription, send_push_notification};
 use super::search::{SearchResult, search_notes};
+use crate::gmail::{Thread, extract_body, fetch_thread, list_unread_messages};
 use crate::oauth::refresh_access_token;
-use crate::gmail::{extract_body, fetch_thread, list_unread_messages, Thread};
 
 type SharedState = Arc<RwLock<AppState>>;
 
@@ -325,13 +325,11 @@ async fn view_note(
 ) -> Json<ViewNoteResult> {
     let shared_state = state.read().expect("Unable to read share state");
 
-    let db = shared_state
-        .db
-        .lock()
-        .unwrap_or_else(|e| e.into_inner());
+    let db = shared_state.db.lock().unwrap_or_else(|e| e.into_inner());
 
-    let result = db.prepare(
-        r"
+    let result = db
+        .prepare(
+            r"
           SELECT
             id,
             title,
@@ -341,7 +339,7 @@ async fn view_note(
           WHERE id = ?
           LIMIT 1
         ",
-    )
+        )
         .expect("Failed to prepare sql statement")
         .query_map([id], |i| {
             Ok(ViewNoteResult {
@@ -427,7 +425,7 @@ pub struct EmailThread {
     from: String,
     to: String,
     subject: String,
-    messages: Vec<EmailMessage>
+    messages: Vec<EmailMessage>,
 }
 
 pub async fn email_unread_handler(
@@ -437,19 +435,14 @@ pub async fn email_unread_handler(
     let refresh_token: String = {
         let shared_state = state.read().expect("Unable to read share state");
 
-        let db = shared_state
-            .db
-            .lock()
-            .unwrap_or_else(|e| e.into_inner());
+        let db = shared_state.db.lock().unwrap_or_else(|e| e.into_inner());
 
         match db
             .prepare("SELECT refresh_token FROM auth WHERE id = ?1")
             .and_then(|mut stmt| stmt.query_row([&params.email], |row| row.get(0)))
         {
             Ok(token) => token,
-            Err(_) => {
-                return Json(serde_json::Value::from(""))
-            },
+            Err(_) => return Json(serde_json::Value::from("")),
         }
     };
 
@@ -466,12 +459,12 @@ pub async fn email_unread_handler(
     };
     let refresh_resp = refresh_access_token(&client_id, &client_secret, &refresh_token).await;
     let oauth = match refresh_resp {
-            Ok(token) => token,
-            Err(e) => {
-                tracing::error!("OAuth error: {}", e);
-                return Json(serde_json::Value::from(""))
-            }
-        };
+        Ok(token) => token,
+        Err(e) => {
+            tracing::error!("OAuth error: {}", e);
+            return Json(serde_json::Value::from(""));
+        }
+    };
     let access_token = oauth.access_token;
     let limit = params.limit.unwrap_or(7); // Default 7 days if not specified
 
@@ -480,8 +473,8 @@ pub async fn email_unread_handler(
         Ok(x) => x,
         Err(e) => {
             tracing::error!("Gmail API error: {}", e);
-            return Json(serde_json::Value::from(""))
-        },
+            return Json(serde_json::Value::from(""));
+        }
     };
 
     // Fetch each thread concurrently
@@ -490,8 +483,13 @@ pub async fn email_unread_handler(
         let access_token = access_token.clone();
         let thread_id = message.thread_id;
         tasks.spawn(fetch_thread(access_token, thread_id));
-    };
-    let results: Vec<Thread> = tasks.join_all().await.into_iter().map(|i| i.unwrap()).collect();
+    }
+    let results: Vec<Thread> = tasks
+        .join_all()
+        .await
+        .into_iter()
+        .map(|i| i.unwrap())
+        .collect();
 
     // Transform the threads and messages into a simpler format
     let mut threads: Vec<EmailThread> = Vec::new();
@@ -506,9 +504,21 @@ pub async fn email_unread_handler(
             let headers = payload.headers.unwrap();
 
             // Each of these headers are required to be here or it's not a valid email
-            let from = headers.iter().find(|h| h.name == "From").map(|h| h.value.clone()).unwrap();
-            let to = headers.iter().find(|h| h.name == "To").map(|h| h.value.clone()).unwrap();
-            let subject = headers.iter().find(|h| h.name == "Subject").map(|h| h.value.clone()).unwrap();
+            let from = headers
+                .iter()
+                .find(|h| h.name == "From")
+                .map(|h| h.value.clone())
+                .unwrap();
+            let to = headers
+                .iter()
+                .find(|h| h.name == "To")
+                .map(|h| h.value.clone())
+                .unwrap();
+            let subject = headers
+                .iter()
+                .find(|h| h.name == "Subject")
+                .map(|h| h.value.clone())
+                .unwrap();
 
             messages.push(EmailMessage {
                 id: m.id,
@@ -517,9 +527,9 @@ pub async fn email_unread_handler(
                 from,
                 to,
                 subject,
-                body
+                body,
             })
-        };
+        }
 
         // It's guaranteed there is at least one message per thread
         let latest_msg = messages[0].clone();
@@ -530,7 +540,7 @@ pub async fn email_unread_handler(
             subject: latest_msg.subject,
             from: latest_msg.from,
             to: latest_msg.to,
-            messages
+            messages,
         });
     }
 
@@ -543,10 +553,9 @@ pub async fn email_unread_handler(
 
 async fn set_static_cache_control(request: Request, next: middleware::Next) -> Response {
     let mut response = next.run(request).await;
-    response.headers_mut().insert(
-        header::CACHE_CONTROL,
-        HeaderValue::from_static("no-cache"),
-    );
+    response
+        .headers_mut()
+        .insert(header::CACHE_CONTROL, HeaderValue::from_static("no-cache"));
     response
 }
 

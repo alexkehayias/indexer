@@ -1,9 +1,9 @@
 //! Gmail API client for listing unread mail, fetching threads, sending replies
 
+use base64::{Engine as _, engine::general_purpose::URL_SAFE};
+use chrono::{Duration, Utc};
 use reqwest::Client;
 use serde::{Deserialize, Serialize};
-use chrono::{Duration, Utc};
-use base64::{engine::general_purpose::URL_SAFE, Engine as _};
 
 /// Message and thread structures from Gmail API documentation
 #[derive(Debug, Serialize, Deserialize, Clone)]
@@ -71,7 +71,9 @@ pub struct MessageHeader {
 }
 
 fn decode_base64(data: &str) -> String {
-    URL_SAFE.decode(data).ok()
+    URL_SAFE
+        .decode(data)
+        .ok()
         .and_then(|bytes| String::from_utf8(bytes).ok())
         .unwrap_or_else(|| {
             tracing::error!("Base64 decode failed for: {}", data);
@@ -134,16 +136,14 @@ pub async fn list_unread_messages(
     n_days: i64,
 ) -> Result<Vec<MessageResponse>, anyhow::Error> {
     let client = Client::new();
-    let after_date = (Utc::now() - Duration::days(n_days)).format("%Y/%m/%d").to_string();
+    let after_date = (Utc::now() - Duration::days(n_days))
+        .format("%Y/%m/%d")
+        .to_string();
     let url = format!(
         "https://gmail.googleapis.com/gmail/v1/users/me/messages?labelIds=UNREAD&q=is:unread%20after:{}%20in:inbox",
         after_date
     );
-    let res = client
-        .get(&url)
-        .bearer_auth(access_token)
-        .send()
-        .await?;
+    let res = client.get(&url).bearer_auth(access_token).send().await?;
     let status = res.status();
     let text = res.text().await.unwrap_or_default();
     if !status.is_success() {
@@ -164,11 +164,7 @@ pub async fn fetch_thread(
         "https://gmail.googleapis.com/gmail/v1/users/me/threads/{}?format=full",
         thread_id
     );
-    let res = client
-        .get(&url)
-        .bearer_auth(access_token)
-        .send()
-        .await?;
+    let res = client.get(&url).bearer_auth(access_token).send().await?;
     let status = res.status();
     let text = res.text().await.unwrap_or_default();
     if !status.is_success() {

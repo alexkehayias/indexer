@@ -1,13 +1,9 @@
 use std::collections::HashMap;
 use std::env;
-use std::fs;
 use std::path::PathBuf;
 use std::sync::{Arc, Mutex, RwLock};
 
-use anyhow::Result;
-use axum::response::Html;
 use tantivy::doc;
-
 use axum::extract::Query;
 use axum::{
     Router,
@@ -15,7 +11,6 @@ use axum::{
     response::Json,
     routing::{get, post},
 };
-use orgize::ParseConfig;
 use rusqlite::Connection;
 use serde::{Deserialize, Serialize};
 use serde_json::{Value, json};
@@ -306,58 +301,56 @@ async fn index_notes(State(state): State<SharedState>) -> Json<Value> {
     Json(resp)
 }
 
+#[derive(Serialize)]
+struct ViewNoteResult {
+    id: String,
+    title: String,
+    body: String,
+    tags: String,
+}
+
 // Render a note in org-mode format by ID
 // Fetch the contents of the note by ID using the DB
 async fn view_note(
     State(state): State<SharedState>,
     // This is the org-id of the note
     Path(id): Path<String>,
-) -> Html<String> {
+) -> Json<ViewNoteResult> {
     let shared_state = state.read().expect("Unable to read share state");
-    let note_path = &shared_state.config.notes_path;
 
     let db = shared_state
         .db
         .lock()
-        // Ignoring any previous panics since we are trying to get the
-        // db connection and it's probably fine
         .unwrap_or_else(|e| e.into_inner());
 
-    let result: Vec<String> = db
-        .prepare(
-            r"
+    let result = db.prepare(
+        r"
           SELECT
             id,
-            file_name,
             title,
+            body,
             tags
           FROM note_meta
           WHERE id = ?
           LIMIT 1
         ",
-        )
+    )
         .expect("Failed to prepare sql statement")
-        .query_map([id], |i| Ok(i.get(1).expect("Invalid row returned")))
-        .expect("Query failed")
-        .collect::<Result<Vec<String>, _>>()
-        .expect("Query failed");
-    let file_name = result.first();
-    if let Some(f) = file_name {
-        let file_path = PathBuf::from(format!("{}/{}", note_path, f));
-        let content = fs::read_to_string(file_path).expect("Failed to get file content");
+        .query_map([id], |i| {
+            Ok(ViewNoteResult {
+                id: i.get(0)?,
+                title: i.get(1)?,
+                body: i.get(2)?,
+                tags: i.get(3)?,
+            })
+        })
+        // lol wat?
+        .unwrap()
+        .last()
+        .unwrap()
+        .unwrap();
 
-        // Render the org-mode content in HTML
-        let config = ParseConfig {
-            ..Default::default()
-        };
-        // TODO: replace org-id links with note viewer links
-        let output = config.parse(content).to_html();
-
-        Html(output)
-    } else {
-        // TODO replace with a 404
-        Html("".to_string())
-    }
+    Json(result)
 }
 
 #[derive(Deserialize)]

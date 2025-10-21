@@ -170,6 +170,7 @@ async fn view_note(
     Path(id): Path<String>,
 ) -> Html<String> {
     let shared_state = state.read().expect("Unable to read share state");
+    let note_path = &shared_state.config.notes_path;
 
     let db = shared_state
         .db
@@ -198,7 +199,8 @@ async fn view_note(
         .expect("Query failed");
     let file_name = result.first();
     if let Some(f) = file_name {
-        let content = fs::read_to_string(f).expect("Failed to get file content");
+        let file_path = PathBuf::from(format!("{}/{}", note_path, f));
+        let content = fs::read_to_string(file_path).expect("Failed to get file content");
 
         // Render the org-mode content in HTML
         let config = ParseConfig {

@@ -467,7 +467,13 @@ fn index_note_meta(db: &mut Connection, file_name: &str, note: &Note) -> Result<
     note_meta_stmt
         // TODO: Don't hardcode the note path, save the file name instead
         .execute(rusqlite::params![
-            note.id, "note", note.category, file_name, note.title, note.tags, note.body
+            note.id,
+            "note",
+            note.category,
+            file_name,
+            note.title,
+            note.tags,
+            note.body
         ])
         .expect("Note meta upsert failed");
 
@@ -502,7 +508,17 @@ fn index_note_meta(db: &mut Connection, file_name: &str, note: &Note) -> Result<
     for t in note.tasks.iter() {
         task_meta_stmt
             .execute(rusqlite::params![
-                t.id, "task", t.category, file_name, t.title, t.tags, t.body, t.status, t.scheduled, t.deadline, t.closed
+                t.id,
+                "task",
+                t.category,
+                file_name,
+                t.title,
+                t.tags,
+                t.body,
+                t.status,
+                t.scheduled,
+                t.deadline,
+                t.closed
             ])
             .expect("Note meta upsert failed for task");
     }

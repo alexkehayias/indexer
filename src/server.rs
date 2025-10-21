@@ -105,7 +105,7 @@ impl AppState {
 
 #[derive(Serialize)]
 struct ChatTranscriptResponse {
-    transcript: Vec<Message>
+    transcript: Vec<Message>,
 }
 
 async fn chat_session(
@@ -114,16 +114,23 @@ async fn chat_session(
     Path(id): Path<String>,
 ) -> Json<ChatTranscriptResponse> {
     let session = {
-        let sessions = state.read()
-            .expect("Unable to read share state").chat_sessions.clone();
+        let sessions = state
+            .read()
+            .expect("Unable to read share state")
+            .chat_sessions
+            .clone();
         sessions.get(&id).cloned()
     };
     // FIX: Yuck! Figure out how to return a result that maps to a 404
     // or a response.
     if let Some(s) = session {
-        Json(ChatTranscriptResponse { transcript: s.transcript })
+        Json(ChatTranscriptResponse {
+            transcript: s.transcript,
+        })
     } else {
-        Json(ChatTranscriptResponse { transcript: Vec::new() })
+        Json(ChatTranscriptResponse {
+            transcript: Vec::new(),
+        })
     }
 }
 
@@ -138,8 +145,10 @@ async fn chat_handler(
             searxng_api_url,
             ..
         } = &shared_state.config;
-        (NoteSearchTool::new(note_search_api_url),
-         SearxSearchTool::new(searxng_api_url))
+        (
+            NoteSearchTool::new(note_search_api_url),
+            SearxSearchTool::new(searxng_api_url),
+        )
     };
 
     let tools: Option<Vec<BoxedToolCall>> = Some(vec![
@@ -166,9 +175,7 @@ async fn chat_handler(
     chat(&mut transcript, &tools).await;
 
     // Re-acquire the lock and write the transcript back into the session
-    let assistant_msg = transcript.last()
-        .expect("Transcript was empty")
-        .clone();
+    let assistant_msg = transcript.last().expect("Transcript was empty").clone();
 
     state
         .write()

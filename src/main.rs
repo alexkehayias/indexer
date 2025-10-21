@@ -4,9 +4,9 @@ use indexer::schema::note_schema;
 use rustyline::error::ReadlineError;
 use rustyline::DefaultEditor;
 use serde_json::json;
-use tantivy::Index;
 use std::env;
 use std::fs;
+use tantivy::Index;
 use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
 
 use indexer::chat::chat;
@@ -110,8 +110,9 @@ async fn main() -> Result<()> {
             if index {
                 println!("Initializing search index...");
                 // Create the index directory if it doesn't already exist
-                fs::create_dir_all(&index_path)
-                    .unwrap_or_else(|err| println!("Ignoring index directory create failed: {}", err));
+                fs::create_dir_all(&index_path).unwrap_or_else(|err| {
+                    println!("Ignoring index directory create failed: {}", err)
+                });
                 println!("Finished initializing search index...");
             }
 
@@ -121,8 +122,8 @@ async fn main() -> Result<()> {
                 let deploy_key_path = env::var("INDEXER_NOTES_DEPLOY_KEY_PATH")
                     .expect("Missing env var INDEXER_NOTES_REPO_URL");
                 // Clone the notes repo and index it
-                let repo_url =
-                    env::var("INDEXER_NOTES_REPO_URL").expect("Missing env var INDEXER_NOTES_REPO_URL");
+                let repo_url = env::var("INDEXER_NOTES_REPO_URL")
+                    .expect("Missing env var INDEXER_NOTES_REPO_URL");
                 maybe_clone_repo(&deploy_key_path, &repo_url, &notes_path);
                 println!("Finished cloning and resetting notes from git");
             }
@@ -144,9 +145,12 @@ async fn main() -> Result<()> {
                 let index_path =
                     tantivy::directory::MmapDirectory::open(index_path).expect("Index not found");
                 let schema = note_schema();
-                Index::open_or_create(index_path, schema.clone()).expect("Unable to open or create index");
+                Index::open_or_create(index_path, schema.clone())
+                    .expect("Unable to open or create index");
                 println!("Finished migrating search index");
-                println!("NOTE: You will need to re-populate the index by running --index --full-text");
+                println!(
+                    "NOTE: You will need to re-populate the index by running --index --full-text"
+                );
             }
         }
         Some(Command::Serve { host, port }) => {

@@ -25,7 +25,7 @@ pub fn initialize_db(db: &Connection) -> Result<()> {
     );
     match create_note_meta {
         Ok(_) => (),
-        Err(e) => println!("Create note meta table failed: {}", e)
+        Err(e) => println!("Create note meta table failed: {}", e),
     }
 
     // Create vector virtual table for similarity search
@@ -39,7 +39,7 @@ embedding float[384]
 
     match create_note_vec_table {
         Ok(_) => (),
-        Err(e) => println!("Create note vec table failed: {}", e)
+        Err(e) => println!("Create note vec table failed: {}", e),
     };
 
     Ok(())
@@ -76,12 +76,12 @@ DROP TABLE note_meta;
 
 ALTER TABLE note_meta_new RENAME TO note_meta;
 
-COMMIT;"
+COMMIT;",
     );
 
     match migrated_note_meta_table {
         Ok(_) => (),
-        Err(e) => println!("Create updated note meta table failed: {}", e)
+        Err(e) => println!("Create updated note meta table failed: {}", e),
     }
 
     Ok(())

@@ -5,7 +5,6 @@ use web_push::{
     WebPushMessageBuilder,
 };
 
-
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct PushSubscription {
     pub endpoint: String,
@@ -43,4 +42,24 @@ pub async fn send_push_notification(
     }
 
     Ok(())
+}
+
+pub async fn broadcast_push_notification(
+    subscriptions: Vec<PushSubscription>,
+    vapid_key_path: String,
+    message: String,
+) {
+    let mut tasks = tokio::task::JoinSet::new();
+    for sub in subscriptions {
+        let vapid = vapid_key_path.clone();
+        let msg = message.clone();
+        tasks.spawn(send_push_notification(
+            vapid,
+            sub.endpoint,
+            sub.p256dh,
+            sub.auth,
+            msg,
+        ));
+    }
+    while let Some(_res) = tasks.join_next().await {}
 }

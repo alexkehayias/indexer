@@ -4,6 +4,7 @@ mod tests {
     use std::fs;
     use std::path::PathBuf;
     use std::time::SystemTime;
+    use std::sync::{Arc, RwLock};
 
     use anyhow::{Error, Result};
     use async_trait::async_trait;
@@ -71,7 +72,7 @@ mod tests {
             gmail_api_client_secret: String::from("test_client_secret"),
         };
         let app_state = AppState::new(db, app_config);
-        app(app_state)
+        app(Arc::new(RwLock::new(app_state)))
     }
 
     fn index_dummy_notes(db: &mut rusqlite::Connection, temp_dir: PathBuf) {

@@ -5,7 +5,6 @@ use std::sync::{Arc, RwLock};
 
 use axum::extract::Query;
 use axum::middleware;
-use axum::debug_handler;
 use axum::{
     Router,
     extract::{Path, Request, State},
@@ -119,7 +118,6 @@ struct ChatTranscriptResponse {
     transcript: Vec<Message>,
 }
 
-#[debug_handler]
 async fn chat_session(
     State(state): State<SharedState>,
     // This is the session ID of the chat
@@ -140,7 +138,6 @@ async fn chat_session(
     Ok(Json(ChatTranscriptResponse {transcript}).into_response())
 }
 
-#[debug_handler]
 async fn chat_handler(
     State(state): State<SharedState>,
     Json(payload): Json<ChatRequest>,
@@ -241,7 +238,6 @@ pub struct PushSubscriptionRequest {
 }
 
 // Register a client for push notifications
-#[debug_handler]
 async fn push_subscription(
     State(state): State<SharedState>,
     Json(subscription): Json<PushSubscriptionRequest>,
@@ -276,7 +272,6 @@ async fn push_subscription(
     Ok(Json(json!({"success": true})))
 }
 
-#[axum::debug_handler]
 async fn search(
     State(state): State<SharedState>,
     Query(params): Query<HashMap<String, String>>,

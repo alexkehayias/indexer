@@ -1,8 +1,12 @@
+pub mod db;
+pub mod export;
+pub mod git;
 pub mod indexing;
+pub mod openai;
+pub mod prompt;
 pub mod schema;
 pub mod search;
 pub mod server;
-pub mod git;
-pub mod db;
 pub mod source;
-pub mod export;
+pub mod tool;
+pub mod chat;

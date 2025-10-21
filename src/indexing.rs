@@ -142,11 +142,17 @@ drawer",
 
         // Handle meetings
         if tag_string.contains("meeting") {
-            let date = i.clocks()
+            let date = i
+                .clocks()
                 .filter_map(|c| {
                     if let Some(cv) = c.value() {
                         if cv.is_inactive() {
-                            Some(format!("{}-{}-{}", cv.year_start().unwrap(), cv.month_start().unwrap(), cv.day_start().unwrap()))
+                            Some(format!(
+                                "{}-{}-{}",
+                                cv.year_start().unwrap(),
+                                cv.month_start().unwrap(),
+                                cv.day_start().unwrap()
+                            ))
                         } else {
                             None
                         }
@@ -166,7 +172,7 @@ drawer",
                 date,
             };
             meetings.push(meeting);
-            continue
+            continue;
         }
 
         // Handle tasks
@@ -202,7 +208,7 @@ drawer",
                 deadline,
             };
             tasks.push(task);
-            continue
+            continue;
         }
     }
 
@@ -379,7 +385,6 @@ fn index_note_vector(
 /// should always be safe to query an index and then lookup the
 /// note(s) by ID.
 fn index_note_meta(db: &mut Connection, file_name: &str, note: &Note) -> Result<()> {
-
     let mut note_meta_stmt = db.prepare(
         "REPLACE INTO note_meta(id, type, file_name, title, tags, body) VALUES (?, ?, ?, ?, ?, ?)",
     )?;
@@ -464,8 +469,8 @@ pub fn index_all(
         let file_name = p.file_name().unwrap().to_str().unwrap();
 
         // Only read and parse each note once
-        let content = fs::read_to_string(p)
-            .unwrap_or_else(|err| panic!("Error {} file: {:?}", err, p));
+        let content =
+            fs::read_to_string(p).unwrap_or_else(|err| panic!("Error {} file: {:?}", err, p));
         let note = parse_note(&content);
 
         // Always update the meta DB. Otherwise it's possible for the

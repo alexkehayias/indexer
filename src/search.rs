@@ -20,12 +20,14 @@ pub enum SearchHitType {
 
 #[derive(Serialize)]
 pub struct SearchHit {
+    id: String,
     r#type: SearchHitType,
     score: f32,
     title: String,
-    id: String,
     file_name: String,
     tags: Option<String>,
+    is_task: bool,
+    task_status: Option<String>,
 }
 
 fn fulltext_search(index_path: &str, query: &str) -> Vec<SearchHit> {
@@ -74,6 +76,14 @@ fn fulltext_search(index_path: &str, query: &str) -> Vec<SearchHit> {
             let tags_val = doc
                 .get("tags")
                 .map(|v| v[0].as_ref().as_str().unwrap().to_string());
+            let doc_type_val = doc.get("type").unwrap()[0]
+                .as_ref()
+                .as_str()
+                .unwrap()
+                .to_string();
+            let status_val = doc
+                .get("status")
+                .map(|v| v[0].as_ref().as_str().unwrap().to_string());
 
             let file_name_val = doc.get("file_name").unwrap()[0]
                 .as_ref()
@@ -81,12 +91,14 @@ fn fulltext_search(index_path: &str, query: &str) -> Vec<SearchHit> {
                 .unwrap()
                 .to_string();
             SearchHit {
+                id: id_val,
                 r#type: SearchHitType::FullText,
                 score: *score,
-                id: id_val,
                 title: title_val,
                 tags: tags_val,
                 file_name: file_name_val,
+                is_task: doc_type_val == "task",
+                task_status: status_val,
             }
         })
         .collect()
@@ -127,6 +139,10 @@ pub fn search_similar_notes(db: &Connection, query: &str) -> Result<Vec<SearchHi
                 title: r.get(2)?,
                 tags: r.get(3)?,
                 score: r.get(4)?,
+                // TODO: update this once task meta data is stored in
+                // the DB
+                is_task: false,
+                task_status: None,
             })
         })?
         .collect::<Result<Vec<SearchHit>, _>>()?;

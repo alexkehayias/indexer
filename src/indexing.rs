@@ -280,6 +280,7 @@ pub fn index_note_vector(
     // Update the note meta table
     note_meta_stmt
         // TODO: Don't hardcode the note path, save the file name instead
+        // TODO: Add task type and status
         .execute(rusqlite::params![
             note.id, note_path, note.title, note.tags, note.body
         ])

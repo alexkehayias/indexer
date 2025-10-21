@@ -3,7 +3,7 @@
 use reqwest::Client;
 use serde::{Deserialize, Serialize};
 use chrono::{Duration, Utc};
-use base64::{engine::general_purpose, Engine as _};
+use base64::{engine::general_purpose::URL_SAFE, Engine as _};
 
 /// Message and thread structures from Gmail API documentation
 #[derive(Debug, Serialize, Deserialize, Clone)]
@@ -20,13 +20,13 @@ pub struct ListMessagesResponse {
     pub next_page_token: Option<String>,
 }
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Thread {
     pub id: String,
     pub messages: Vec<Message>,
 }
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Message {
     pub id: String,
     #[serde(rename = "threadId")]
@@ -35,9 +35,11 @@ pub struct Message {
     pub payload: Option<MessagePayload>,
     #[serde(rename = "labelIds")]
     pub label_ids: Option<Vec<String>>,
+    #[serde(rename = "internalDate")]
+    pub internal_date: String,
 }
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct MessagePartBody {
     #[serde(rename = "attachmentId")]
     attachment_id: Option<String>,
@@ -46,7 +48,7 @@ pub struct MessagePartBody {
     data: Option<String>,
 }
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct MessagePart {
     #[serde(rename = "partId")]
     pub part_id: String,
@@ -55,17 +57,74 @@ pub struct MessagePart {
     pub body: Option<MessagePartBody>,
 }
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct MessagePayload {
     pub headers: Option<Vec<MessageHeader>>,
     pub body: Option<MessagePartBody>,
     pub parts: Option<Vec<MessagePart>>,
 }
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct MessageHeader {
     pub name: String,
     pub value: String,
+}
+
+fn decode_base64(data: &str) -> String {
+    URL_SAFE.decode(data).ok()
+        .and_then(|bytes| String::from_utf8(bytes).ok())
+        .unwrap_or_else(|| {
+            tracing::error!("Base64 decode failed for: {}", data);
+            String::from("Failed to decode")
+        })
+}
+
+/// Extract the body from the Gmail API message payload.
+///
+/// To get the body of an email:
+/// - The email messsage can either have a `payload.body.data` or one or more `parts[].body.data`.
+/// - Parts might have an HTML version of the message as well as a plain text version of the body
+///   Use the `parts[].mimetype` field to distinguish which it is
+/// - When there is a `body.attachment_id` that indicates a file that was attached
+pub fn extract_body(message: &Message) -> String {
+    let payload = message.payload.clone().unwrap();
+
+    if let Some(body) = &payload.body {
+        if let Some(data) = &body.data {
+            return decode_base64(data);
+        }
+    }
+
+    if let Some(parts) = &payload.parts {
+        for part in parts {
+            if part.mimetype == "text/html" {
+                if let Some(body) = &part.body {
+                    // Skip attachments
+                    if body.attachment_id.is_some() {
+                        continue;
+                    }
+                    // Return the first non-empty body found in parts
+                    if let Some(data) = &body.data {
+                        return decode_base64(data);
+                    }
+                }
+            }
+            if part.mimetype == "text/plain" {
+                if let Some(body) = &part.body {
+                    // Skip attachments
+                    if body.attachment_id.is_some() {
+                        continue;
+                    }
+                    // Return the first non-empty body found in parts
+                    if let Some(data) = &body.data {
+                        return decode_base64(data);
+                    }
+                }
+            }
+        }
+    }
+
+    String::new()
 }
 
 /// List unread messages from the last N days
@@ -77,7 +136,7 @@ pub async fn list_unread_messages(
     let client = Client::new();
     let after_date = (Utc::now() - Duration::days(n_days)).format("%Y/%m/%d").to_string();
     let url = format!(
-        "https://gmail.googleapis.com/gmail/v1/users/me/messages?labelIds=UNREAD&q=is:unread%20after:{}",
+        "https://gmail.googleapis.com/gmail/v1/users/me/messages?labelIds=UNREAD&q=is:unread%20after:{}%20in:inbox",
         after_date
     );
     let res = client
@@ -160,5 +219,5 @@ pub async fn send_reply(
 
 /// Helper: base64url encode w/out padding
 fn base64_url_no_pad(input: &str) -> String {
-    general_purpose::URL_SAFE_NO_PAD.encode(input.as_bytes())
+    URL_SAFE.encode(input.as_bytes())
 }

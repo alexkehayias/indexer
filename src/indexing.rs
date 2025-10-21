@@ -3,7 +3,7 @@ use super::source::notes;
 use crate::export::PlainTextExport;
 use fastembed::{EmbeddingModel, InitOptions, TextEmbedding};
 use orgize::rowan::ast::AstNode;
-use orgize::{ParseConfig, SyntaxNode};
+use orgize::ParseConfig;
 use rusqlite::{Connection, Result};
 use std::fs;
 use std::path::PathBuf;

@@ -97,8 +97,8 @@ async fn main() -> tantivy::Result<()> {
         index_notes_all(&index_path, &notes_path);
 
         // Index for vector search
-        // let mut db = vector_db(&vec_db_path).expect("Failed to connect to db");
-        // index_notes_vector_all(&mut db, &notes_path).expect("Failed to vector index notes");
+        let mut db = vector_db(&vec_db_path).expect("Failed to connect to db");
+        index_notes_vector_all(&mut db, &notes_path).expect("Failed to vector index notes");
     }
 
     if let Some(query) = args.query {

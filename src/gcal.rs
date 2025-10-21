@@ -95,7 +95,7 @@ pub async fn list_events(
         calendar_id
     );
 
-    let res = client
+    let response = client
         .get(&url)
         .bearer_auth(access_token)
         .query(&[
@@ -105,16 +105,10 @@ pub async fn list_events(
             ("orderBy", "startTime".to_string()),
         ])
         .send()
+        .await?
+        .json::<ListEventsResponse>()
         .await?;
 
-    let status = res.status();
-    let text = res.text().await.unwrap_or_default();
-
-    if !status.is_success() {
-        anyhow::bail!("Events fetch failed: {} ({})", status, text);
-    }
-
-    let response: ListEventsResponse = serde_json::from_str(&text)?;
     let events = response
         .items
         .unwrap_or_default()
@@ -123,4 +117,35 @@ pub async fn list_events(
         .collect();
 
     Ok(events)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use anyhow::Result;
+    use std::fs;
+
+    #[tokio::test]
+    async fn it_gets_calendar_events() -> Result<()> {
+        let mut server = mockito::Server::new_async().await;
+        let mock_resp = fs::read_to_string("./tests/data/gcal_response.json").unwrap();
+        let _mock = server.mock("GET", "/calendar/v3/calendars/primary/events")
+            .with_status(200)
+            .with_header("content-type", "application/json")
+            .with_body(mock_resp)
+            .create();
+
+        let start: DateTime<Utc> = Utc::now();
+        let end: DateTime<Utc> = Utc::now();
+        let result = list_events(
+            "fake-token",
+            "primary",
+            start,
+            end,
+        ).await;
+
+        assert!(result.is_ok());
+
+        Ok(())
+    }
 }

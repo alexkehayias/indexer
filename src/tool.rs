@@ -420,13 +420,4 @@ mod tests {
 
         Ok(())
     }
-
-    #[tokio::test]
-    async fn it_gets_calendar_events() -> Result<()> {
-        // This test would require a mock server setup to test the calendar tool
-        // For now, we just verify it compiles and has basic structure
-        let tool = CalendarTool::default();
-        assert_eq!(tool.function_name(), "get_calendar_events");
-        Ok(())
-    }
 }

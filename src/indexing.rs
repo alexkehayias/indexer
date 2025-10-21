@@ -303,9 +303,8 @@ fn index_note_full_text(
     let status = schema.get_field("status")?;
     let file_name = schema.get_field("file_name")?;
 
-    // Parse the file from the path
-    let content = &note.body;
     let note_type = DocType::Note.to_str();
+
     let Note {
         id: note_id,
         title: note_title,
@@ -315,14 +314,14 @@ fn index_note_full_text(
         tasks: note_tasks,
         meetings: note_meetings,
         headings: note_headings,
-    } = parse_note(content);
+    } = note;
 
     let mut doc = doc!(
-        id => note_id,
+        id => note_id.as_str(),
         r#type => note_type,
-        title => note_title,
+        title => note_title.as_str(),
         category => note_category.clone(),
-        body => note_body,
+        body => note_body.as_str(),
         file_name => file_name_value,
     );
 
@@ -333,64 +332,64 @@ fn index_note_full_text(
     index_writer.add_document(doc)?;
 
     // Index each meeting
-    for m in note_meetings.into_iter() {
+    for m in note_meetings.iter() {
         // Delete first to get upsert behavior
         let meeting_term_id = Term::from_field_text(id, &m.id);
         index_writer.delete_term(meeting_term_id);
 
         let meeting_type = DocType::Meeting.to_str();
         let mut doc = doc!(
-            id => m.id,
+            id => m.id.clone(),
             r#type => meeting_type,
-            title => m.title,
+            title => m.title.clone(),
             category => note_category.clone(),
-            body => m.body,
+            body => m.body.clone(),
             file_name => file_name_value,
         );
-        if let Some(tag_list) = m.tags {
+        if let Some(tag_list) = m.tags.clone() {
             doc.add_text(tags, tag_list);
         }
         index_writer.add_document(doc)?;
     }
 
     // Index each task
-    for t in note_tasks.into_iter() {
+    for t in note_tasks.iter() {
         // Delete first to get upsert behavior
         let task_term_id = Term::from_field_text(id, &t.id);
         index_writer.delete_term(task_term_id);
 
         let task_type = DocType::Task.to_str();
         let mut doc = doc!(
-            id => t.id,
+            id => t.id.clone(),
             r#type => task_type,
-            title => t.title,
+            title => t.title.clone(),
             category => note_category.clone(),
-            body => t.body,
-            status => t.status,
+            body => t.body.clone(),
+            status => t.status.clone(),
             file_name => file_name_value,
         );
-        if let Some(tag_list) = t.tags {
+        if let Some(tag_list) = t.tags.clone() {
             doc.add_text(tags, tag_list);
         }
         index_writer.add_document(doc)?;
     }
 
     // Index each heading
-    for h in note_headings.into_iter() {
+    for h in note_headings.iter() {
         // Delete first to get upsert behavior
         let heading_term_id = Term::from_field_text(id, &h.id);
         index_writer.delete_term(heading_term_id);
 
         let heading_type = DocType::Heading.to_str();
         let mut doc = doc!(
-            id => h.id,
+            id => h.id.clone(),
             r#type => heading_type,
-            title => h.title,
+            title => h.title.clone(),
             category => note_category.clone(),
-            body => h.body,
+            body => h.body.clone(),
             file_name => file_name_value,
         );
-        if let Some(tag_list) = h.tags {
+        if let Some(tag_list) = h.tags.clone() {
             doc.add_text(tags, tag_list);
         }
         index_writer.add_document(doc)?;

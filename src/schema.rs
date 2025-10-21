@@ -7,7 +7,7 @@ pub fn note_schema() -> Schema {
     schema_builder.add_text_field("title", TEXT | STORED);
     schema_builder.add_text_field("tags", TEXT | STORED);
     schema_builder.add_text_field("status", TEXT | STORED);
-    schema_builder.add_text_field("body", TEXT);
+    schema_builder.add_text_field("body", TEXT | STORED);
     schema_builder.add_text_field("file_name", TEXT | STORED);
     schema_builder.build()
 }

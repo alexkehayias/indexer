@@ -84,6 +84,7 @@ mod tests {
             openai_api_hostname: String::from("https://api.openai.com"),
             openai_api_key: String::from("test-api-key"),
             system_message: String::from("You are a helpful assistant."),
+            calendar_email: None,
         };
         let app_state = AppState::new(db, app_config);
         app(Arc::new(RwLock::new(app_state)))

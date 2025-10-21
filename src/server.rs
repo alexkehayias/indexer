@@ -28,6 +28,7 @@ use crate::chat::{chat, find_chat_session_by_id, insert_chat_message};
 use crate::gcal::list_events;
 use crate::config::AppConfig;
 use crate::indexing::index_all;
+use crate::jobs::{spawn_periodic_job, ResearchMeetingAttendees};
 use crate::openai::{BoxedToolCall, Message, Role};
 use crate::tool::{CalendarTool, EmailUnreadTool, NoteSearchTool, SearxSearchTool};
 use crate::public::{self};
@@ -615,6 +616,7 @@ pub async fn serve(
     searxng_api_url: String,
     gmail_api_client_id: String,
     gmail_api_client_secret: String,
+    calendar_email: Option<String>,
 ) {
     tracing_subscriber::registry()
         .with(
@@ -658,6 +660,7 @@ pub async fn serve(
         openai_api_key,
         openai_model,
         system_message,
+        calendar_email,
     };
     let app_state = AppState::new(db.clone(), app_config.clone());
     let shared_state = Arc::new(RwLock::new(app_state));
@@ -674,7 +677,7 @@ pub async fn serve(
 
     // Run background jobs. Each job is spawned in it's own tokio task
     // in a loop.
-    // spawn_periodic_job(app_config, db, ProcessEmail);
+    spawn_periodic_job(app_config, db, ResearchMeetingAttendees);
 
     axum::serve(listener, app).await.unwrap();
 }

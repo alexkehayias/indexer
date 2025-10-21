@@ -415,6 +415,7 @@ pub async fn email_unread_handler(
 ) -> Json<Value> {
     let refresh_token: String = {
         let shared_state = state.read().expect("Unable to read share state");
+
         let db = shared_state
             .db
             .lock()
@@ -431,25 +432,30 @@ pub async fn email_unread_handler(
         }
     };
 
-    let client_id = std::env::var("INDEXER_GMAIL_CLIENT_ID")
-        .expect("Missing INDEXER_GMAIL_CLIENT_ID");
-    let client_secret = std::env::var("INDEXER_GMAIL_CLIENT_SECRET")
-        .expect("Missing INDEXER_GMAIL_CLIENT_SECRET");
-
-    let refresh_token = refresh_access_token(&client_id, &client_secret, &refresh_token).await;
-
-    let oauth = match refresh_token {
-        Ok(token) => token,
-        Err(e) => {
-            tracing::error!("OAuth error: {}", e);
-            return Json(serde_json::Value::from(""))
-        }
+    // Pull the config values out before the async call so that we
+    // don't get an error for holding the lock across awaits.
+    let (client_id, client_secret) = {
+        let shared_state = state.read().expect("Unable to read share state");
+        let AppConfig {
+            gmail_api_client_id,
+            gmail_api_client_secret,
+            ..
+        } = &shared_state.config;
+        (gmail_api_client_id.clone(), gmail_api_client_secret.clone())
     };
-
+    let refresh_resp = refresh_access_token(&client_id, &client_secret, &refresh_token).await;
+    let oauth = match refresh_resp {
+            Ok(token) => token,
+            Err(e) => {
+                tracing::error!("OAuth error: {}", e);
+                return Json(serde_json::Value::from(""))
+            }
+        };
+    let access_token = oauth.access_token;
     let limit = params.limit.unwrap_or(7); // Default 7 days if not specified
 
     // Query Gmail for unread messages
-    let messages = match list_unread_messages(&oauth.access_token, limit).await {
+    let messages = match list_unread_messages(&access_token, limit).await {
         Ok(x) => x,
         Err(e) => {
             tracing::error!("Gmail API error: {}", e);
@@ -459,7 +465,7 @@ pub async fn email_unread_handler(
 
     let mut threads = JoinSet::new();
     for message in messages.into_iter() {
-        let access_token = oauth.access_token.clone();
+        let access_token = access_token.clone();
         let thread_id = message.thread_id;
         threads.spawn(fetch_thread(access_token, thread_id));
     };

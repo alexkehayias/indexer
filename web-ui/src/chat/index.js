@@ -4,7 +4,6 @@ document.addEventListener('DOMContentLoaded', () => {
   const maybeSessionId = urlParams.get("session_id");
   if (maybeSessionId) {
     sessionId = maybeSessionId;
-    // Restore the transcript from the session
     fetch(`/notes/chat/${sessionId}`, {
       method: 'GET',
       headers: {
@@ -32,49 +31,57 @@ document.addEventListener('DOMContentLoaded', () => {
     if (e.key === 'Enter') sendMessage();
   });
 
-  const renderMessageBubble = (message, isUserMessage) => {
+  const renderMessageBubble = (message, isUserMessage, isLoading = false) => {
     const messageElement = document.createElement('div');
-    messageElement.className = 'flex items-start gap-2.5 mb-4';
+    messageElement.className = isLoading ? 'flex justify-center my-4' : 'flex items-start gap-2.5 mb-4';
 
-    const imgElement = document.createElement('img');
-    imgElement.className = 'w-8 h-8 rounded-full';
-    imgElement.src = isUserMessage
-                   ? './img/me.jpeg'
-                   : './img/bot.jpeg';
-    imgElement.alt = isUserMessage ? 'User image' : 'Bot image';
+    if (isLoading) {
+      for (let i = 0; i < 3; i++) {
+        const img = document.createElement('img');
+        img.src = `./img/dog${i+1}.png`;  // Placeholder - update with actual dog image paths
+        img.className = `w-8 h-8 animate-bounce-dog${i+1}`;
+        img.alt = 'Loading Dog';
+        messageElement.appendChild(img);
+      }
+    } else {
+      const imgElement = document.createElement('img');
+      imgElement.className = 'w-8 h-8 rounded-full';
+      imgElement.src = isUserMessage ? './img/me.jpeg' : './img/bot.jpeg';
+      imgElement.alt = isUserMessage ? 'User image' : 'Bot image';
 
-    const messageContent = document.createElement('div');
-    messageContent.className = 'flex flex-col gap-1 w-full max-w-[320px]';
+      const messageContent = document.createElement('div');
+      messageContent.className = 'flex flex-col gap-1 w-full max-w-[320px]';
 
-    const messageBody = document.createElement('div');
-    messageBody.className = isUserMessage
-      ? 'flex flex-col leading-1.5 p-4 bg-blue-500 text-white rounded-e-xl rounded-es-xl'
-      : 'flex flex-col leading-1.5 p-4 border-gray-200 bg-gray-100 text-gray-900 dark:bg-gray-700 rounded-e-xl rounded-es-xl';
+      const messageBody = document.createElement('div');
+      messageBody.className = isUserMessage
+        ? 'flex flex-col leading-1.5 p-4 bg-blue-500 text-white rounded-e-xl rounded-es-xl'
+        : 'flex flex-col leading-1.5 p-4 border-gray-200 bg-gray-100 text-gray-900 dark:bg-gray-700 rounded-e-xl rounded-es-xl';
 
-    // Convert Markdown to HTML using marked
-    const messageHTML = marked.parse(message, { breaks: true });
+      const messageHTML = marked.parse(message, { breaks: true });
 
-    const messageText = document.createElement('p');
-    messageText.className = 'markdown text-sm font-normal';
-    messageText.innerHTML = messageHTML;
-    messageBody.appendChild(messageText);
-    messageContent.appendChild(messageBody);
-    messageElement.appendChild(imgElement);
-    messageElement.appendChild(messageContent);
-
-    // Prepend since we use `flex-direction: column-reverse` to render
-    // the chat messages from bottom to top.
+      const messageText = document.createElement('p');
+      messageText.className = 'markdown text-sm font-normal';
+      messageText.innerHTML = messageHTML;
+      messageBody.appendChild(messageText);
+      messageContent.appendChild(messageBody);
+      messageElement.appendChild(imgElement);
+      messageElement.appendChild(messageContent);
+    }
+    
     chatDisplay.prepend(messageElement);
-    // Scroll to the bottom of the chat
     chatDisplay.scrollTop = chatDisplay.scrollHeight;
+
+    return messageElement; 
   };
 
   const sendMessage = () => {
     const message = chatInput.value.trim();
     if (message === '') return;
 
-    // Render user's message immediately
     renderMessageBubble(message, true);
+
+    // Show loading indicator below user's message
+    const loadingElement = renderMessageBubble('', false, true);
 
     const chatRequest = {
       session_id: sessionId,
@@ -90,11 +97,59 @@ document.addEventListener('DOMContentLoaded', () => {
     })
     .then(response => response.json())
     .then(data => {
-      // Handle the new response structure
       renderMessageBubble(data.message, false);
+      // Remove loading indicator
+      loadingElement.remove();
     })
-    .catch(error => console.error('Error:', error));
+    .catch(error => {
+      console.error('Error:', error);
+      loadingElement.remove(); // Ensure loading indicator is removed on error
+    });
 
     chatInput.value = ''; // Clear input field
   };
 });
+
+// CSS styles for loading animation
+const style = document.createElement('style');
+style.innerHTML = `
+.hidden {
+  display: none;
+}
+.flex {
+  display: flex;
+}
+.gap-2 {
+  gap: 0.5rem;
+}
+.justify-center {
+  justify-content: center;
+}
+.my-4 {
+  margin: 1rem 0;
+}
+.w-8 {
+  width: 2rem;
+}
+.h-8 {
+  height: 2rem;
+}
+.animate-bounce-dog1 {
+  animation: bounce 1s infinite 0.2s;
+}
+.animate-bounce-dog2 {
+  animation: bounce 1s infinite 0.4s;
+}
+.animate-bounce-dog3 {
+  animation: bounce 1s infinite 0.6s;
+}
+@keyframes bounce {
+  0%, 100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-10px);
+  }
+}
+`;
+document.head.appendChild(style);

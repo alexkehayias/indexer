@@ -2,6 +2,7 @@
 FROM rust:bookworm AS builder
 
 WORKDIR /
+
 COPY ./src ./src
 COPY ./Cargo.toml ./Cargo.toml
 RUN cargo build --release
@@ -9,7 +10,10 @@ RUN cargo build --release
 # Run stage
 FROM debian:bookworm-slim AS runner
 
-# Make sure the directory for storing the indices is available
+# Use the compiled binary rather than cargo
+COPY --from=builder /target/release/indexer /indexer
+
+# Initialize index
 RUN mkdir -p .index
 
 # Use the compiled binary rather than cargo

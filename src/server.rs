@@ -41,7 +41,7 @@ struct SetLatest {
 async fn kv_get(State(state): State<SharedState>) -> Json<Value> {
     let resp = json!({
         "id": state.read().unwrap().latest_selection.get("id"),
-        "file_name": state.read().unwrap().latest_selection.get("id"),
+        "file_name": state.read().unwrap().latest_selection.get("file_name"),
         "title": state.read().unwrap().latest_selection.get("title"),
     });
     Json(resp)

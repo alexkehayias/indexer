@@ -1,8 +1,8 @@
-use winnow::prelude::*;
-use winnow::combinator::*;
 use winnow::ascii::{alphanumeric1, space0, space1};
+use winnow::combinator::*;
+use winnow::error::{ErrMode, InputError};
+use winnow::prelude::*;
 use winnow::token::{literal, take_while};
-use winnow::error::{InputError, ErrMode};
 
 #[derive(Debug, PartialEq)]
 pub enum RangeOp {
@@ -31,7 +31,7 @@ pub enum Expr {
     Group(Vec<Expr>),
 }
 
-pub fn parse_query<'a>(input: &'a str) -> Result<Expr, ErrMode<InputError<&'a str>>> {
+pub fn parse_query(input: &str) -> Result<Expr, ErrMode<InputError<&str>>> {
     let mut input = input;
     parse_expr(&mut input)
 }
@@ -42,7 +42,10 @@ fn parse_expr<'a>(input: &mut &'a str) -> Result<Expr, ErrMode<InputError<&'a st
 
 fn parse_or<'a>(input: &mut &'a str) -> Result<Expr, ErrMode<InputError<&'a str>>> {
     let mut lhs = parse_and(input)?;
-    while preceded(space0, tag_no_case("OR")).parse_next(input).is_ok() {
+    while preceded(space0, tag_no_case("AND"))
+        .parse_next(input)
+        .is_ok()
+    {
         let rhs = parse_and(input)?;
         lhs = Expr::Or(Box::new(lhs), Box::new(rhs));
     }
@@ -55,7 +58,10 @@ fn parse_and<'a>(input: &mut &'a str) -> Result<Expr, ErrMode<InputError<&'a str
     loop {
         let checkpoint = *input;
 
-        if preceded(space0, tag_no_case("OR")).parse_next(input).is_ok() {
+        if preceded(space0, tag_no_case("OR"))
+            .parse_next(input)
+            .is_ok()
+        {
             *input = checkpoint;
             break;
         }
@@ -71,7 +77,9 @@ fn parse_and<'a>(input: &mut &'a str) -> Result<Expr, ErrMode<InputError<&'a str
 }
 
 fn parse_not<'a>(input: &mut &'a str) -> Result<Expr, ErrMode<InputError<&'a str>>> {
-    let negated = opt(alt((literal("-"), tag_no_case("NOT")))).parse_next(input)?.is_some();
+    let negated = opt(alt((literal("-"), tag_no_case("NOT"))))
+        .parse_next(input)?
+        .is_some();
     let mut expr = parse_group_or_term(input)?;
     match &mut expr {
         Expr::Term { negated: n, .. } => *n = *n || negated,
@@ -116,8 +124,7 @@ fn parse_range_expr<'a>(input: &mut &'a str) -> Result<Expr, ErrMode<InputError<
         literal("<").map(|_| RangeOp::Lt),
     ))
     .parse_next(input)?;
-    let value = take_while(1.., |c: char| !c.is_whitespace() && c != ')')
-        .parse_next(input)?;
+    let value = take_while(1.., |c: char| !c.is_whitespace() && c != ')').parse_next(input)?;
     Ok(Expr::Range {
         field: field.to_string(),
         op,
@@ -138,8 +145,8 @@ fn parse_fielded_term<'a>(input: &mut &'a str) -> Result<Expr, ErrMode<InputErro
             .map(|s: &str| (s.to_string(), false)),
     ));
 
-    let values: Vec<(String, bool)> = separated(1.., term_parser, literal(","))
-        .parse_next(input)?;
+    let values: Vec<(String, bool)> =
+        separated(1.., term_parser, literal(",")).parse_next(input)?;
 
     if values.len() == 1 {
         Ok(Expr::Term {
@@ -149,13 +156,11 @@ fn parse_fielded_term<'a>(input: &mut &'a str) -> Result<Expr, ErrMode<InputErro
             negated,
         })
     } else {
-        let mut terms = values.into_iter().map(|(value, phrase)| {
-            Expr::Term {
-                field: Some(field.to_string()),
-                value,
-                phrase,
-                negated,
-            }
+        let mut terms = values.into_iter().map(|(value, phrase)| Expr::Term {
+            field: Some(field.to_string()),
+            value,
+            phrase,
+            negated,
         });
         let first = terms.next().unwrap();
         Ok(terms.fold(first, |acc, term| Expr::And(Box::new(acc), Box::new(term))))
@@ -232,10 +237,25 @@ mod tests {
             result,
             Expr::And(
                 Box::new(Expr::And(
-                    Box::new(Expr::Term { field: Some(String::from("title")), value: String::from("testing"), phrase: false, negated: false }),
-                    Box::new(Expr::Term { field: Some(String::from("tags")), value: String::from("meeting"), phrase: false, negated: false })
+                    Box::new(Expr::Term {
+                        field: Some(String::from("title")),
+                        value: String::from("testing"),
+                        phrase: false,
+                        negated: false
+                    }),
+                    Box::new(Expr::Term {
+                        field: Some(String::from("tags")),
+                        value: String::from("meeting"),
+                        phrase: false,
+                        negated: false
+                    })
                 )),
-                Box::new(Expr::Range { field: String::from("date"), op: RangeOp::Gt, value: String::from("2025-01-01"), negated: false })
+                Box::new(Expr::Range {
+                    field: String::from("date"),
+                    op: RangeOp::Gt,
+                    value: String::from("2025-01-01"),
+                    negated: false
+                })
             )
         );
     }
@@ -246,8 +266,18 @@ mod tests {
         assert_eq!(
             result,
             Expr::And(
-                Box::new(Expr::Term { field: Some(String::from("tags")), value: String::from("work"), phrase: false, negated: false }),
-                Box::new(Expr::Term { field: Some(String::from("tags")), value: String::from("urgent"), phrase: false, negated: false })
+                Box::new(Expr::Term {
+                    field: Some(String::from("tags")),
+                    value: String::from("work"),
+                    phrase: false,
+                    negated: false
+                }),
+                Box::new(Expr::Term {
+                    field: Some(String::from("tags")),
+                    value: String::from("urgent"),
+                    phrase: false,
+                    negated: false
+                })
             ),
         );
     }

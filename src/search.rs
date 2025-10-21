@@ -1,5 +1,5 @@
-use itertools::Itertools;
 use fastembed::{EmbeddingModel, InitOptions, TextEmbedding};
+use itertools::Itertools;
 use rusqlite::{Connection, Result};
 use serde::Serialize;
 use serde_json::json;
@@ -9,8 +9,8 @@ use tantivy::{Index, ReloadPolicy};
 use zerocopy::IntoBytes;
 
 use super::schema::note_schema;
-use crate::query::{aql_to_index_query, expr_to_sql, query_to_similarity};
 use crate::aql::{self};
+use crate::query::{aql_to_index_query, expr_to_sql, query_to_similarity};
 
 #[derive(Serialize)]
 pub enum SearchHitType {
@@ -79,14 +79,21 @@ fn fulltext_search(index_path: &str, query: &aql::Expr, limit: usize) -> Result<
 /// Returns the note ID and similarity distance for the query. Results
 /// are ordered by ascending distance because sqlite-vec only supports
 /// ascending distance.
-pub fn search_similar_notes(db: &Connection, query: &aql::Expr, limit: usize) -> Result<Vec<SearchHit>> {
+pub fn search_similar_notes(
+    db: &Connection,
+    query: &aql::Expr,
+    limit: usize,
+) -> Result<Vec<SearchHit>> {
     // Extract the relevant text to use for similar search from the AQL query
-    let similarity_string = query_to_similarity(query).expect("Failed to make similarity search query string");
+    let similarity_string =
+        query_to_similarity(query).expect("Failed to make similarity search query string");
     let embeddings_model = TextEmbedding::try_new(
         InitOptions::new(EmbeddingModel::BGESmallENV15).with_show_download_progress(true),
     )
     .unwrap();
-    let query_vector = embeddings_model.embed(vec![similarity_string], None).unwrap();
+    let query_vector = embeddings_model
+        .embed(vec![similarity_string], None)
+        .unwrap();
     let q = query_vector[0].clone();
     let result: Vec<SearchHit> = db
         .prepare(
@@ -154,12 +161,14 @@ pub fn search_notes(
     // relevance
     let mut search_hits = fulltext_search(index_path, query, 10000).unwrap_or_else(|_| Vec::new());
     if include_similarity {
-        let mut vec_search_result =
-            search_similar_notes(db, query, limit).unwrap_or_default();
+        let mut vec_search_result = search_similar_notes(db, query, limit).unwrap_or_default();
 
         // Combine the results, dedupe, then sort by score
         search_hits.append(&mut vec_search_result);
-        search_hits = search_hits.into_iter().unique_by(|i| i.id.clone()).collect();
+        search_hits = search_hits
+            .into_iter()
+            .unique_by(|i| i.id.clone())
+            .collect();
     }
 
     // Search the db for the metadata and construct results
@@ -178,7 +187,8 @@ pub fn search_notes(
     }
 
     let where_clause = where_clauses.join(" AND ");
-    let sql = format!(r#"
+    let sql = format!(
+        r#"
         SELECT
           id,
           type,
@@ -195,13 +205,14 @@ pub fn search_notes(
         FROM note_meta
         WHERE {}
         LIMIT {}
-    "#, where_clause, limit);
+    "#,
+        where_clause, limit
+    );
 
     // Need to do that because query_map takes an array whose size and
     // type need to be known at compile time
     if !result_ids.is_empty() {
-        db
-            .prepare(&sql)
+        db.prepare(&sql)
             .unwrap()
             .query_map([result_ids_str.as_bytes()], |r| {
                 let maybe_task_status: Option<String> = r.get(7)?;
@@ -225,8 +236,7 @@ pub fn search_notes(
             .collect::<Result<Vec<SearchResult>, _>>()
             .unwrap()
     } else {
-        db
-            .prepare(&sql)
+        db.prepare(&sql)
             .unwrap()
             .query_map([], |r| {
                 let maybe_task_status: Option<String> = r.get(7)?;

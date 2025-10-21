@@ -1,6 +1,6 @@
+use regex::Regex;
 use std::hash::{Hash, Hasher};
 use std::path::PathBuf;
-use regex::Regex;
 
 use super::schema::note_schema;
 use super::source::{note_filter, notes};
@@ -176,12 +176,14 @@ fn parse_note(content: &str) -> Note {
             for (_, [year, month, day]) in date_regex.captures_iter(&title).map(|c| c.extract()) {
                 dates.push(format!("{}-{}-{}", year, month, day));
             }
-            let date = dates.first()
-                .map(|d| d.to_string())
-                .unwrap_or_else(|| {
-                    println!("Meeting missing date! {}, file: {}", title.clone(), note_title.clone());
-                    String::from("2000-01-01")
-                });
+            let date = dates.first().map(|d| d.to_string()).unwrap_or_else(|| {
+                println!(
+                    "Meeting missing date! {}, file: {}",
+                    title.clone(),
+                    note_title.clone()
+                );
+                String::from("2000-01-01")
+            });
 
             let meeting = Meeting {
                 id,

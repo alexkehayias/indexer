@@ -29,10 +29,11 @@ use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
 use crate::aql;
 use crate::chat::chat;
 use crate::indexing::index_all;
+use crate::notification::find_notification_subscriptions;
 use crate::openai::{BoxedToolCall, Message, Role};
 use crate::tool::{NoteSearchTool, SearxSearchTool, EmailUnreadTool};
 
-use super::db::vector_db;
+use super::db::{vector_db, async_db};
 use super::git::{diff_last_commit_files, maybe_pull_and_reset_repo};
 use super::notification::{PushSubscription, broadcast_push_notification};
 use uuid::Uuid;
@@ -670,6 +671,8 @@ pub async fn serve(
         .with(tracing_subscriber::fmt::layer())
         .init();
     let db = vector_db(&vec_db_path).expect("Failed to connect to db");
+    let a_db = async_db(&vec_db_path).await.expect("Failed to connect to async db");
+    let db_async = Arc::new(RwLock::new(a_db));
     let app_config = AppConfig {
         notes_path,
         index_path,
@@ -728,21 +731,8 @@ pub async fn serve(
                 state.config.vapid_key_path.clone()
             };
             let subscriptions = {
-                let state = state_clone.read().unwrap();
-                let db = state.db.lock().unwrap_or_else(|e| e.into_inner());
-                let mut stmt = db.prepare(
-                    "SELECT endpoint, p256dh, auth FROM push_subscription"
-                ).expect("prepare failed");
-                stmt.query_map([], |i| {
-                    Ok(PushSubscription {
-                        endpoint: i.get(0)?,
-                        p256dh: i.get(1)?,
-                        auth: i.get(2)?
-                    })
-                })
-                .expect("query_map failed")
-                .filter_map(Result::ok)
-                .collect::<Vec<_>>()
+                let db = db_async.write().expect("Failed to get connection").clone();
+                find_notification_subscriptions(&db).await.unwrap()
             };
             broadcast_push_notification(
                 subscriptions,

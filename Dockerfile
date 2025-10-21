@@ -31,6 +31,9 @@ COPY ./web-ui/src/index.js ./web-ui/src/index.js
 COPY ./web-ui/src/output.css ./web-ui/src/output.css
 COPY ./web-ui/src/manifest.json ./web-ui/src/manifest.json
 COPY ./web-ui/src/service-worker.js ./web-ui/src/service-worker.js
+COPY ./web-ui/src/chat/index.html ./web-ui/src/chat/index.html
+COPY ./web-ui/src/chat/index.js ./web-ui/src/chat/index.js
+COPY ./web-ui/src/chat/img/ ./web-ui/src/chat/img/
 
 EXPOSE 2222
 

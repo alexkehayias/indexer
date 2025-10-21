@@ -140,30 +140,28 @@ pub fn index_note_vector(db: &mut Connection, embeddings_model: &TextEmbedding, 
         ])
         .expect("Note meta upsert failed");
 
-    // Assume that chunks returns an iterator of &str
-    let mut accum = Vec::new();
-    for chunk in splitter.chunks(content.as_str()) {
-        // Convert the &str chunk into an owned String
-        accum.push(chunk.to_string());
-    }
+    let embeddings: Vec<Vec<Vec<f32>>> = splitter
+        .chunks(&content)
+        .map(|chunk|{
+            embeddings_model
+                .embed(vec!(chunk), None)
+                .expect("Failed to generate embeddings")
+        })
+        .collect();
 
-    let items = embeddings_model
-        .embed(accum, None)
-        .expect("Failed to generate embeddings");
-    for item in items {
+    for embedding in embeddings.concat() {
         // Upserts are not currently supported by sqlite for
         // virtual tables like the vector embeddings table so this
         // attempts to insert a new row and then falls back to an
         // update statement.
         embedding_stmt
-            .execute(rusqlite::params![note.id, item.as_bytes()])
+            .execute(rusqlite::params![note.id, embedding.as_bytes()])
             .unwrap_or_else(|_| {
                 embedding_update_stmt
-                    .execute(rusqlite::params![item.as_bytes(), note.id])
+                    .execute(rusqlite::params![embedding.as_bytes(), note.id])
                     .expect("Update failed")
             });
     }
-
 
     Ok(())
 }

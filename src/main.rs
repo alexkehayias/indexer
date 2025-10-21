@@ -243,6 +243,7 @@ async fn main() -> Result<()> {
                     Ok(line) => {
                         history.push(Message::new(Role::User, line.as_str()));
                         chat(&mut history, &tools).await;
+                        println!("{}", history.last().unwrap().content.clone().unwrap());
                     }
                     Err(ReadlineError::Interrupted) => break,
                     Err(ReadlineError::Eof) => break,

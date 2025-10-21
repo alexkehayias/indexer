@@ -59,7 +59,6 @@ pub async fn chat(history: &mut Vec<Message>, tools: &Option<Vec<BoxedToolCall>>
     }
 
     if let Some(msg) = resp["choices"][0]["message"]["content"].as_str() {
-        println!("{}", msg);
         history.push(Message::new(Role::Assistant, msg));
     } else {
         panic!("No message received. Resp:\n\n {}", resp);

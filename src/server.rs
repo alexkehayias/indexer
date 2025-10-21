@@ -1,12 +1,10 @@
 use std::collections::HashMap;
+use std::path::PathBuf;
 use std::env;
 use std::fs;
 use std::sync::{Arc, Mutex, RwLock};
 
 use axum::response::Html;
-use fastembed::EmbeddingModel;
-use fastembed::InitOptions;
-use fastembed::TextEmbedding;
 use tantivy::doc;
 
 use axum::extract::Query;
@@ -20,16 +18,12 @@ use orgize::ParseConfig;
 use rusqlite::Connection;
 use serde::Deserialize;
 use serde_json::{json, Value};
-use text_splitter::ChunkConfig;
-use text_splitter::TextSplitter;
-use tiktoken_rs::cl100k_base;
 use tower_http::cors::CorsLayer;
 use tower_http::services::ServeDir;
 use tower_http::trace::TraceLayer;
 use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
 
-use crate::indexing::index_note_vector;
-use crate::indexing::index_notes_all;
+use crate::indexing::index_all;
 
 use super::db::vector_db;
 use super::git::{diff_last_commit_files, maybe_pull_and_reset_repo};
@@ -146,42 +140,19 @@ async fn index_notes(State(state): State<SharedState>) -> Json<Value> {
     // Pull the latest from origin
     maybe_pull_and_reset_repo(&deploy_key_path, notes_path);
 
-    // See what's changed
+    // Determine which notes changed
     let diff = diff_last_commit_files(&deploy_key_path, notes_path);
-
-    // Update full text search index
-    index_notes_all(index_path, notes_path);
-
-    // Update vector search index for only the files changed
-    let embeddings_model = TextEmbedding::try_new(
-        InitOptions::new(EmbeddingModel::BGESmallENV15).with_show_download_progress(true),
-    )
-    .unwrap();
-
-    // TODO: Move this into a helper function since it's needed in
-    // multiple places in the codebase
-    let tokenizer = cl100k_base().unwrap();
-    // Targeting Llama 3.2 with a context window of 128k tokens means
-    // we can stuff around 100 documents
-    let max_tokens = 1280;
-    let splitter = TextSplitter::new(ChunkConfig::new(max_tokens).with_sizer(tokenizer));
-    for f in diff {
-        // Filter out non-note files
-        if f.ends_with(".org") {
-            // Filter out special org files
-            let exclusions = [
-                "capture.org".to_string(),
-                "intro.org".to_string(),
-                "config.org".to_string(),
-            ];
-            if exclusions.contains(&f) {
-                continue;
-            }
-            let note_path = format!("{}/{}", notes_path, f);
-            index_note_vector(&mut db, &embeddings_model, &splitter, &note_path)
-                .expect("Vector indexing failed");
-        }
-    }
+    // NOTE: This assumes all notes are in one directory at the root
+    // of `notes_path`. This will not work if note files are in
+    // different directories!
+    let paths: Vec<PathBuf> = diff
+        .iter()
+        .map(|f| PathBuf::from(format!("{}/{}", notes_path, f)))
+        .collect();
+    let filter_paths = if paths.is_empty() { None } else { Some(paths) };
+    // Re-index just the notes that changed
+    index_all(&mut db, index_path, notes_path, filter_paths)
+        .expect("Vector indexing failed");
 
     let resp = json!({
         "success": true,

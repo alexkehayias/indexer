@@ -1,7 +1,8 @@
+use std::path::PathBuf;
 use std::hash::{Hash, Hasher};
 
 use super::schema::note_schema;
-use super::source::notes;
+use super::source::{notes, note_filter};
 use crate::export::PlainTextExport;
 use fastembed::{EmbeddingModel, InitOptions, TextEmbedding};
 use orgize::rowan::ast::AstNode;
@@ -9,7 +10,6 @@ use orgize::ParseConfig;
 use rusqlite::{Connection, Result};
 use std::fs;
 use std::hash::DefaultHasher;
-use std::path::PathBuf;
 use tantivy::schema::*;
 use tantivy::{doc, Index, IndexWriter};
 use text_splitter::{ChunkConfig, TextSplitter};
@@ -193,12 +193,13 @@ impl DocType {
 
 // There is no such thing as updates in tantivy so this function will
 // produce duplicates if called repeatedly
-pub fn index_note(
+fn index_note_full_text(
     index_writer: &mut IndexWriter,
     schema: &Schema,
-    path: PathBuf,
+    file_name_value: &str,
+    note: &Note,
 ) -> tantivy::Result<()> {
-    tracing::debug!("Indexing note: {}", &path.display());
+    tracing::debug!("Indexing note: {}", file_name_value);
 
     let id = schema.get_field("id")?;
     let r#type = schema.get_field("type")?;
@@ -209,8 +210,7 @@ pub fn index_note(
     let file_name = schema.get_field("file_name")?;
 
     // Parse the file from the path
-    let content = fs::read_to_string(&path)?;
-    let file_name_value = path.file_name().unwrap().to_string_lossy().into_owned();
+    let content = &note.body;
     let note_type = DocType::Note.to_str();
     let Note {
         id: note_id,
@@ -218,14 +218,14 @@ pub fn index_note(
         body: note_body,
         tags: note_tags,
         tasks: note_tasks,
-    } = parse_note(&content);
+    } = parse_note(content);
 
     let mut doc = doc!(
         id => note_id,
         r#type => note_type,
         title => note_title,
         body => note_body,
-        file_name => file_name_value.clone(),
+        file_name => file_name_value,
     );
 
     // This needs to be done outside of the `doc!` macro
@@ -233,6 +233,9 @@ pub fn index_note(
         doc.add_text(tags, tag_list);
     }
     index_writer.add_document(doc)?;
+
+    // TODO: Maybe move this outside of this function or update this to
+    // handle upserting
 
     // Index each task
     for t in note_tasks.into_iter() {
@@ -243,7 +246,7 @@ pub fn index_note(
             title => t.title,
             body => t.body,
             status => t.status,
-            file_name => file_name_value.clone(),
+            file_name => file_name_value,
         );
         if let Some(tag_list) = t.tags {
             doc.add_text(tags, tag_list);
@@ -254,56 +257,34 @@ pub fn index_note(
     Ok(())
 }
 
-pub fn index_notes_all(index_path: &str, notes_path: &str) {
-    fs::remove_dir_all(index_path).expect("Failed to remove index directory");
-    fs::create_dir(index_path).expect("Failed to recreate index directory");
 
-    let index_path = tantivy::directory::MmapDirectory::open(index_path).expect("Index not found");
-    let schema = note_schema();
-    let idx =
-        Index::open_or_create(index_path, schema.clone()).expect("Unable to open or create index");
-    let mut index_writer: IndexWriter = idx
-        .writer(50_000_000)
-        .expect("Index writer failed to initialize");
-
-    for note in notes(notes_path) {
-        let _ = index_note(&mut index_writer, &schema, note);
-    }
-
-    index_writer.commit().expect("Index write failed");
-}
-
-pub fn index_note_vector(
+/// Index the embeddings for the note
+/// Target model has N tokens or roughly a M sized context window
+///
+/// Algorithm:
+/// 1. If the note text is less than N tokens, embed the whole thing
+/// 2. Otherwise, split the text into N tokens
+/// 3. Calculate the embeddings for each chunk
+/// 4. Store the embedding vector in the sqlite database
+/// 5. Include metadata about the source of the chunk for further
+///    retrieval and to avoid duplicating rows
+fn index_note_vector(
     db: &mut Connection,
     embeddings_model: &TextEmbedding,
     splitter: &TextSplitter<CoreBPE>,
-    note_path: &str,
+    file_name: &str,
+    note: &Note,
 ) -> Result<()> {
+    tracing::debug!("Vector indexing note: {}", file_name);
+
     // Generate embeddings and store it in the DB
-    let mut note_meta_stmt = db.prepare(
-        "REPLACE INTO note_meta(id, file_name, title, tags, body) VALUES (?, ?, ?, ?, ?)",
-    )?;
     let mut embedding_stmt =
         db.prepare("INSERT OR REPLACE INTO vec_items(note_meta_id, embedding) VALUES (?, ?)")?;
     let mut embedding_update_stmt =
         db.prepare("UPDATE vec_items set embedding = ? WHERE note_meta_id = ?")?;
 
-    tracing::debug!("Vector indexing note: {}", &note_path);
-
-    let content = fs::read_to_string(note_path).unwrap();
-    let note = parse_note(&content);
-
-    // Update the note meta table
-    note_meta_stmt
-        // TODO: Don't hardcode the note path, save the file name instead
-        // TODO: Add task type and status
-        .execute(rusqlite::params![
-            note.id, note_path, note.title, note.tags, note.body
-        ])
-        .expect("Note meta upsert failed");
-
     let embeddings: Vec<Vec<Vec<f32>>> = splitter
-        .chunks(&content)
+        .chunks(&note.body)
         .map(|chunk| {
             embeddings_model
                 .embed(vec![chunk], None)
@@ -328,17 +309,34 @@ pub fn index_note_vector(
     Ok(())
 }
 
-/// Index each note's embeddings
-/// Target model has N tokens or roughly a M sized context window
-///
-/// Algorithm:
-/// 1. If the note text is less than N tokens, embed the whole thing
-/// 2. Otherwise, split the text into N tokens
-/// 3. Calculate the embeddings for each chunk
-/// 4. Store the embedding vector in the sqlite database
-/// 5. Include metadata about the source of the chunk for further
-///    retrieval and to avoid duplicating rows
-pub fn index_notes_vector_all(db: &mut Connection, notes_path: &str) -> Result<()> {
+/// Upsert meta information about the note. This is the canonical data
+/// representing the note that all other indexes refer to by ID. It
+/// should always be safe to query an index and then lookup the
+/// note(s) by ID.
+fn index_note_meta(db: &mut Connection, file_name: &str, note: &Note) -> Result<()> {
+    let mut note_meta_stmt = db.prepare(
+        "REPLACE INTO note_meta(id, file_name, title, tags, body) VALUES (?, ?, ?, ?, ?)",
+    )?;
+    // TODO: Handle saving tasks
+
+    // Update the note meta table
+    note_meta_stmt
+        // TODO: Don't hardcode the note path, save the file name instead
+        // TODO: Add task type and status
+        .execute(rusqlite::params![
+            note.id, file_name, note.title, note.tags, note.body
+        ])
+        .expect("Note meta upsert failed");
+
+    Ok(())
+}
+
+
+/// This is the primary function to call for indexing. Coordinates
+/// saving notes in the db, full text search index, and vector
+/// storage. This needs to be done in one to avoid parsing org mode
+/// notes many times for each index.
+pub fn index_all(db: &mut Connection, index_dir_path: &str, notes_dir_path: &str, paths: Option<Vec<PathBuf>>) -> Result<()> {
     let embeddings_model = TextEmbedding::try_new(
         InitOptions::new(EmbeddingModel::BGESmallENV15).with_show_download_progress(true),
     )
@@ -350,10 +348,49 @@ pub fn index_notes_vector_all(db: &mut Connection, notes_path: &str) -> Result<(
     let max_tokens = 1280;
     let splitter = TextSplitter::new(ChunkConfig::new(max_tokens).with_sizer(tokenizer));
 
-    // Generate embeddings and store it in the DB
-    for p in notes(notes_path).iter() {
+    let index_path = tantivy::directory::MmapDirectory::open(index_dir_path).expect("Index not found");
+    let schema = note_schema();
+    let idx =
+        Index::open_or_create(index_path, schema.clone()).expect("Unable to open or create index");
+    let mut index_writer: IndexWriter = idx
+        .writer(50_000_000)
+        .expect("Index writer failed to initialize");
+
+    let note_paths: Vec<PathBuf>= if let Some(path_bufs) = paths {
+        // Only index the specified notes
+        note_filter(notes_dir_path, path_bufs)
+        // TODO: Rebuild the fts index but only vector index the supplied items
+        // maybe just make the fts index incremental too?
+        // index_writer.delete_term("ID of the document");
+    } else {
+        notes(notes_dir_path)
+    };
+
+    for p in note_paths.iter() {
         let file_name = p.to_str().unwrap();
-        index_note_vector(db, &embeddings_model, &splitter, file_name)?;
+        let content = fs::read_to_string(file_name).unwrap();
+        let note = parse_note(&content);
+
+        // This is order dependent because note meta must stay in sync
+        // with the other indexing schemes. Never run use the specific
+        // indexing functions independently or it will fall out of
+        // sync.
+        index_note_meta(db, file_name, &note).expect("Upserting note meta failed");
+        index_note_vector(db, &embeddings_model, &splitter, file_name, &note).expect("Upserting note vector failed");
+        // index_note_full_text(&mut index_writer, &schema, file_name, &note).expect("Updating full text search failed");
+    }
+
+    // HACK: Always rebuild the entire fulltext search index
+    // remove this once incremental fts indexing is implemented
+    for p in notes(notes_dir_path).iter() {
+        fs::remove_dir_all(index_dir_path).expect("Failed to remove index directory");
+        fs::create_dir(index_dir_path).expect("Failed to recreate index directory");
+
+        let file_name = p.to_str().unwrap();
+        let content = fs::read_to_string(file_name).unwrap();
+        let note = parse_note(&content);
+
+        index_note_full_text(&mut index_writer, &schema, file_name, &note).expect("Updating full text search failed");
     }
 
     Ok(())

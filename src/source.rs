@@ -2,7 +2,8 @@
 use std::fs;
 use std::path::PathBuf;
 
-// Get first level files in the directory, does not follow sub directories
+/// Get first level files in the directory, does not follow sub
+/// directories.
 pub fn notes(path: &str) -> Vec<PathBuf> {
     let Ok(entries) = fs::read_dir(path) else {
         return vec![];
@@ -24,5 +25,16 @@ pub fn notes(path: &str) -> Vec<PathBuf> {
             }
             vec![]
         })
+        .collect()
+}
+
+/// Return a list of notes filtered by file names
+pub fn note_filter(path: &str, file_paths: Vec<PathBuf>) -> Vec<PathBuf> {
+    // By using the notes source function we also inherit all the
+    // extra filtering and rules for which files are eligible so they
+    // don't need to be repeated in multiple places.
+    notes(path)
+        .into_iter()
+        .filter(|p| file_paths.contains(p))
         .collect()
 }

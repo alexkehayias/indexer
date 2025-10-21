@@ -1,3 +1,4 @@
+use std::fs;
 use std::env;
 
 use clap::Parser;
@@ -52,10 +53,6 @@ async fn main() -> tantivy::Result<()> {
     let index_path = "./.index";
     let notes_path = "./notes";
 
-    let schema = note_schema();
-    let index_dir = tantivy::directory::MmapDirectory::open(index_path)?;
-    let idx = Index::open_or_create(index_dir, schema.clone())?;
-
     if args.reindex {
         // Clone the notes repo and index it
         let repo_url =
@@ -67,6 +64,9 @@ async fn main() -> tantivy::Result<()> {
     }
 
     if let Some(query) = args.query {
+        let schema = note_schema();
+        let index_dir = tantivy::directory::MmapDirectory::open(index_path)?;
+        let idx = Index::open_or_create(index_dir, schema.clone())?;
         let reader = idx
             .reader_builder()
             .reload_policy(ReloadPolicy::OnCommitWithDelay)
@@ -86,6 +86,9 @@ async fn main() -> tantivy::Result<()> {
     }
 
     if args.init {
+        // Create the index directory if it doesn't already exist
+        fs::create_dir(index_path).unwrap_or_else(|err| println!("Ignoring index directory create failed: {}", err));
+
         // Clone the notes repo and index it
         let repo_url =
             env::var("INDEXER_NOTES_REPO_URL").expect("Missing env var INDEXER_NOTES_REPO_URL");

@@ -42,7 +42,51 @@
             "py-2",
             "hover:cursor-pointer",
           ]);
-          hit.innerText = r.title;
+
+          const titleContainer = document.createElement("div");
+          titleContainer.classList.add(...[
+            "flex",
+            "space-x-2",
+          ]);
+
+          // If this is a task, show a todo icon
+          if (r.is_task) {
+            const taskIconContainer = document.createElement("span");
+            taskIconContainer.classList.add(...[
+              "py-0.5",
+              "text-gray-800",
+              "text-xs",
+              "rounded-full",
+            ]);
+            // Map the status to an icon
+            switch (r.task_status.toLowerCase()) {
+              case "todo":
+                taskIconContainer.innerText = "📝";
+                break;
+              case "waiting":
+                taskIconContainer.innerText = "⏳";
+                break;
+              case "canceled":
+                taskIconContainer.innerText = "❌";
+                break;
+              case "done":
+                taskIconContainer.innerText = "✅";
+                break;
+              default:
+                break;
+            }
+            titleContainer.appendChild(taskIconContainer);
+          }
+
+          // Add in the title
+          const titleTextContainer = document.createElement("span");
+          titleTextContainer.classList.add(...[
+            "line-clamp-1",
+          ]);
+          titleTextContainer.innerText = r.title;
+          titleContainer.appendChild(titleTextContainer);
+
+          hit.appendChild(titleContainer);
 
           // Add in each tag
           // Tags are a comma separated string so we need to check if

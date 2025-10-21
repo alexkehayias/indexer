@@ -1,5 +1,5 @@
 use anyhow::{Result, anyhow};
-use clap::{Parser, Subcommand};
+use clap::{Parser, Subcommand, ValueEnum};
 use rustyline::DefaultEditor;
 use rustyline::error::ReadlineError;
 use serde_json::json;
@@ -17,6 +17,12 @@ use indexer::fts::utils::recreate_index;
 use indexer::search::search_notes;
 use indexer::server;
 use indexer::tool::{NoteSearchTool, SearxSearchTool};
+
+#[derive(ValueEnum, Clone)]
+enum ServiceKind {
+    Gmail,
+    // Future: add more
+}
 
 #[derive(Subcommand)]
 enum Command {
@@ -66,6 +72,11 @@ enum Command {
     },
     /// Start a chat bot session
     Chat {},
+    /// Perform OAuth authentication and print tokens
+    Auth {
+        #[arg(long, value_enum)]
+        service: ServiceKind,
+    },
 }
 
 #[derive(Parser)]
@@ -279,6 +290,44 @@ async fn main() -> Result<()> {
                         println!("Error: {:?}", err);
                         break;
                     }
+                }
+            }
+        }
+        Some(Command::Auth { service }) => {
+            match service {
+                ServiceKind::Gmail => {
+                    use indexer::oauth::exchange_code_for_token;
+                    use std::io::{self, Write};
+                    let client_id = std::env::var("INDEXER_GMAIL_CLIENT_ID")
+                        .expect("Set INDEXER_GMAIL_CLIENT_ID in your environment");
+                    let client_secret = std::env::var("INDEXER_GMAIL_CLIENT_SECRET")
+                        .expect("Set INDEXER_GMAIL_CLIENT_SECRET in your environment");
+                    let redirect_uri = std::env::var("INDEXER_GMAIL_REDIRECT_URI")
+                        .unwrap_or_else(|_| "urn:ietf:wg:oauth:2.0:oob".to_string());
+                    let scope = "https://www.googleapis.com/auth/gmail.modify";
+                    let auth_url = format!(
+                        "https://accounts.google.com/o/oauth2/v2/auth?client_id={}&redirect_uri={}&response_type=code&scope={}&access_type=offline&prompt=consent",
+                        urlencoding::encode(&client_id),
+                        urlencoding::encode(&redirect_uri),
+                        urlencoding::encode(scope)
+                    );
+                    println!("\nPlease open the following URL in your browser and authorize access:\n\n{}\n", auth_url);
+                    print!("Paste the authorization code shown by Google here: ");
+                    io::stdout().flush().unwrap();
+                    let mut code = String::new();
+                    io::stdin().read_line(&mut code).expect("Failed to read code");
+                    let code = code.trim();
+
+                    let token = exchange_code_for_token(
+                        &client_id,
+                        &client_secret,
+                        &code,
+                        &redirect_uri,
+                    ).await?;
+
+                    // TODO: Store the refresh token in the DB and use
+                    // that to fetch an access token from now on.
+                    println!("{}", serde_json::to_string_pretty(&token)?);
                 }
             }
         }

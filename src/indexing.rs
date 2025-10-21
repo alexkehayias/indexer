@@ -1,10 +1,15 @@
 use super::schema::note_schema;
 use super::source::notes;
+use fastembed::{EmbeddingModel, InitOptions, TextEmbedding};
 use orgize::ParseConfig;
+use rusqlite::{Connection, Result};
 use std::fs;
 use std::path::PathBuf;
 use tantivy::schema::*;
 use tantivy::{doc, Index, IndexWriter};
+use text_splitter::{ChunkConfig, TextSplitter};
+use tiktoken_rs::cl100k_base;
+use zerocopy::AsBytes;
 
 // There is no such thing as updates in tantivy so this function will
 // produce duplicates if called repeatedly
@@ -87,4 +92,77 @@ pub fn index_notes_all(index_path: &str, notes_path: &str) {
     }
 
     index_writer.commit().expect("Index write failed");
+}
+
+/// Index each note's embeddings
+/// Target model has N tokens or roughly a M sized context window
+///
+/// Algorithm:
+/// 1. If the note text is less than N tokens, embed the whole thing
+/// 2. Otherwise, split the text into N tokens
+/// 3. Calculate the embeddings for each chunk
+/// 4. Store the embedding vector in the sqlite database
+/// 5. Include metadata about the source of the chunk for further
+///    retrieval and to avoid duplicating rows
+pub fn index_notes_vector_all(db: &mut Connection, notes_path: &str) -> Result<()> {
+    let embeddings_model = TextEmbedding::try_new(
+        InitOptions::new(EmbeddingModel::BGESmallENV15).with_show_download_progress(true),
+    )
+    .unwrap();
+
+    let tokenizer = cl100k_base().unwrap();
+    // Targeting Llama 3.2 with a context window of 128k tokens means
+    // we can stuff around 100 documents
+    let max_tokens = 1280;
+    let splitter = TextSplitter::new(ChunkConfig::new(max_tokens).with_sizer(tokenizer));
+
+    // Generate embeddings and store it in the DB
+    let mut note_meta_stmt = db.prepare("REPLACE INTO note_meta(id) VALUES (?)")?;
+    let mut embedding_stmt =
+        db.prepare("INSERT OR REPLACE INTO vec_items(note_meta_id, embedding) VALUES (?, ?)")?;
+    let mut embedding_update_stmt =
+        db.prepare("UPDATE vec_items set embedding = ? WHERE note_meta_id = ?")?;
+    for p in notes(notes_path).iter() {
+        // Note IDs are unique by the filename
+        let id = p
+            .file_name()
+            .expect("No file name found")
+            .to_str()
+            .expect("Failed to convert file name to string");
+
+        // Update the note meta table
+        note_meta_stmt
+            .execute(rusqlite::params![id])
+            .expect("Note meta upsert failed");
+
+        // Read the file content into a String
+        let content = fs::read_to_string(p)
+            .unwrap_or_else(|_| panic!("Failed to read note {}", &p.display()));
+
+        // Assume that chunks returns an iterator of &str
+        let mut accum = Vec::new();
+        for chunk in splitter.chunks(content.as_str()) {
+            // Convert the &str chunk into an owned String
+            accum.push(chunk.to_string());
+        }
+        tracing::debug!("Generating embeddings for note {}", &p.display());
+        let items = embeddings_model
+            .embed(accum, None)
+            .expect("Failed to generate embeddings");
+        for item in items {
+            // Upserts are not currently supported by sqlite for
+            // virtual tables like the vector embeddings table so this
+            // attempts to insert a new row and then falls back to an
+            // update statement.
+            embedding_stmt
+                .execute(rusqlite::params![id, item.as_bytes()])
+                .unwrap_or_else(|_| {
+                    embedding_update_stmt
+                        .execute(rusqlite::params![item.as_bytes(), id])
+                        .expect("Update failed")
+                });
+        }
+    }
+
+    Ok(())
 }

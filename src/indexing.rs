@@ -17,7 +17,7 @@ use text_splitter::{ChunkConfig, TextSplitter};
 use tiktoken_rs::{CoreBPE, cl100k_base};
 use zerocopy::IntoBytes;
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 struct Task {
     id: String,
     title: String,
@@ -30,7 +30,7 @@ struct Task {
     closed: Option<String>,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 struct Meeting {
     id: String,
     title: String,
@@ -40,7 +40,7 @@ struct Meeting {
     date: String,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 struct Heading {
     id: String,
     title: String,
@@ -49,6 +49,7 @@ struct Heading {
     tags: Option<String>,
 }
 
+#[derive(Debug, Clone)]
 struct Note {
     id: String,
     title: String,
@@ -524,8 +525,8 @@ fn index_note_meta(db: &mut Connection, file_name: &str, note: &Note) -> Result<
 /// saving notes in the db, full text search index, and vector
 /// storage. This needs to be done in one to avoid parsing org mode
 /// notes many times for each index.
-pub fn index_all(
-    db: &mut Connection,
+pub async fn index_all(
+    db: &tokio_rusqlite::Connection,
     index_dir_path: &str,
     notes_dir_path: &str,
     index_full_text: bool,
@@ -563,22 +564,49 @@ pub fn index_all(
         tracing::debug!("Indexing note: {:?}", p);
         // Don't hardcode file paths as it might be different between
         // local and server
-        let file_name = p.file_name().unwrap().to_str().unwrap();
+        let file_name = p.file_name().unwrap().to_str().unwrap().to_owned();
 
         // Only read and parse each note once
         let content =
             fs::read_to_string(p).unwrap_or_else(|err| panic!("Error {} file: {:?}", err, p));
         let note = parse_note(&content);
 
-        // Always update the meta DB. Otherwise it's possible for the
-        // other indices to diverge which will eventually break search
-        index_note_meta(db, file_name, &note).expect("Upserting note meta failed");
-        if index_vector {
-            index_note_vector(db, &embeddings_model, &splitter, &note)
-                .expect("Upserting note vector failed");
-        }
+        // Compute embeddings now, if needed, and pass them in
+        let embeddings: Option<Vec<Vec<Vec<f32>>>> = if index_vector {
+            Some(
+                splitter.chunks(&note.body)
+                    .map(|chunk| embeddings_model.embed(vec![chunk], None).expect("Failed to generate embeddings"))
+                    .collect()
+            )
+        } else {
+            None
+        };
+
+        let note_for_db = note.clone();
+        let file_name_for_db = file_name.clone();
+        db.call(move |conn| {
+            index_note_meta(conn, &file_name_for_db, &note_for_db).expect("Upserting note meta failed");
+            if let Some(ref all_embeddings) = embeddings {
+                let mut embedding_stmt = conn.prepare(
+                    "INSERT OR REPLACE INTO vec_items(note_meta_id, embedding) VALUES (?, ?)"
+                )?;
+                let mut embedding_update_stmt = conn.prepare(
+                    "UPDATE vec_items set embedding = ? WHERE note_meta_id = ?")?;
+                for embedding in all_embeddings.clone().concat() {
+                    embedding_stmt
+                        .execute(rusqlite::params![note_for_db.id, embedding.as_bytes()])
+                        .unwrap_or_else(|_| {
+                            embedding_update_stmt
+                                .execute(rusqlite::params![embedding.as_bytes(), note_for_db.id])
+                                .expect("Update failed")
+                        });
+                }
+            }
+            Ok(())
+        }).await.expect("DB work failed");
+
         if index_full_text {
-            index_note_full_text(&mut index_writer, &schema, file_name, &note)
+            index_note_full_text(&mut index_writer, &schema, &file_name, &note)
                 .expect("Updating full text search failed");
         }
     }

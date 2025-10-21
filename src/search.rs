@@ -123,6 +123,7 @@ pub struct SearchResult {
     task_scheduled: Option<String>,
     task_deadline: Option<String>,
     task_closed: Option<String>,
+    meeting_date: Option<String>,
     body: String,
 }
 
@@ -169,7 +170,8 @@ pub fn search_notes(
             status,
             scheduled,
             deadline,
-            closed
+            closed,
+            date
           FROM note_meta
           WHERE note_meta.id in (SELECT value from json_each(?))
         ",
@@ -190,6 +192,7 @@ pub fn search_notes(
                 task_scheduled: r.get(8)?,
                 task_deadline: r.get(9)?,
                 task_closed: r.get(10)?,
+                meeting_date: r.get(11)?,
             })
         })
         .unwrap()

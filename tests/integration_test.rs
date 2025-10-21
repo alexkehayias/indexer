@@ -5,6 +5,7 @@ mod tests {
     use std::path::PathBuf;
     use std::time::SystemTime;
 
+    use async_trait::async_trait;
     use anyhow::{Error, Result};
     use axum::{
         body::Body,
@@ -141,9 +142,10 @@ mod tests {
         pub function: openai::Function<DummyProps>,
     }
 
+    #[async_trait]
     impl openai::ToolCall for DummyTool {
-        fn call(&self, _args: &str) -> String {
-            String::from("DummyTool called!")
+        async fn call(&self, _args: &str) -> Result<String, Error> {
+            Ok(String::from("DummyTool called!"))
         }
 
         fn function_name(&self) -> String {
@@ -162,9 +164,10 @@ mod tests {
         pub function: openai::Function<DummyProps>,
     }
 
+    #[async_trait]
     impl openai::ToolCall for DummyTool2 {
-        fn call(&self, _args: &str) -> String {
-            String::from("DummyTool2 called!")
+        async fn call(&self, _args: &str) -> Result<String, Error> {
+            Ok(String::from("DummyTool2 called!"))
         }
 
         fn function_name(&self) -> String {

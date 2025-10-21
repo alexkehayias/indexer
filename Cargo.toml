@@ -5,6 +5,7 @@ edition = "2021"
 
 [dependencies]
 anyhow = "1.0.93"
+async-trait = "0.1.86"
 axum = "0.7.5"
 clap = { version = "4.5.17", features = ["derive"] }
 erased-serde = "0.4.5"

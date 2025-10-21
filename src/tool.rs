@@ -1,7 +1,11 @@
+use async_trait::async_trait;
+use anyhow::{Error, Result};
 use crate::openai::{Function, Parameters, Property, ToolCall, ToolType};
 use serde::{Deserialize, Serialize};
 use serde_json;
-use std::process::Command;
+use serde_json::{json, Value};
+use reqwest;
+
 
 #[derive(Serialize)]
 pub struct NoteSearchProps {
@@ -20,29 +24,28 @@ pub struct NoteSearchTool {
     api_base_url: String,
 }
 
+#[async_trait]
 impl ToolCall for NoteSearchTool {
-    fn call(&self, args: &str) -> String {
+    async fn call(&self, args: &str) -> Result<String, Error> {
         let fn_args: NoteSearchArgs = serde_json::from_str(args).unwrap();
 
-        // Use system curl to query the search API with a max timeout
-        // of 10s TODO: Remove this blocking call and replace with an
-        // async http client
-        let command = format!(
-            "curl --get --data-urlencode \"query={}\" {}/notes/search -m 10",
-            fn_args.query, self.api_base_url
-        );
-        let curl = Command::new("sh")
-            .arg("-c")
-            .arg(&command)
-            .output()
-            .expect("failed to execute process");
+        // Construct the URL with query parameters encoded
+        let mut url = reqwest::Url::parse(
+            &format!("{}/notes/search", self.api_base_url)
+        ).expect("Invalid URL");
+        url.query_pairs_mut().append_pair("query", &fn_args.query);
 
-        if !&curl.status.success() {
-            let stderr = std::str::from_utf8(&curl.stderr).expect("Failed to parse stderr");
-            panic!("Note search API request failed: \n{}\n{}", command, stderr);
-        }
-        let stdout = std::str::from_utf8(&curl.stdout).expect("Failed to parse stdout");
-        stdout.to_string()
+        let resp: Value = reqwest::Client::new()
+            .get(url.as_str())
+            .header("Content-Type", "application/json")
+            .send()
+            .await?
+            .json()
+            .await?;
+        // TODO: Process the results into something cleaner than raw
+        // json like markdown.
+        let result = json!(resp).to_string();
+        Ok(result)
     }
 
     fn function_name(&self) -> String {

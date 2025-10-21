@@ -1,3 +1,4 @@
+use async_trait::async_trait;
 use anyhow::{Error, Result};
 use erased_serde;
 use serde::Serialize;
@@ -127,8 +128,9 @@ pub enum ToolType {
 // that you have to do these things and resolving the error is
 // impossible without a good amount of Googling and ChatGPT'ing is
 // annoying.
+#[async_trait]
 pub trait ToolCall: erased_serde::Serialize {
-    fn call(&self, args: &str) -> String;
+    async fn call(&self, args: &str) -> Result<String, Error>;
     fn function_name(&self) -> String;
 }
 erased_serde::serialize_trait_object!(ToolCall);

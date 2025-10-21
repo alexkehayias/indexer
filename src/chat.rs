@@ -3,7 +3,7 @@ use crate::openai::{
 };
 use serde_json::Value;
 
-fn handle_tool_calls(
+async fn handle_tool_calls(
     history: &mut Vec<Message>,
     tools: &Vec<Box<dyn ToolCall + Send + Sync + 'static>>,
     tool_calls: &Vec<Value>,
@@ -20,7 +20,8 @@ fn handle_tool_calls(
             .iter()
             .find(|i| *i.function_name() == *tool_call_name)
             .unwrap_or_else(|| panic!("Received tool call that doesn't exist: {}", tool_call_name))
-            .call(tool_call_args);
+            .call(tool_call_args)
+            .await.expect("Tool call returned an error");
 
         let tool_call_requests = vec![FunctionCall {
             function: FunctionCallFn {
@@ -48,7 +49,7 @@ pub async fn chat(history: &mut Vec<Message>, tools: &Option<Vec<BoxedToolCall>>
         let tools_ref = tools
             .as_ref()
             .expect("Received tool call but no tools were specified");
-        handle_tool_calls(history, tools_ref, tool_calls);
+        handle_tool_calls(history, tools_ref, tool_calls).await;
 
         // Provide the results of the tool calls back to the chat
         resp = completion(history, tools)

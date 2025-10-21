@@ -335,11 +335,6 @@
 
     permissionButton.addEventListener('click', async function() {
       try {
-        const permission = await Notification.requestPermission();
-        if (permission !== 'granted') {
-          console.log('Notification permission not granted');
-          return;
-        }
         await subscribeToPushNotifications();
         permissionButton.style.display = 'none';
       } catch (error) {

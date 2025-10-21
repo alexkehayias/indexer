@@ -922,6 +922,16 @@ select {
   background-color: rgb(255 255 255 / var(--tw-bg-opacity));
 }
 
+.bg-blue-700 {
+  --tw-bg-opacity: 1;
+  background-color: rgb(29 78 216 / var(--tw-bg-opacity));
+}
+
+.bg-sky-700 {
+  --tw-bg-opacity: 1;
+  background-color: rgb(3 105 161 / var(--tw-bg-opacity));
+}
+
 .bg-\[radial-gradient\(100\%_50\%_at_50\%_0\%\2c rgba\(0\2c 163\2c 255\2c 0\.13\)_0\2c rgba\(0\2c 163\2c 255\2c 0\)_50\%\2c rgba\(0\2c 163\2c 255\2c 0\)_100\%\)\] {
   background-image: radial-gradient(100% 50% at 50% 0%,rgba(0,163,255,0.13) 0,rgba(0,163,255,0) 50%,rgba(0,163,255,0) 100%);
 }

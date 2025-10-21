@@ -25,19 +25,19 @@ use db::{migrate_db, vector_db};
 #[command(version, about, long_about = None)]
 struct Args {
     /// Path to notes to index
-    #[arg(short, long, action)]
-    reindex: bool,
+    #[arg(long, action)]
+    index: bool,
 
     /// Search notes with query
-    #[arg(short, long)]
+    #[arg(long)]
     query: Option<String>,
 
     /// Clone notes from version control
-    #[arg(short, long, action)]
+    #[arg(long, action)]
     init: bool,
 
     /// Run the server
-    #[arg(short, long, action)]
+    #[arg(long, action)]
     serve: bool,
 
     /// Set the server host address
@@ -77,7 +77,7 @@ async fn main() -> tantivy::Result<()> {
         maybe_clone_repo(repo_url, deploy_key_path);
     }
 
-    if args.reindex {
+    if args.index {
         // Clone the notes repo
         let repo_url =
             env::var("INDEXER_NOTES_REPO_URL").expect("Missing env var INDEXER_NOTES_REPO_URL");

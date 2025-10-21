@@ -7,7 +7,7 @@ WIP personal indexer service.
 Initialize index:
 
 ```
-cargo run -- --index
+cargo run -- --init
 ```
 
 Search notes:
@@ -16,10 +16,10 @@ Search notes:
 cargo run -- --query "testing"
 ```
 
-Re-index:
+Index or re-index:
 
 ```
-cargo run -- --reindex
+cargo run -- --index
 ```
 
 Run the server:

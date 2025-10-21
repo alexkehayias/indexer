@@ -334,12 +334,11 @@ fn index_note_meta(db: &mut Connection, file_name: &str, note: &Note) -> Result<
     )?;
 
     for t in note.tasks.iter() {
-        task_meta_stmt.execute(
-            rusqlite::params![
+        task_meta_stmt
+            .execute(rusqlite::params![
                 t.id, "task", file_name, t.title, t.tags, t.body, t.status
-            ]
-        )
-        .expect("Note meta upsert failed for task");
+            ])
+            .expect("Note meta upsert failed for task");
     }
 
     Ok(())
@@ -401,7 +400,9 @@ pub fn index_all(
                 .expect("Updating full text search failed");
         }
     }
-    index_writer.commit().expect("Full text search index failed to commit");
+    index_writer
+        .commit()
+        .expect("Full text search index failed to commit");
 
     Ok(())
 }

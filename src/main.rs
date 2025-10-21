@@ -1,6 +1,7 @@
-use std::env;
 use std::fs;
 use std::path::PathBuf;
+
+use clap::Parser;
 
 use tantivy::collector::TopDocs;
 use tantivy::query::QueryParser;
@@ -30,6 +31,7 @@ fn index_note(
     let id = schema.get_field("id")?;
     let title = schema.get_field("title")?;
     let body = schema.get_field("body")?;
+    let tags = schema.get_field("tags")?;
 
     // Parse the file from the path
     let content = fs::read_to_string(&path)?;
@@ -42,11 +44,16 @@ fn index_note(
     let id_value = props.get("ID").expect("Missing org-id").to_string();
     let title_value = p.title().expect("No title found");
     let body_value = p.document().raw();
+    let tags_all: Vec<String> = p.keywords().map(|s| s.raw()).collect();
+    let tags_value = tags_all.join(",");
 
+    // TODO: Replace this macro with the builder so that we can add
+    // multiple keywords
     index_writer.add_document(doc!(
         id => id_value,
         title => title_value,
         body => body_value,
+        tags => tags_value,
     ))?;
 
     Ok(())
@@ -77,36 +84,56 @@ fn notes(path: &str) -> Vec<PathBuf> {
         .collect()
 }
 
+
+/// Simple program to greet a person
+#[derive(Parser, Debug)]
+#[command(version, about, long_about = None)]
+struct Args {
+    /// Path to notes to index
+    #[arg(short, long)]
+    path: Option<String>,
+
+    /// Search notes with query
+    #[arg(short, long)]
+    query: Option<String>,
+}
+
+
 fn main() -> tantivy::Result<()> {
-    let args: Vec<_> = env::args().collect();
+    let args = Args::parse();
 
     let schema = note_schema();
     let index_path = tantivy::directory::MmapDirectory::open("./.index")?;
-
     let idx = Index::open_or_create(index_path, schema.clone())?;
-    let mut index_writer: IndexWriter = idx.writer(50_000_000)?;
 
-    for note in notes("/Users/alex/Org/notes/") {
-        let _ = index_note(&mut index_writer, &schema, note);
+    if let Some(notes_path) = args.path {
+        let mut index_writer: IndexWriter = idx.writer(50_000_000)?;
+
+        for note in notes(&notes_path) {
+            let _ = index_note(&mut index_writer, &schema, note);
+        }
+
+        index_writer.commit()?;
     }
 
-    index_writer.commit()?;
+    if let Some(query) = args.query {
+        let reader = idx
+            .reader_builder()
+            .reload_policy(ReloadPolicy::OnCommitWithDelay)
+            .try_into()?;
+        let searcher = reader.searcher();
+        let title = schema.get_field("title").unwrap();
+        let body = schema.get_field("body").unwrap();
+        let query_parser = QueryParser::for_index(&idx, vec![title, body]);
 
-    let reader = idx
-        .reader_builder()
-        .reload_policy(ReloadPolicy::OnCommitWithDelay)
-        .try_into()?;
-    let searcher = reader.searcher();
-    let title = schema.get_field("title").unwrap();
-    let body = schema.get_field("body").unwrap();
-    let query_parser = QueryParser::for_index(&idx, vec![title, body]);
-    let query = query_parser.parse_query(&args[1])?;
+        let query = query_parser.parse_query(&query)?;
 
-    let top_docs = searcher.search(&query, &TopDocs::with_limit(10))?;
-    for (_score, doc_address) in top_docs {
-        let retrieved_doc: TantivyDocument = searcher.doc(doc_address)?;
-        println!("{}", retrieved_doc.to_json(&schema));
+        let top_docs = searcher.search(&query, &TopDocs::with_limit(10))?;
+        for (_score, doc_address) in top_docs {
+            let retrieved_doc: TantivyDocument = searcher.doc(doc_address)?;
+            println!("{}", retrieved_doc.to_json(&schema));
+        }
     }
 
-    return Ok(());
+    Ok(())
 }

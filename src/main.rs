@@ -301,12 +301,32 @@ async fn main() -> Result<()> {
             let mut rl = DefaultEditor::new().expect("Editor failed");
 
             // Create tools
-            let note_search_api_url = env::var("INDEXER_NOTE_SEARCH_API_URL").unwrap_or_default();
-            let searxng_api_url = env::var("INDEXER_SEARXNG_API_URL").unwrap_or_default();
-            let note_search_tool = NoteSearchTool::new(&note_search_api_url);
-            let email_unread_tool = EmailUnreadTool::new(&note_search_api_url);
-            let searx_search_tool = SearxSearchTool::new(&searxng_api_url);
-            let calendar_tool = CalendarTool::new(&note_search_api_url);
+            let note_search_api_url = env::var("INDEXER_NOTE_SEARCH_API_URL");
+            let searxng_api_url = env::var("INDEXER_SEARXNG_API_URL");
+
+            let note_search_tool = if let Ok(url) = &note_search_api_url {
+                NoteSearchTool::new(url)
+            } else {
+                NoteSearchTool::default()
+            };
+
+            let email_unread_tool = if let Ok(url) = &note_search_api_url {
+                EmailUnreadTool::new(url)
+            } else {
+                EmailUnreadTool::default()
+            };
+
+            let searx_search_tool = if let Ok(url) = &searxng_api_url {
+                SearxSearchTool::new(url)
+            } else {
+                SearxSearchTool::default()
+            };
+
+            let calendar_tool = if let Ok(url) = &note_search_api_url {
+                CalendarTool::new(url)
+            } else {
+                CalendarTool::default()
+            };
 
             let tools: Option<Vec<Box<dyn ToolCall + Send + Sync + 'static>>> = Some(vec![
                 Box::new(note_search_tool),

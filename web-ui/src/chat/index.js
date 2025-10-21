@@ -32,7 +32,10 @@ document.addEventListener('DOMContentLoaded', () => {
 
   sendButton.addEventListener('click', () => sendMessage());
   chatInput.addEventListener('keypress', (e) => {
-    if (e.key === 'Enter') sendMessage();
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      sendMessage();
+    };
   });
 
   const renderMessageBubble = (message, isUserMessage, isToolCall, isLoading = false) => {

@@ -5,44 +5,57 @@ pub fn migrate_db(db: &Connection) -> Result<()> {
     // Create a metadata table that has a foreign key to the
     // embeddings virtual table. This will be used to coordinate
     // upserts and hydrating the notes
-    db.execute(
+    let create_note_meta = db.execute(
         r"CREATE TABLE IF NOT EXISTS note_meta (
     id TEXT PRIMARY KEY,
     file_name TEXT,
     title TEXT,
+    category TEXT,
     tags TEXT NULLABLE,
     body TEXT,
     type TEXT,
     status TEXT
 );",
         [],
-    )?;
+    );
+
+    match create_note_meta {
+        Ok(_) => (),
+        Err(e) => println!("Create note meta table failed: {}", e)
+    }
 
     // Create vector virtual table for similarity search
-    db.execute(
+    let create_note_vec_table = db.execute(
         "CREATE VIRTUAL TABLE IF NOT EXISTS vec_items USING vec0(
 note_meta_id TEXT PRIMARY KEY,
 embedding float[384]
 );",
         [],
-    )?;
+    );
 
-    // 2024-12-29 Add colums for type and status
-    db.execute(
+    match create_note_vec_table {
+        Ok(_) => (),
+        Err(e) => println!("Create note vec table failed: {}", e)
+    }
+
+    // 2024-12-29 Add columns for type and status
+    // 2025-03-30 Add column for category
+    let migrated_note_meta_table = db.execute(
         r"BEGIN;
 
 CREATE TABLE IF NOT EXISTS note_meta_new (
     id TEXT PRIMARY KEY,
     file_name TEXT,
     title TEXT,
+    category TEXT,
     tags TEXT NULLABLE,
     body TEXT,
     type TEXT DEFAULT 'note',
     status TEXT
 );
 
-INSERT INTO note_meta_new (id, file_name, title, tags, body)
-SELECT id, file_name, title, tags, body FROM note_meta;
+INSERT INTO note_meta_new (id, file_name, title, category, tags, body)
+SELECT id, file_name, title, 'placeholder', tags, body FROM note_meta;
 
 DROP TABLE note_meta;
 
@@ -50,7 +63,12 @@ ALTER TABLE note_meta_new RENAME TO note_meta;
 
 COMMIT;",
         [],
-    )?;
+    );
+
+    match migrated_note_meta_table {
+        Ok(_) => (),
+        Err(e) => println!("Create updated note meta table failed: {}", e)
+    }
 
     Ok(())
 }

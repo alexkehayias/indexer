@@ -1,3 +1,4 @@
+const plugin = require('tailwindcss/plugin')
 
 /** @type {import('tailwindcss').Config} */
 module.exports = {
@@ -7,5 +8,12 @@ module.exports = {
   },
   plugins: [
     require('@tailwindcss/forms'),
+    plugin(function ({ addUtilities }) {
+      addUtilities({
+        '.scrollbar-none': {
+          'scrollbar-color': 'gray transparent',
+        }
+      })
+    })
   ],
 }

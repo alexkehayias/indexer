@@ -11,16 +11,30 @@ use text_splitter::{ChunkConfig, TextSplitter};
 use tiktoken_rs::{cl100k_base, CoreBPE};
 use zerocopy::AsBytes;
 
+#[derive(Debug)]
+struct Task {
+    id: Option<String>,
+    title: String,
+    body: String,
+    status: String,
+    // TODO: Change to a date
+    scheduled: Option<String>,
+    // TODO: Change to a date
+    deadline: Option<String>,
+}
+
 struct Note {
     id: String,
     title: String,
     body: String,
     tags: Option<String>,
+    tasks: Vec<Task>
 }
 
 /// Parse the content into a `Note`
 fn parse_note(content: &str) -> Note {
     let config = ParseConfig {
+        todo_keywords: (vec!("TODO".to_string(), "WAITING".to_string()), vec!("DONE".to_string(), "CANCELED".to_string(), "SOMEDAY".to_string())),
         ..Default::default()
     };
     let p = config.parse(content);
@@ -55,11 +69,54 @@ drawer",
         Some(filetags[0].to_owned().join(","))
     };
 
+    // TODO collect nested tasks
+    let tasks: Vec<Task> = p.document().headlines().filter_map(|i| -> Option<Task> {
+        if i.todo_type().is_some() {
+            let id = i.properties()?.get("ID").map(|j| j.to_string());
+            let title = i.title_raw().trim().to_string();
+            let body = i.raw();
+            let status = i.todo_keyword().map(|j| j.to_string()).expect("Task missing status");
+
+            let mut scheduled = None;
+            let mut deadline = None;
+            if let Some(planning) = i.planning() {
+                tracing::debug!("Found planning: {:?}", &planning);
+                scheduled = planning.scheduled().map(|t| format!(
+                    "{}-{}-{}",
+                    t.year_start().unwrap(),
+                    t.month_start().unwrap(),
+                    t.day_start().unwrap()
+                ));
+                deadline = planning.deadline().map(|t| format!(
+                    "{}-{}-{}",
+                    t.year_start().unwrap(),
+                    t.month_start().unwrap(),
+                    t.day_start().unwrap()
+                ));
+            }
+
+            let task = Task {
+                id,
+                title,
+                body,
+                status,
+                scheduled,
+                deadline
+            };
+
+            tracing::debug!("Found task {:?}", task);
+
+            return Some(task)
+        }
+        None
+    }).collect();
+
     Note {
         id,
         title,
         body,
         tags,
+        tasks,
     }
 }
 

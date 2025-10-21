@@ -87,8 +87,6 @@ struct LastSelection {
 pub struct AppState {
     // Stores the latest search hit selected by the user
     latest_selection: Option<LastSelection>,
-    // Stores the push subscriptions
-    push_subscriptions: Vec<PushSubscription>,
     db: Mutex<Connection>,
     config: AppConfig,
     chat_sessions: ChatSessions,
@@ -98,7 +96,6 @@ impl AppState {
     pub fn new(db: Connection, config: AppConfig) -> Self {
         Self {
             latest_selection: None,
-            push_subscriptions: Vec::new(),
             db: Mutex::new(db),
             config,
             chat_sessions: HashMap::new(),
@@ -234,12 +231,44 @@ struct SearchResponse {
     results: Vec<SearchResult>,
 }
 
+
+#[derive(Deserialize)]
+pub struct PushSubscriptionRequest {
+    pub endpoint: String,
+    pub keys: HashMap<String, String>,
+}
+
 // Register a client for push notifications
 async fn push_subscription(
     State(state): State<SharedState>,
-    Json(subscription): Json<PushSubscription>,
+    Json(subscription): Json<PushSubscriptionRequest>,
 ) {
-    state.write().unwrap().push_subscriptions.push(subscription);
+    let shared_state = state.read().unwrap();
+    let db = shared_state.db.lock().unwrap_or_else(|e| e.into_inner());
+
+    let p256dh = subscription
+        .keys
+        .get("p256dh")
+        .expect("Missing p256dh key")
+        .clone();
+    let auth = subscription
+        .keys
+        .get("auth")
+        .expect("Missing auth key")
+        .clone();
+
+    let mut subscription_stmt = db.prepare(
+        "REPLACE INTO push_subscription(endpoint, p256dh, auth) VALUES (?, ?, ?)",
+    ).unwrap();
+    subscription_stmt
+        .execute(rusqlite::params![
+            subscription.endpoint,
+            p256dh,
+            auth,
+        ])
+        .expect("Note meta upsert failed");
+    db.execute("DELETE FROM vec_items", [])
+        .expect("Failed to delete vec_items data");
 }
 
 async fn search(
@@ -370,14 +399,7 @@ async fn send_notification(
     State(state): State<SharedState>,
     Json(payload): Json<NotificationPayload>,
 ) -> Json<Value> {
-    // Cloning here to avoid a compile error that a mutex is being held
-    // across multiple calls to await. I don't know why this needs to
-    // be cloned but :shrug:
-    let subscriptions = state
-        .read()
-        .expect("Unable to read share state")
-        .push_subscriptions
-        .clone();
+
     let vapid_key_path = state
         .read()
         .expect("Unable to read share state")
@@ -385,16 +407,46 @@ async fn send_notification(
         .vapid_key_path
         .clone();
 
-    let mut tasks = JoinSet::new();
+    let subscriptions = {
+        let shared_state = state.read().expect("Unable to read share state");
+        let db = shared_state.db.lock().unwrap_or_else(|e| e.into_inner());
 
-    for subscription in subscriptions.into_iter() {
+        let mut stmt = db
+            .prepare(
+                r"
+          SELECT
+            endpoint,
+            p256dh,
+            auth
+          FROM push_subscription
+        ")
+        .expect("Failed to prepare sql statement");
+
+        let results = stmt.query_map([], |i| {
+            Ok(PushSubscription {
+                endpoint: i.get(0)?,
+                p256dh: i.get(1)?,
+                auth: i.get(2)?,
+            })
+        }).unwrap();
+
+        let mut subs: Vec<PushSubscription> = Vec::new();
+        for s in results {
+            subs.push(s.unwrap());
+        }
+        subs
+    };
+
+    let mut tasks = JoinSet::new();
+    for sub in subscriptions {
         tasks.spawn(send_push_notification(
             vapid_key_path.clone(),
-            subscription,
+            sub.endpoint,
+            sub.p256dh,
+            sub.auth,
             payload.message.clone(),
         ));
     }
-
     tasks.join_all().await;
 
     let resp = json!({

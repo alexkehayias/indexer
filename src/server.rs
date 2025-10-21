@@ -1,6 +1,6 @@
 use std::collections::HashMap;
 use std::env;
-use std::sync::{Arc, RwLock};
+use std::sync::{Arc, RwLock, Mutex};
 
 use tantivy::doc;
 
@@ -11,6 +11,7 @@ use axum::{
     routing::{get, post},
     Router,
 };
+use rusqlite::Connection;
 use serde::Deserialize;
 use serde_json::{json, Value};
 use tower_http::cors::CorsLayer;
@@ -20,15 +21,26 @@ use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
 
 use crate::indexing::index_notes_all;
 
+use super::db::vector_db;
 use super::git::maybe_pull_and_reset_repo;
 use super::search::search_notes;
 
 type SharedState = Arc<RwLock<AppState>>;
 
-#[derive(Default)]
+
 struct AppState {
     // Stores the latest search hit selected by the user
     latest_selection: HashMap<String, String>,
+    db: Mutex<Connection>,
+}
+
+impl AppState {
+    fn new(db: Connection) -> Self {
+        Self {
+            latest_selection: HashMap::new(),
+            db: Mutex::new(db),
+        }
+    }
 }
 
 #[derive(Debug, Deserialize)]
@@ -66,15 +78,22 @@ async fn kv_set(State(state): State<SharedState>, Json(data): Json<SetLatest>) {
 }
 
 // Fulltext search of all notes
-async fn search(Query(params): Query<HashMap<String, String>>) -> Json<Value> {
-    let results = if let Some(query) = params.get("query") {
-        search_notes(query)
+async fn search(
+    State(state): State<SharedState>,
+    Query(params): Query<HashMap<String, String>>
+) -> Json<Value> {
+    let query = params.get("query");
+    let results = if let Some(query) = query {
+        let shared_state = state.read().unwrap();
+        let db = shared_state.db.lock().expect("Failed to get db connection from app state");
+        let include_similarity = params.contains_key("similarity");
+        search_notes(&db, query, include_similarity)
     } else {
         Vec::new()
     };
 
     let resp = json!({
-        "query": params.get("query"),
+        "query": query,
         "results": results,
     });
     Json(resp)
@@ -113,7 +132,10 @@ pub async fn serve(host: String, port: String) {
         .with(tracing_subscriber::fmt::layer())
         .init();
 
-    let shared_state = SharedState::default();
+    let vec_db_path = "./db";
+    let db = vector_db(vec_db_path).expect("Failed to connect to db");
+    let app_state = AppState::new(db);
+    let shared_state = SharedState::new(RwLock::new(app_state));
     let cors = CorsLayer::permissive();
     let serve_dir = ServeDir::new("./web-ui/src");
 
@@ -122,7 +144,7 @@ pub async fn serve(host: String, port: String) {
         .route("/notes/search", get(search))
         // Storage for selected search hits
         .route("/notes/search/latest", get(kv_get).post(kv_set))
-        // Search API endpoint
+        // Index content endpoint
         .route("/notes/index", post(index_notes))
         // Static server of assets in ./web-ui
         .nest_service("/", serve_dir.clone())

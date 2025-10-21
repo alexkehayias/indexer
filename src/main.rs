@@ -297,7 +297,15 @@ async fn main() -> Result<()> {
             match service {
                 ServiceKind::Gmail => {
                     use indexer::oauth::exchange_code_for_token;
-                    use std::io::{self, Write};
+use std::io::{self, Write};
+
+// Prompt the user for their email address
+print!("Enter the email address you are authenticating: ");
+io::stdout().flush().unwrap();
+let mut user_email = String::new();
+io::stdin().read_line(&mut user_email).expect("Failed to read email address");
+let user_email = user_email.trim();
+
                     let client_id = std::env::var("INDEXER_GMAIL_CLIENT_ID")
                         .expect("Set INDEXER_GMAIL_CLIENT_ID in your environment");
                     let client_secret = std::env::var("INDEXER_GMAIL_CLIENT_SECRET")
@@ -325,9 +333,18 @@ async fn main() -> Result<()> {
                         &redirect_uri,
                     ).await?;
 
-                    // TODO: Store the refresh token in the DB and use
-                    // that to fetch an access token from now on.
-                    println!("{}", serde_json::to_string_pretty(&token)?);
+                    // Store the refresh token in the DB and use that to fetch an access token from now on.
+                    let db = vector_db(&vec_db_path).expect("Failed to connect to db");
+                    let refresh_token = token.refresh_token.clone().ok_or(anyhow!("No refresh token in response"))?;
+
+                    db.execute(
+                        "INSERT INTO auth (id, refresh_token) VALUES (?1, ?2)
+                         ON CONFLICT(id) DO UPDATE SET refresh_token = excluded.refresh_token",
+                        (&user_email, &refresh_token),
+                    ).expect("Failed to insert/update refresh token in DB");
+
+                    println!("Refresh token for {} saved to DB.", user_email);
+                    
                 }
             }
         }

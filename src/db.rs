@@ -55,6 +55,23 @@ embedding float[384]
         Err(e) => println!("Create note vec table failed: {}", e),
     };
 
+    // Create vector virtual table for similarity search
+    let create_auth_table = db.execute(
+        "CREATE TABLE IF NOT EXISTS auth (
+    -- This should be the username or email address
+    id TEXT PRIMARY KEY,
+    -- Name of the service e.g. google
+    service TEXT,
+    refresh_token TEXT
+);",
+        [],
+    );
+
+    match create_auth_table {
+        Ok(_) => (),
+        Err(e) => println!("Create auth table failed: {}", e),
+    };
+
     Ok(())
 }
 

@@ -143,7 +143,7 @@ pub async fn completion(
 ) -> Result<Value, Error> {
     let open_ai_key = env::var("OPENAI_API_KEY").unwrap();
     let mut payload = json!({
-        "model": "gpt-4o-mini",
+        "model": "gpt-4.1-mini",
         "messages": messages,
     });
     if let Some(ref tools) = tools {

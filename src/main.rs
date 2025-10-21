@@ -17,6 +17,7 @@ use indexer::openai::{Message, Role, ToolCall};
 use indexer::search::search_notes;
 use indexer::server;
 use indexer::tool::{NoteSearchTool, SearxSearchTool};
+use indexer::aql;
 
 #[derive(Subcommand)]
 enum Command {
@@ -216,7 +217,8 @@ async fn main() -> Result<()> {
         }
         Some(Command::Query { term, vector }) => {
             let db = vector_db(&vec_db_path).expect("Failed to connect to db");
-            let results = search_notes(&index_path, &db, vector, &term, 20);
+            let query = aql::parse_query(&term).expect("Parsing AQL failed");
+            let results = search_notes(&index_path, &db, vector, &query, 20);
             println!(
                 "{}",
                 json!({

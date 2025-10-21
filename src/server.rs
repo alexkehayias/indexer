@@ -25,6 +25,7 @@ use tower_http::services::ServeDir;
 use tower_http::trace::TraceLayer;
 use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
 
+use crate::aql;
 use crate::chat::chat;
 use crate::indexing::index_all;
 use crate::openai::{BoxedToolCall, Message, Role};
@@ -221,7 +222,7 @@ async fn kv_set(State(state): State<SharedState>, Json(data): Json<LastSelection
 
 #[derive(Serialize)]
 struct SearchResponse {
-    query: Option<String>,
+    query: String,
     results: Vec<SearchResult>,
 }
 
@@ -237,23 +238,20 @@ async fn search(
     State(state): State<SharedState>,
     Query(params): Query<HashMap<String, String>>,
 ) -> Json<SearchResponse> {
-    let query = params.get("query");
+    let raw_query = params.get("query").expect("Missing query param");
+    let query = aql::parse_query(raw_query).expect("Parsing AQL failed");
     let shared_state = state.read().unwrap();
     let index_path = &shared_state.config.index_path;
     // Ignoring any previous panics since we are trying to get the
     // db connection and it's probably fine
     let db = shared_state.db.lock().unwrap_or_else(|e| e.into_inner());
 
-    let results = if let Some(query) = query {
-        let include_similarity = params.contains_key("include_similarity")
-            && params.get("include_similarity").unwrap() == "true";
-        search_notes(index_path, &db, include_similarity, query, 20)
-    } else {
-        Vec::new()
-    };
+    let include_similarity = params.contains_key("include_similarity")
+        && params.get("include_similarity").unwrap() == "true";
+    let results = search_notes(index_path, &db, include_similarity, &query, 20);
 
     let resp = SearchResponse {
-        query: query.map(|s| s.to_string()),
+        query: raw_query.to_owned(),
         results,
     };
 

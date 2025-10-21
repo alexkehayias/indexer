@@ -24,7 +24,10 @@ use tower_http::services::ServeDir;
 use tower_http::trace::TraceLayer;
 use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
 
+use crate::chat::chat;
 use crate::indexing::index_all;
+use crate::openai::{Message, Role, ToolCall, BoxedToolCall};
+use crate::tool::NoteSearchTool;
 
 use super::db::vector_db;
 use super::git::{diff_last_commit_files, maybe_pull_and_reset_repo};
@@ -32,6 +35,31 @@ use super::notification::{send_push_notification, PushSubscription};
 use super::search::{search_notes, SearchResult};
 
 type SharedState = Arc<RwLock<AppState>>;
+
+#[derive(Deserialize)]
+struct ChatRequest {
+    session_id: String,
+    message: String,
+}
+
+#[derive(Serialize)]
+struct ChatResponse {
+    message: String,
+}
+
+impl ChatResponse {
+    fn new(message: &str) -> Self {
+        Self { message: message.into() }
+    }
+}
+
+#[derive(Clone)]
+struct ChatSession {
+    session_id: String,
+    transcript: Vec<Message>,
+}
+
+type ChatSessions = HashMap<String, ChatSession>;
 
 pub struct AppConfig {
     pub notes_path: String,
@@ -54,6 +82,7 @@ pub struct AppState {
     push_subscriptions: Vec<PushSubscription>,
     db: Mutex<Connection>,
     config: AppConfig,
+    chat_sessions: ChatSessions,
 }
 
 impl AppState {
@@ -63,8 +92,61 @@ impl AppState {
             push_subscriptions: Vec::new(),
             db: Mutex::new(db),
             config,
+            chat_sessions: HashMap::new(),
         }
     }
+}
+
+pub async fn chat_handler(
+    State(state): State<SharedState>,
+    Json(payload): Json<ChatRequest>,
+) -> Json<ChatResponse> {
+    let user_msg = Message::new(Role::User, &payload.message);
+    let tools: Option<Vec<BoxedToolCall>> = Some(vec![Box::new(NoteSearchTool::default())]);
+
+    let mut transcript = {
+        let mut sessions = state.read().unwrap().chat_sessions.clone();
+
+        let session = sessions
+            .entry(payload.session_id.clone())
+            .or_insert_with(|| ChatSession {
+                session_id: payload.session_id.clone(),
+                transcript: vec![],
+            });
+
+        session.transcript.push(user_msg);
+
+        // Take the entire transcript so we don't hold the lock across .await
+        std::mem::take(&mut session.transcript)
+    };
+
+    chat(&mut transcript, &tools).await;
+
+    // Re-acquire the lock and write the transcript back into the session
+    let assistant_msg = {
+        let mut sessions = state.write().unwrap().chat_sessions.clone();
+
+        let session = sessions
+            .entry(payload.session_id.clone())
+            .insert_entry(ChatSession {
+                session_id: payload.session_id.clone(),
+                transcript,
+            });
+
+        // Grab the last message to build our response
+        // clone so we can safely use it outside the lock
+        session.get()
+            .transcript
+            .last()
+            .expect("Transcript was empty; no message found")
+            .clone()
+    };
+
+    let resp = ChatResponse::new(
+        &assistant_msg.content.unwrap()
+    );
+
+    Json(resp)
 }
 
 async fn kv_get(State(state): State<SharedState>) -> Json<Option<Value>> {
@@ -288,6 +370,8 @@ pub fn app(app_state: AppState) -> Router {
         .route("/notes/index", post(index_notes))
         // View a specific note
         .route("/notes/:id/view", get(view_note))
+        // Chat with notes
+        .route("/notes/chat", post(chat_handler))
         // Storage for push subscriptions
         .route("/push/subscribe", post(push_subscription))
         .route("/push/notification", post(send_notification))

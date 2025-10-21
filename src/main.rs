@@ -144,12 +144,11 @@ async fn main() -> Result<()> {
 
             // Clone and reset the notes repo to origin/main
             if notes {
-                println!("Cloning notes repo from git...");
                 let deploy_key_path = env::var("INDEXER_NOTES_DEPLOY_KEY_PATH")
                     .expect("Missing env var INDEXER_NOTES_REPO_URL");
-                // Clone the notes repo and index it
                 let repo_url = env::var("INDEXER_NOTES_REPO_URL")
                     .expect("Missing env var INDEXER_NOTES_REPO_URL");
+                println!("Cloning notes repo from git...");
                 maybe_clone_repo(&deploy_key_path, &repo_url, &notes_path);
                 println!("Finished cloning and resetting notes from git");
             }

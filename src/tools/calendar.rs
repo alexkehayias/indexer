@@ -6,7 +6,6 @@ use reqwest;
 use serde::{Deserialize, Serialize};
 use serde_json;
 
-
 #[derive(Serialize)]
 pub struct CalendarProps {
     pub email: Property,

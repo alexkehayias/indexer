@@ -5,7 +5,6 @@ use reqwest;
 use serde::{Deserialize, Serialize};
 use serde_json;
 
-
 #[derive(Serialize)]
 pub struct SearxSearchProps {
     pub query: Property,

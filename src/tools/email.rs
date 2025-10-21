@@ -6,7 +6,6 @@ use serde::{Deserialize, Serialize};
 use serde_json;
 use serde_json::{Value, json};
 
-
 #[derive(Serialize)]
 pub struct EmailUnreadProps {
     pub email: Property,

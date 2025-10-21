@@ -1,8 +1,10 @@
-use std::time::Duration;
+use std::{collections::HashMap, time::Duration};
+use tokio::sync::mpsc;
 
 use anyhow::{Error, Result};
 use async_trait::async_trait;
 use erased_serde;
+use futures_util::StreamExt;
 use serde::{Deserialize, Serialize};
 use serde_json::{Value, json};
 
@@ -165,4 +167,231 @@ pub async fn completion(
         .await?;
 
     Ok(response)
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+struct FunctionInitDelta {
+    name: String,
+    arguments: String,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+struct FunctionArgsDelta {
+    arguments: String,
+}
+
+// OpenAI has two different deltas to handle for tool calls that are
+// slightly different and hard to notice, one with initial fields and
+// then subsequent deltas for streaming the function arguments.
+#[derive(Debug, Serialize, Deserialize)]
+#[serde(untagged)]
+enum ToolCallChunk {
+    Init {
+        id: String,
+        index: usize,
+        function: FunctionInitDelta,
+        r#type: String,
+    },
+    ArgsDelta {
+        index: usize,
+        function: FunctionArgsDelta,
+        r#type: String,
+    },
+}
+
+// HACK: Streaming tool calls results in an incomplete struct until
+// all the deltas are streamed so we need this "final" version of the
+// tool call data even though it's largely a duplicate of the other
+// tool call related structs
+#[derive(Debug, Serialize, Deserialize)]
+struct FunctionFinal {
+    name: String,
+    arguments: String,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+struct ToolCallFinal {
+    id: String,
+    index: usize,
+    function: FunctionFinal,
+    r#type: String,
+}
+
+#[derive(Debug, Deserialize)]
+#[serde(untagged)]
+enum Delta {
+    Content { content: String },
+
+    Reasoning { reasoning: String },
+
+    ToolCall { tool_calls: Vec<ToolCallChunk> },
+
+    Stop {},
+}
+
+#[derive(Debug, Deserialize)]
+struct CompletionChunkChoice {
+    #[allow(dead_code)]
+    index: usize,
+    delta: Delta,
+    finish_reason: Option<String>,
+    #[allow(dead_code)]
+    logprobs: Option<String>,
+}
+
+#[derive(Debug, Deserialize)]
+struct CompletionChunk {
+    #[allow(dead_code)]
+    id: String,
+    #[allow(dead_code)]
+    created: usize,
+    #[allow(dead_code)]
+    model: String,
+    #[allow(dead_code)]
+    system_fingerprint: String,
+    choices: Vec<CompletionChunkChoice>,
+}
+
+pub async fn completion_stream(
+    tx: mpsc::UnboundedSender<String>,
+    messages: &Vec<Message>,
+    tools: &Option<Vec<BoxedToolCall>>,
+    api_hostname: &str,
+    api_key: &str,
+    model: &str,
+) -> Result<Value, Error> {
+    let mut payload = json!({
+        "model": model,
+        "messages": messages,
+        "stream": true,
+    });
+    if let Some(tools) = tools {
+        payload["tools"] = json!(tools);
+    }
+    let url = format!("{}/v1/chat/completions", api_hostname.trim_end_matches("/"));
+    let response = reqwest::Client::new()
+        .post(url)
+        .bearer_auth(api_key)
+        .header("Content-Type", "application/json")
+        .timeout(Duration::from_secs(60 * 5))
+        .json(&payload)
+        .send()
+        .await?;
+
+    let mut stream = response.bytes_stream();
+
+    let mut content_buf = String::from("");
+    let mut reasoning_buf: String = String::from("");
+    let mut tool_calls: HashMap<usize, ToolCallFinal> = HashMap::new();
+
+    while let Some(chunk) = stream.next().await {
+        let chunk = chunk.expect("Invalid chunk");
+        let chunk_str = std::str::from_utf8(&chunk)?.trim();
+        let _ = tx.send(
+            chunk_str
+                .strip_prefix("data: ")
+                .expect("Failed to strip prefix")
+                .to_string(),
+        );
+
+        // Parse SSE events
+        if !chunk_str.starts_with("data: ") {
+            continue;
+        }
+
+        // Sometimes there are multiple json rows within the same chunk
+        let rows: Vec<&str> = chunk_str.split("data: ").collect();
+
+        for data_str in rows.into_iter() {
+            let data = data_str.trim();
+
+            // Data can sometimes be empty. Not sure why.
+            if data.is_empty() {
+                continue;
+            }
+
+            // Handle the end of the stream
+            if data == "[DONE]" {
+                break;
+            }
+
+            dbg!(&data);
+
+            // Process the delta
+            let chunk = serde_json::from_str::<CompletionChunk>(data)?;
+            let choice = chunk.choices.first().expect("Missing choices field");
+
+            match &choice.delta {
+                Delta::Reasoning { reasoning } => {
+                    if choice.finish_reason.is_some() {
+                        break;
+                    }
+                    reasoning_buf += &reasoning.clone();
+                }
+                Delta::Content { content } => {
+                    if choice.finish_reason.is_some() {
+                        break;
+                    }
+
+                    content_buf += &content.clone();
+                }
+                Delta::ToolCall {
+                    tool_calls: tool_call_deltas,
+                } => {
+                    if choice.finish_reason.is_some() {
+                        break;
+                    }
+                    for tool_call_delta in tool_call_deltas.iter() {
+                        match tool_call_delta {
+                            ToolCallChunk::Init {
+                                id,
+                                index,
+                                function,
+                                r#type,
+                            } => {
+                                let init_tool_call = ToolCallFinal {
+                                    index: *index,
+                                    id: id.clone(),
+                                    function: FunctionFinal {
+                                        name: function.name.clone(),
+                                        arguments: function.arguments.clone(),
+                                    },
+                                    r#type: r#type.clone(),
+                                };
+                                tool_calls.insert(*index, init_tool_call);
+                            }
+                            ToolCallChunk::ArgsDelta {
+                                index, function, ..
+                            } => {
+                                tool_calls.entry(*index).and_modify(|v| {
+                                    let args = function.arguments.clone();
+                                    v.function.arguments += &args;
+                                });
+                            }
+                        }
+                    }
+                }
+                Delta::Stop {} => {
+                    break;
+                }
+            }
+        }
+    }
+
+    // Handle if this is a tool call or a content message
+    if !tool_calls.is_empty() {
+        let tool_call_message = tool_calls.values().collect::<Vec<_>>();
+        let out = json!({
+            "choices": [{"message": {"tool_calls": tool_call_message}}]
+        });
+        dbg!(&out);
+        return Ok(out);
+    }
+
+    let out = json!({
+        "choices": [
+            {"message": {"content": content_buf}}
+        ]
+    });
+    Ok(out)
 }

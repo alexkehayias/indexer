@@ -1,9 +1,11 @@
 use anyhow::{Error, Result};
 use serde_json::{Value, json};
+use tokio::sync::mpsc;
 use tokio_rusqlite::Connection;
 
 use crate::openai::{
     BoxedToolCall, FunctionCall, FunctionCallFn, Message, Role, ToolCall, completion,
+    completion_stream,
 };
 
 async fn handle_tool_calls(
@@ -76,6 +78,47 @@ pub async fn chat(
 
         // Provide the results of the tool calls back to the chat
         resp = completion(history, tools, api_hostname, api_key, model)
+            .await
+            .expect("OpenAI API call failed");
+    }
+
+    if let Some(msg) = resp["choices"][0]["message"]["content"].as_str() {
+        history.push(Message::new(Role::Assistant, msg));
+        accum_new.push(Message::new(Role::Assistant, msg));
+    } else {
+        panic!("No message received. Resp:\n\n {}", resp);
+    }
+}
+
+/// Appends one or more messages to `history` and new messages to
+/// `accum_new` so there's no need to diff after calling this to
+/// figure out what's new.
+pub async fn chat_stream(
+    tx: mpsc::UnboundedSender<String>,
+    tools: &Option<Vec<BoxedToolCall>>,
+    history: &mut Vec<Message>,
+    accum_new: &mut Vec<Message>,
+    api_hostname: &str,
+    api_key: &str,
+    model: &str,
+) {
+    let mut resp = completion_stream(tx.clone(), history, tools, api_hostname, api_key, model)
+        .await
+        .expect("OpenAI API call failed");
+
+    // Tool calls need to be handled for the chat to proceed
+    while let Some(tool_calls) = resp["choices"][0]["message"]["tool_calls"].as_array() {
+        if tool_calls.is_empty() {
+            break;
+        }
+        let tools_ref = tools
+            .as_ref()
+            .expect("Received tool call but no tools were specified");
+        // TODO: Update this to be streaming
+        handle_tool_calls(tools_ref, history, accum_new, tool_calls).await;
+
+        // Provide the results of the tool calls back to the chat
+        resp = completion_stream(tx.clone(), history, tools, api_hostname, api_key, model)
             .await
             .expect("OpenAI API call failed");
     }

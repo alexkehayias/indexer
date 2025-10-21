@@ -103,6 +103,12 @@ document.addEventListener('DOMContentLoaded', () => {
       messageContent.appendChild(messageBody);
       messageElement.appendChild(imgElement);
       messageElement.appendChild(messageContent);
+
+      // Add methods for streaming updates to the content.
+      messageElement.updateContent = function(txt) {
+        const updatedHTML = marked.parse(txt, { breaks: true });
+        messageText.innerHTML = updatedHTML;
+      }
     }
 
     chatDisplay.prepend(messageElement);
@@ -132,17 +138,63 @@ document.addEventListener('DOMContentLoaded', () => {
       },
       body: JSON.stringify(chatRequest)
     })
-    .then(response => response.json())
-    .then(data => {
-      // Responses to a user message will never be tool calls
-      renderMessageBubble(data.message, false, false, false);
-      // Remove loading indicator
-      loadingElement.remove();
-    })
-    .catch(error => {
-      console.error('Error:', error);
-      loadingElement.remove(); // Ensure loading indicator is removed on error
-    });
+      .then(response => {
+        const reader = response.body.getReader();
+        const decoder = new TextDecoder();
+        let buffer = '';
+
+        let messageBubbleEl = renderMessageBubble('', false, false, false);
+        let contentAccum = '';
+
+        function read() {
+          reader.read().then(({done, value}) => {
+            if (done) {
+              console.log('Stream complete');
+              return;
+            }
+
+            // Convert Uint8Array to string
+            const chunk = decoder.decode(value, {stream: true});
+            buffer += chunk;
+
+            // Process complete lines
+            const lines = buffer.split('\n');
+            buffer = lines.pop(); // Keep incomplete line in buffer
+
+            lines.forEach(line => {
+              if (line.startsWith('data: ')) {
+                const data = line.slice(6).trim();
+                if (data === '[DONE]') {
+                  console.log('Stream finished');
+                  return;
+                }
+                try {
+                  const parsed = JSON.parse(data);
+                  const content = parsed.choices[0].delta.content;
+
+                  // Handle content delta
+                  if (content) {
+                    loadingElement.remove();
+                    contentAccum += content;
+                    messageBubbleEl.updateContent(contentAccum);
+                  }
+
+                  // TODO: Handle other kinds of deltas
+                } catch (e) {
+                  console.error('Error parsing JSON:', e);
+                }
+              }
+            });
+
+            read();
+          }).catch(error => {
+            console.error('Read error:', error);
+            loadingElement.remove(); // Ensure loading indicator is removed on error
+          });
+        }
+
+        read();
+      });
 
     chatInput.value = ''; // Clear input field
   };

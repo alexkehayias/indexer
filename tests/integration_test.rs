@@ -13,6 +13,9 @@ mod tests {
         body::Body,
         http::{Request, StatusCode},
     };
+    use tokio::sync::mpsc;
+    use tower::util::ServiceExt;
+
     use indexer::config::AppConfig;
     use indexer::db::async_db;
     use indexer::db::initialize_db;
@@ -24,7 +27,6 @@ mod tests {
     use serde::Serialize;
     use serde_json::json;
     use serial_test::serial;
-    use tower::util::ServiceExt;
 
     async fn body_to_string(body: Body) -> String {
         let bytes = axum::body::to_bytes(body, 4096usize).await.unwrap();
@@ -216,6 +218,32 @@ mod tests {
         )
         .await;
         assert!(response.is_ok());
+    }
+
+    #[tokio::test]
+    #[ignore]
+    async fn it_makes_openai_streaming_request() {
+        let (tx, _rx) = mpsc::unbounded_channel::<String>();
+        let messages = vec![
+            openai::Message::new(openai::Role::System, "You are a helpful assistant."),
+            openai::Message::new(
+                openai::Role::User,
+                "Write a haiku that explains the concept of recursion.",
+            ),
+        ];
+        let tools = None;
+        let response = openai::completion_stream(
+            tx,
+            &messages,
+            &tools,
+            "https://api.openai.com",
+            "test-api-key",
+            "gpt-4o",
+        )
+        .await;
+
+        assert!(response.is_ok());
+        assert_eq!(response.unwrap(), "Testing");
     }
 
     #[tokio::test]

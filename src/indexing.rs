@@ -1,3 +1,5 @@
+use std::hash::{Hash, Hasher};
+
 use super::schema::note_schema;
 use super::source::notes;
 use crate::export::PlainTextExport;
@@ -6,6 +8,7 @@ use orgize::rowan::ast::AstNode;
 use orgize::ParseConfig;
 use rusqlite::{Connection, Result};
 use std::fs;
+use std::hash::DefaultHasher;
 use std::path::PathBuf;
 use tantivy::schema::*;
 use tantivy::{doc, Index, IndexWriter};
@@ -92,8 +95,25 @@ drawer",
         .filter_map(|i| -> Option<Task> {
             if i.todo_type().is_some() {
                 let task_title = i.title_raw().trim().to_string();
+
                 // Tasks sometimes don't have an org-id. These tasks are ignored.
-                let id = i.properties()?.get("ID").map(|j| j.to_string())?;
+                let mut hasher = DefaultHasher::new();
+                task_title.hash(&mut hasher);
+                let default_id = hasher.finish().to_string();
+
+                // Note: Can't use a question mark operator as that
+                // will cause an early return rather than handling the
+                // case where properties don't exist
+                let task_properties = i.properties();
+                let id = if let Some(task_props) = task_properties {
+                    // Properties might exist but the ID might be missing
+                    task_props.get("ID").map(|j| j.to_string()).unwrap_or(default_id)
+                } else {
+                    default_id
+                };
+
+                // Extract note body into markdown format This is
+                // useful since LLMs are typically tune for markdown
                 let mut plain_text = PlainTextExport::default();
                 plain_text.render(i.syntax());
                 let task_body = plain_text.finish();
@@ -144,7 +164,7 @@ drawer",
                     deadline,
                 };
 
-                tracing::debug!("Found task {}", task.body);
+                tracing::debug!("Found task {} {}", task.status, task.title);
 
                 return Some(task);
             }

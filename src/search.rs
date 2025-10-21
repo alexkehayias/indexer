@@ -193,7 +193,12 @@ pub fn search_notes(
         where_clauses.push(extra_sql);
     }
 
-    let where_clause = where_clauses.join(" AND ");
+    let where_clause = if !where_clauses.is_empty() {
+        format!("WHERE {}", where_clauses.join(" AND "))
+    } else {
+        "".to_string()
+    };
+
     let sql = format!(
         r#"
         SELECT
@@ -210,7 +215,7 @@ pub fn search_notes(
           closed,
           date
         FROM note_meta
-        WHERE {}
+        {}
         ORDER BY date DESC, deadline DESC, scheduled DESC, closed DESC
         LIMIT {}
     "#,

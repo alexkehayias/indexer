@@ -21,7 +21,8 @@ async fn handle_tool_calls(
             .find(|i| *i.function_name() == *tool_call_name)
             .unwrap_or_else(|| panic!("Received tool call that doesn't exist: {}", tool_call_name))
             .call(tool_call_args)
-            .await.expect("Tool call returned an error");
+            .await
+            .expect("Tool call returned an error");
 
         let tool_call_requests = vec![FunctionCall {
             function: FunctionCallFn {
@@ -57,7 +58,10 @@ pub async fn chat(history: &mut Vec<Message>, tools: &Option<Vec<BoxedToolCall>>
             .expect("OpenAI API call failed");
     }
 
-    let msg = resp["choices"][0]["message"]["content"].as_str().unwrap();
-    println!("{}", msg);
-    history.push(Message::new(Role::Assistant, msg));
+    if let Some(msg) = resp["choices"][0]["message"]["content"].as_str() {
+        println!("{}", msg);
+        history.push(Message::new(Role::Assistant, msg));
+    } else {
+        panic!("No message received. Resp:\n\n {}", resp);
+    }
 }

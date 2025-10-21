@@ -5,8 +5,8 @@ mod tests {
     use std::path::PathBuf;
     use std::time::SystemTime;
 
-    use async_trait::async_trait;
     use anyhow::{Error, Result};
+    use async_trait::async_trait;
     use axum::{
         body::Body,
         http::{Request, StatusCode},
@@ -66,6 +66,7 @@ mod tests {
             deploy_key_path: String::from("test_deploy_key_path"),
             vapid_key_path: String::from("test_vapid_key_path"),
             note_search_api_url: String::from("http://localhost:2222"),
+            searxng_api_url: String::from("http://localhost:8080"),
         };
         let app_state = AppState::new(db, app_config);
         app(app_state)

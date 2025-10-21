@@ -4,7 +4,7 @@ use std::path::PathBuf;
 
 use tantivy::collector::TopDocs;
 use tantivy::query::QueryParser;
-use tantivy::schema::{*};
+use tantivy::schema::*;
 use tantivy::{doc, Index, IndexWriter, ReloadPolicy};
 
 use orgize::ParseConfig;
@@ -20,7 +20,11 @@ fn note_schema() -> Schema {
 
 // There is no such thing as updates in tantivy so this function will
 // produce duplicates if called repeatedly
-fn index_note(index_writer: &mut IndexWriter, schema: &Schema, path: PathBuf) -> tantivy::Result<()> {
+fn index_note(
+    index_writer: &mut IndexWriter,
+    schema: &Schema,
+    path: PathBuf,
+) -> tantivy::Result<()> {
     println!("Indexing note: {}", &path.display());
 
     let id = schema.get_field("id")?;
@@ -34,7 +38,8 @@ fn index_note(index_writer: &mut IndexWriter, schema: &Schema, path: PathBuf) ->
     };
     let p = config.parse(&content);
 
-    let id_value = path.file_name().unwrap().to_str().unwrap();
+    let props = p.document().properties().expect("Missing property drawer");
+    let id_value = props.get("ID").expect("Missing org-id").to_string();
     let title_value = p.title().expect("No title found");
     let body_value = p.document().raw();
 
@@ -48,21 +53,28 @@ fn index_note(index_writer: &mut IndexWriter, schema: &Schema, path: PathBuf) ->
 }
 
 // Get first level files in the directory, does not follow sub directories
-fn notes() -> Vec<PathBuf> {
-    let Ok(entries) = fs::read_dir("/Users/alex/Org/notes/") else { return vec![] };
+fn notes(path: &str) -> Vec<PathBuf> {
+    let Ok(entries) = fs::read_dir(path) else {
+        return vec![];
+    };
 
     // TODO: make this recursive if there is more than one directory of notes
-    entries.flatten().flat_map(|entry| {
-        let Ok(meta) = entry.metadata() else { return vec![] };
-        // Skip directories and non org files
-        let path = entry.path();
-        let ext = path.extension().unwrap_or_default();
-        let name = path.file_name().unwrap_or_default();
-        if meta.is_file() && ext == "org" && name != "config.org" {
-            return vec![entry.path()];
-        }
-        vec![]
-    }).collect()
+    entries
+        .flatten()
+        .flat_map(|entry| {
+            let Ok(meta) = entry.metadata() else {
+                return vec![];
+            };
+            // Skip directories and non org files
+            let path = entry.path();
+            let ext = path.extension().unwrap_or_default();
+            let name = path.file_name().unwrap_or_default();
+            if meta.is_file() && ext == "org" && name != "config.org" && name != "capture.org" {
+                return vec![entry.path()];
+            }
+            vec![]
+        })
+        .collect()
 }
 
 fn main() -> tantivy::Result<()> {
@@ -74,8 +86,8 @@ fn main() -> tantivy::Result<()> {
     let idx = Index::open_or_create(index_path, schema.clone())?;
     let mut index_writer: IndexWriter = idx.writer(50_000_000)?;
 
-    for note in notes() {
-       let _ = index_note(&mut index_writer, &schema, note);
+    for note in notes("/Users/alex/Org/notes/") {
+        let _ = index_note(&mut index_writer, &schema, note);
     }
 
     index_writer.commit()?;
@@ -87,10 +99,7 @@ fn main() -> tantivy::Result<()> {
     let searcher = reader.searcher();
     let title = schema.get_field("title").unwrap();
     let body = schema.get_field("body").unwrap();
-    let query_parser = QueryParser::for_index(
-        &idx,
-        vec![title, body]
-    );
+    let query_parser = QueryParser::for_index(&idx, vec![title, body]);
     let query = query_parser.parse_query(&args[1])?;
 
     let top_docs = searcher.search(&query, &TopDocs::with_limit(10))?;

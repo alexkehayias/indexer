@@ -2,7 +2,6 @@ use std::collections::HashMap;
 use std::env;
 use std::path::PathBuf;
 use std::sync::{Arc, Mutex, RwLock};
-use std::time::Duration;
 
 use axum::extract::Query;
 use axum::middleware;
@@ -19,7 +18,6 @@ use serde::{Deserialize, Serialize};
 use serde_json::{Value, json};
 use tantivy::doc;
 use tokio::task::JoinSet;
-use tokio::time::interval;
 use tower::ServiceBuilder;
 use tower_http::cors::CorsLayer;
 use tower_http::services::ServeDir;
@@ -27,19 +25,22 @@ use tower_http::trace::TraceLayer;
 use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
 
 use crate::aql;
+use crate::config::AppConfig;
 use crate::chat::chat;
 use crate::indexing::index_all;
-use crate::notification::find_all_notification_subscriptions;
+use crate::jobs::{
+    spawn_periodic_job,
+    email_agent::ProcessEmail,
+};
 use crate::openai::{BoxedToolCall, Message, Role};
 use crate::tool::{NoteSearchTool, SearxSearchTool, EmailUnreadTool};
 
 use super::db::{vector_db, async_db};
 use super::git::{diff_last_commit_files, maybe_pull_and_reset_repo};
 use super::notification::{PushSubscription, broadcast_push_notification};
-use uuid::Uuid;
 use super::search::{SearchResult, search_notes};
 use crate::gmail::{Thread, extract_body, fetch_thread, list_unread_messages};
-use crate::oauth::{find_all_gmail_auth_emails, refresh_access_token};
+use crate::oauth::refresh_access_token;
 
 
 // Top level API error
@@ -97,16 +98,8 @@ struct ChatSession {
 
 type ChatSessions = HashMap<String, ChatSession>;
 
-pub struct AppConfig {
-    pub notes_path: String,
-    pub index_path: String,
-    pub deploy_key_path: String,
-    pub vapid_key_path: String,
-    pub note_search_api_url: String,
-    pub searxng_api_url: String,
-    pub gmail_api_client_id: String,
-    pub gmail_api_client_secret: String,
-}
+// AppConfig is now in config/mod.rs
+
 
 #[derive(Debug, Deserialize)]
 struct LastSelection {
@@ -671,8 +664,7 @@ pub async fn serve(
         .with(tracing_subscriber::fmt::layer())
         .init();
     let db = vector_db(&vec_db_path).expect("Failed to connect to db");
-    let a_db = async_db(&vec_db_path).await.expect("Failed to connect to async db");
-    let db_async = Arc::new(RwLock::new(a_db));
+
     let app_config = AppConfig {
         notes_path,
         index_path,
@@ -683,7 +675,7 @@ pub async fn serve(
         gmail_api_client_id,
         gmail_api_client_secret,
     };
-    let app_state = AppState::new(db, app_config);
+    let app_state = AppState::new(db, app_config.clone());
     let shared_state = Arc::new(RwLock::new(app_state));
     let app = app(Arc::clone(&shared_state));
 
@@ -696,53 +688,10 @@ pub async fn serve(
         listener.local_addr().unwrap()
     );
 
-    // Run periodic tasks in the background
-    let state_clone = Arc::clone(&shared_state);
-
-    tokio::spawn(async move {
-        let mut ticker = interval(Duration::from_secs(60*60*2));
-        loop {
-            ticker.tick().await;
-
-            let emails = {
-                let db = db_async.write().expect("Failed to get connection").clone();
-                find_all_gmail_auth_emails(&db).await.expect("Query failed")
-            };
-
-            let session_id = Uuid::new_v4().to_string();
-            let history = crate::agents::email::email_chat_response(&note_search_api_url, emails).await;
-
-            let last_msg = history.last().unwrap();
-            let summary = last_msg.content.clone().unwrap();
-
-            // Store in AppState
-            {
-                let mut state = state_clone.write().unwrap();
-                state.chat_sessions.insert(
-                    session_id.clone(),
-                    ChatSession {
-                        session_id: session_id.clone(),
-                        transcript: history.clone(),
-                    },
-                );
-            }
-
-            // Broadcast push notification to all subscribers, using a new read lock for DB/config each time
-            let vapid_key_path = {
-                let state = state_clone.read().unwrap();
-                state.config.vapid_key_path.clone()
-            };
-            let subscriptions = {
-                let db = db_async.write().expect("Failed to get connection").clone();
-                find_all_notification_subscriptions(&db).await.unwrap()
-            };
-            broadcast_push_notification(
-                subscriptions,
-                vapid_key_path,
-                format!("Emails processed! {}", summary).to_string(),
-            ).await;
-        }
-    });
+    // Run background jobs. Each job is spawned in it's own tokio task
+    // in a loop.
+    let a_db = async_db(&vec_db_path).await.expect("Failed to connect to async db");
+    spawn_periodic_job(app_config, a_db, ProcessEmail);
 
     axum::serve(listener, app).await.unwrap();
 }

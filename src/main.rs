@@ -1,6 +1,7 @@
 use std::fs;
 use std::path::PathBuf;
 use std::collections::HashMap;
+use std::sync::{Arc, RwLock};
 
 use clap::Parser;
 
@@ -11,12 +12,15 @@ use tantivy::{doc, Index, IndexWriter, ReloadPolicy};
 
 use axum::{
     routing::get,
-    response::{Html, Json},
+    response::Json,
     Router,
+    extract::State,
 };
 use tower_http::cors::CorsLayer;
 use tower_http::trace::TraceLayer;
+use tower_http::services::ServeDir;
 use axum::extract::Query;
+use serde::Deserialize;
 
 use serde_json::{Value, json};
 use orgize::ParseConfig;
@@ -137,6 +141,30 @@ struct Args {
 }
 
 
+type SharedState = Arc<RwLock<AppState>>;
+
+#[derive(Default)]
+struct AppState {
+    // Stores the latest search hit selected by the user
+    latest_selection: HashMap<String, String>,
+}
+
+#[derive(Debug, Deserialize)]
+struct SetLatest {
+    id: String,
+}
+
+async fn kv_get(State(state): State<SharedState>) -> Json<Value> {
+    let resp = json!({
+        "id": state.read().unwrap().latest_selection.get("id")
+    });
+    Json(resp)
+}
+
+async fn kv_set(State(state): State<SharedState>, Json(data): Json<SetLatest>) {
+    state.write().unwrap().latest_selection.insert(String::from("id"), data.id);
+}
+
 // Fulltext search of all notes
 async fn search(Query(params): Query<HashMap<String, String>>) -> Json<Value> {
     let schema = note_schema();
@@ -177,19 +205,21 @@ async fn search(Query(params): Query<HashMap<String, String>>) -> Json<Value> {
 }
 
 
-async fn webview() -> Html<&'static str> {
-    Html("<p>Hello, World!</p><a onClick=\"javascript:window.close('','_parent','');\">Close</a>")
-}
-
-
 async fn serve(host: String, port: String) {
+    let shared_state = SharedState::default();
     let cors = CorsLayer::permissive();
+    let serve_dir = ServeDir::new("./web-ui/src");
 
     let app = Router::new()
-        .route("/webview", get(webview))
+        // Search API endpoint
         .route("/notes/search", get(search))
+        // Storage for selected search hits
+        .route("/notes/search/latest", get(kv_get).post(kv_set))
+        // Static server of assets in ./web-ui
+        .nest_service("/", serve_dir.clone())
         .layer(TraceLayer::new_for_http())
-        .layer(cors);
+        .layer(cors)
+        .with_state(Arc::clone(&shared_state));
 
     let listener = tokio::net::TcpListener::bind(format!("{}:{}", host, port))
         .await

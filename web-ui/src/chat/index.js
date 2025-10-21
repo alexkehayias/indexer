@@ -87,7 +87,7 @@ document.addEventListener('DOMContentLoaded', () => {
       imgElement.alt = isUserMessage ? 'User image' : 'Bot image';
 
       const messageContent = document.createElement('div');
-      messageContent.className = 'flex flex-col gap-1 w-[320px] lg:w-full';
+      messageContent.className = 'flex flex-col gap-1 w-[320px] lg:w-full overflow-auto';
 
       const messageBody = document.createElement('div');
       messageBody.className = isUserMessage

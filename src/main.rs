@@ -8,7 +8,7 @@ use std::fs;
 use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
 
 use indexer::chat::chat;
-use indexer::db::{migrate_db, vector_db};
+use indexer::db::{initialize_db, migrate_db, vector_db};
 use indexer::git::{maybe_clone_repo, maybe_pull_and_reset_repo};
 use indexer::indexing::index_all;
 use indexer::openai::{Message, Role, ToolCall};
@@ -18,6 +18,15 @@ use indexer::tool::{NoteSearchTool, SearxSearchTool};
 
 #[derive(Subcommand)]
 enum Command {
+    /// Initialize indices and clone notes from version control
+    Init {
+        #[arg(long, action, default_value = "false")]
+        db: bool,
+        #[arg(long, action, default_value = "false")]
+        index: bool,
+        #[arg(long, action, default_value = "false")]
+        notes: bool,
+    },
     /// Run the API server
     Serve {
         /// Set the server host address
@@ -52,10 +61,6 @@ enum Command {
 #[command(author, version, about, long_about = None)]
 #[command(propagate_version = true)]
 struct Cli {
-    /// Initialize indices and clone notes from version control
-    #[arg(long, action, default_value = "false")]
-    init: bool,
-
     #[command(subcommand)]
     command: Option<Command>,
 }
@@ -73,28 +78,46 @@ async fn main() -> Result<()> {
     let vapid_key_path =
         env::var("INDEXER_VAPID_KEY_PATH").expect("Missing env var INDEXER_VAPID_KEY_PATH");
 
-    // Default command
-    if args.init {
-        // Initialize the vector DB
-        fs::create_dir_all(&vec_db_path)
-            .unwrap_or_else(|err| println!("Ignoring vector DB create failed: {}", err));
-
-        let db = vector_db(&vec_db_path).expect("Failed to connect to db");
-        migrate_db(&db).expect("DB migration failed");
-
-        // Create the index directory if it doesn't already exist
-        fs::create_dir_all(&index_path)
-            .unwrap_or_else(|err| println!("Ignoring index directory create failed: {}", err));
-
-        // Clone the notes repo and index it
-        let repo_url =
-            env::var("INDEXER_NOTES_REPO_URL").expect("Missing env var INDEXER_NOTES_REPO_URL");
-        maybe_clone_repo(&deploy_key_path, &repo_url, &notes_path);
-    }
-
-    // You can check for the existence of subcommands, and if found use their
-    // matches just as you would the top level cmd
+    // Handle each sub command
     match args.command {
+        Some(Command::Init { db, index, notes }) => {
+            if !db && !index && !notes {
+                return Err(anyhow!(
+                    "Missing value for init \"--db\", \"--index\", and/or \"--notes\""
+                ));
+            }
+
+            if db {
+                println!("Initializing db...");
+                // Initialize the vector DB
+                fs::create_dir_all(&vec_db_path)
+                    .unwrap_or_else(|err| println!("Ignoring vector DB create failed: {}", err));
+
+                let db = vector_db(&vec_db_path).expect("Failed to connect to db");
+                initialize_db(&db).expect("DB initialization failed");
+                println!("Finished initializing db");
+            }
+
+            if index {
+                println!("Initializing search index...");
+                // Create the index directory if it doesn't already exist
+                fs::create_dir_all(&index_path)
+                    .unwrap_or_else(|err| println!("Ignoring index directory create failed: {}", err));
+                println!("Finished initializing search index...");
+            }
+
+            // Clone and reset the notes repo to origin/main
+            if notes {
+                println!("Cloning notes repo from git...");
+                let deploy_key_path = env::var("INDEXER_NOTES_DEPLOY_KEY_PATH")
+                    .expect("Missing env var INDEXER_NOTES_REPO_URL");
+                // Clone the notes repo and index it
+                let repo_url =
+                    env::var("INDEXER_NOTES_REPO_URL").expect("Missing env var INDEXER_NOTES_REPO_URL");
+                maybe_clone_repo(&deploy_key_path, &repo_url, &notes_path);
+                println!("Finished cloning and resetting notes from git");
+            }
+        }
         Some(Command::Serve { host, port }) => {
             let note_search_api_url = env::var("INDEXER_NOTE_SEARCH_API_URL")
                 .unwrap_or(format!("http://{}:{}", host, port));

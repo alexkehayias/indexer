@@ -49,9 +49,12 @@ struct Args {
 async fn main() -> tantivy::Result<()> {
     let args = Args::parse();
 
+    let index_path = "./.index";
+    let notes_path = "./notes";
+
     let schema = note_schema();
-    let index_path = tantivy::directory::MmapDirectory::open("./.index")?;
-    let idx = Index::open_or_create(index_path, schema.clone())?;
+    let index_dir = tantivy::directory::MmapDirectory::open(index_path)?;
+    let idx = Index::open_or_create(index_dir, schema.clone())?;
 
     if args.reindex {
         // Clone the notes repo and index it
@@ -60,7 +63,7 @@ async fn main() -> tantivy::Result<()> {
         let deploy_key_path = env::var("INDEXER_NOTES_DEPLOY_KEY_PATH")
             .expect("Missing env var INDEXER_NOTES_REPO_URL");
         maybe_pull_and_reset_repo(&repo_url, deploy_key_path);
-        indexing::index_notes_all();
+        index_notes_all(index_path, notes_path);
     }
 
     if let Some(query) = args.query {
@@ -89,7 +92,7 @@ async fn main() -> tantivy::Result<()> {
         let deploy_key_path = env::var("INDEXER_NOTES_DEPLOY_KEY_PATH")
             .expect("Missing env var INDEXER_NOTES_REPO_URL");
         maybe_clone_repo(repo_url, deploy_key_path);
-        index_notes_all();
+        index_notes_all(index_path, notes_path);
     }
 
     if args.serve {

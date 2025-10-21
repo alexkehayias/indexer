@@ -70,9 +70,7 @@ drawer",
     Ok(())
 }
 
-pub fn index_notes_all() {
-    let notes_path = "./notes";
-    let index_path = "./.index";
+pub fn index_notes_all(index_path: &str, notes_path: &str) {
     fs::remove_dir_all(index_path).expect("Failed to remove index directory");
     fs::create_dir(index_path).expect("Failed to recreate index directory");
 

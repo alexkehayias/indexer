@@ -82,11 +82,14 @@ async fn search(Query(params): Query<HashMap<String, String>>) -> Json<Value> {
 
 // Build the index for all notes
 async fn index_notes() -> Json<Value> {
+    let index_path = "./.index";
     let notes_path = "./notes";
     let deploy_key_path = env::var("INDEXER_NOTES_DEPLOY_KEY_PATH")
         .expect("Missing env var INDEXER_NOTES_DEPLOY_KEY_PATH");
     maybe_pull_and_reset_repo(notes_path, deploy_key_path);
-    index_notes_all();
+
+    index_notes_all(notes_path, index_path);
+
     let resp = json!({
         "success": true,
     });

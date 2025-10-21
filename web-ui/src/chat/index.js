@@ -25,6 +25,7 @@ document.addEventListener('DOMContentLoaded', () => {
     history.replaceState({}, '', `?session_id=${sessionId}`);
   }
 
+  const chatContainer = document.getElementById('chat-container');
   const chatDisplay = document.getElementById('chat-display');
   const chatInput = document.getElementById('chat-input');
   const sendButton = document.getElementById('send-button');
@@ -79,7 +80,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     chatDisplay.prepend(messageElement);
-    chatDisplay.scrollTop = chatDisplay.scrollHeight;
+    chatContainer.scrollTop = chatContainer.scrollHeight;
 
     return messageElement;
   };

@@ -124,6 +124,7 @@ Frank is the VP of People at Acme. He was previously HR Manager at Acme and befo
             &format!("Meeting attendee research complete: {}", summary).to_string(),
             Some(&format!("/chat/?session_id={session_id}")),
             None,
+            None,
         );
 
         // Broadcast push notification to all subscribers

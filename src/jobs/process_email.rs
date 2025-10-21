@@ -58,6 +58,7 @@ impl PeriodicJob for ProcessEmail {
             &format!("Emails processed! {}", summary),
             None,
             None,
+            None,
         );
         let subscriptions = find_all_notification_subscriptions(db).await.unwrap();
         broadcast_push_notification(subscriptions, vapid_key_path.to_string(), payload).await;

@@ -103,14 +103,7 @@ async fn search(
             .unwrap_or_else(|e| e.into_inner());
 
         let include_similarity = params.contains_key("include_similarity") && params.get("include_similarity").unwrap() == "true";
-        if include_similarity {
-            // TODO: Handle search query arguments like this default
-            // argument that comes from the search UI
-            let similarity_query = query.replace("-title:journal ", "");
-            search_notes(index_path, &db, &similarity_query, include_similarity)
-        } else {
-            search_notes(index_path, &db, query, include_similarity)
-        }
+        search_notes(index_path, &db, query, include_similarity)
     } else {
         Vec::new()
     };

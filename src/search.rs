@@ -117,6 +117,7 @@ pub fn search_similar_notes(db: &Connection, query: &str) -> Result<Vec<SearchHi
             distance
           FROM vec_items
           JOIN note_meta on note_meta_id=note_meta.id
+          AND LOWER(note_meta.title) NOT LIKE LOWER('%journal%')
           WHERE embedding MATCH ? AND k = 10
           ORDER BY distance
           LIMIT 10
@@ -148,7 +149,8 @@ pub fn search_notes(
 ) -> Vec<SearchHit> {
     if include_similarity {
         let mut result = fulltext_search(index_path, query);
-        let mut vec_search_result = search_similar_notes(db, query).unwrap_or_default();
+        let similarity_query = query.replace("-title:journal ", "");
+        let mut vec_search_result = search_similar_notes(db, &similarity_query).unwrap_or_default();
 
         // Combine the results, dedupe, then sort by score
         result.append(&mut vec_search_result);

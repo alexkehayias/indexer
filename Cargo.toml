@@ -8,6 +8,7 @@ axum = "0.7.5"
 clap = { version = "4.5.17", features = ["derive"] }
 fastembed = "4.1.0"
 http = "1.1.0"
+itertools = "0.13.0"
 orgize = "0.10.0-alpha.10"
 rand = "0.8.5"
 rusqlite = { version = "0.32.1", features = ["bundled", "load_extension"] }

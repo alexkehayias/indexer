@@ -646,7 +646,7 @@ pub async fn serve(
 
     // Run background jobs. Each job is spawned in it's own tokio task
     // in a loop.
-    spawn_periodic_job(app_config, a_db, ProcessEmail);
+    // spawn_periodic_job(app_config, a_db, ProcessEmail);
 
     axum::serve(listener, app).await.unwrap();
 }

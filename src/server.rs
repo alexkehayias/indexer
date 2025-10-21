@@ -124,12 +124,20 @@ async fn chat_session(
     State(state): State<SharedState>,
     // This is the session ID of the chat
     Path(id): Path<String>,
-) -> impl IntoResponse {
+) -> Result<impl IntoResponse, ApiError> {
     let db = state.read().expect("Unable to read share state").db.clone();
-    // TODO: How to handle no session found?
-    let transcript = find_chat_session_by_id(&db, &id).await.unwrap().to_owned();
+    let transcript = find_chat_session_by_id(&db, &id).await?.to_owned();
 
-    Json(ChatTranscriptResponse {transcript}).into_response()
+    if transcript.is_empty() {
+        return Ok(
+            (
+                StatusCode::NOT_FOUND,
+                format!("Chat session {} not found", id)
+            ).into_response()
+        );
+    }
+
+    Ok(Json(ChatTranscriptResponse {transcript}).into_response())
 }
 
 #[debug_handler]

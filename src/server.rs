@@ -1,7 +1,7 @@
 use std::collections::HashMap;
 use std::env;
 use std::path::PathBuf;
-use std::sync::{Arc, Mutex, RwLock};
+use std::sync::{Arc, RwLock};
 
 use axum::extract::Query;
 use axum::middleware;
@@ -14,8 +14,7 @@ use axum::{
     routing::{get, post},
 };
 use http::{HeaderValue, header};
-use rusqlite::Connection;
-use tokio_rusqlite::Connection as AsyncConnection;
+use tokio_rusqlite::Connection;
 use serde::{Deserialize, Serialize};
 use serde_json::{Value, json};
 use tantivy::doc;
@@ -37,7 +36,7 @@ use crate::jobs::{
 use crate::openai::{BoxedToolCall, Message, Role};
 use crate::tool::{NoteSearchTool, SearxSearchTool, EmailUnreadTool};
 
-use super::db::{vector_db, async_db};
+use super::db::async_db;
 use super::git::{diff_last_commit_files, maybe_pull_and_reset_repo};
 use super::notification::{PushSubscription, broadcast_push_notification};
 use super::search::{SearchResult, search_notes};
@@ -101,17 +100,15 @@ struct LastSelection {
 pub struct AppState {
     // Stores the latest search hit selected by the user
     latest_selection: Option<LastSelection>,
-    db: Mutex<Connection>,
-    a_db: AsyncConnection,
+    db: Connection,
     config: AppConfig
 }
 
 impl AppState {
-    pub fn new(db: Connection, a_db: AsyncConnection, config: AppConfig) -> Self {
+    pub fn new(db: Connection, config: AppConfig) -> Self {
         Self {
             latest_selection: None,
-            db: Mutex::new(db),
-            a_db,
+            db,
             config
         }
     }
@@ -128,7 +125,7 @@ async fn chat_session(
     // This is the session ID of the chat
     Path(id): Path<String>,
 ) -> impl IntoResponse {
-    let db = state.read().expect("Unable to read share state").a_db.clone();
+    let db = state.read().expect("Unable to read share state").db.clone();
     // TODO: How to handle no session found?
     let transcript = find_chat_session_by_id(&db, &id).await.unwrap().to_owned();
 
@@ -169,7 +166,7 @@ async fn chat_handler(
         // the system message and insert both into the db
         // If this is the second or later message in the session,
         // insert the message only
-        let db = state.read().expect("Unable to read share state").a_db.clone();
+        let db = state.read().expect("Unable to read share state").db.clone();
         find_chat_session_by_id(&db, session_id).await.unwrap()
     };
 
@@ -178,7 +175,7 @@ async fn chat_handler(
     // Write new messages that were appended to the
     {
         for m in accum_new {
-            let db = state.read().expect("Unable to read share state").a_db.clone();
+            let db = state.read().expect("Unable to read share state").db.clone();
             insert_chat_message(&db, session_id, &m).await.unwrap();
         }
     }
@@ -248,7 +245,7 @@ async fn push_subscription(
         .clone();
 
     {
-        let db = state.read().unwrap().a_db.clone();
+        let db = state.read().unwrap().db.clone();
         db.call(move |conn| {
             let mut subscription_stmt = conn.prepare(
                 "REPLACE INTO push_subscription(endpoint, p256dh, auth) VALUES (?, ?, ?)",
@@ -275,7 +272,7 @@ async fn search(
     let query = aql::parse_query(raw_query).expect("Parsing AQL failed");
     let (db, index_path) = {
         let shared_state = state.read().unwrap();
-        (shared_state.a_db.clone(), shared_state.config.index_path.clone())
+        (shared_state.db.clone(), shared_state.config.index_path.clone())
     };
 
     let include_similarity = params.contains_key("include_similarity")
@@ -299,7 +296,7 @@ async fn index_notes(State(state): State<SharedState>) -> Result<Json<Value>, Ap
     let (a_db, index_path, notes_path, deploy_key_path) = {
         let shared_state = state.read().expect("Unable to read share state");
         (
-            shared_state.a_db.clone(),
+            shared_state.db.clone(),
             shared_state.config.index_path.clone(),
             shared_state.config.notes_path.clone(),
             shared_state.config.deploy_key_path.clone(),
@@ -330,7 +327,7 @@ async fn view_note(
     // This is the org-id of the note
     Path(id): Path<String>,
 ) -> Result<Json<ViewNoteResult>, ApiError> {
-    let db = state.read().unwrap().a_db.clone();
+    let db = state.read().unwrap().db.clone();
 
     let note_result = db.call(move |conn| {
         let result = conn
@@ -384,7 +381,7 @@ async fn send_notification(
         .clone();
 
     let subscriptions = {
-        let db = state.read().unwrap().a_db.clone();
+        let db = state.read().unwrap().db.clone();
         db.call(move |conn| {
             let mut stmt = conn.prepare(
                 "SELECT endpoint, p256dh, auth FROM push_subscription"
@@ -443,7 +440,7 @@ async fn email_unread_handler(
     Query(params): Query<EmailUnreadQuery>,
 ) -> Result<Json<Value>, ApiError> {
     let refresh_token: String = {
-        let db = state.read().unwrap().a_db.clone();
+        let db = state.read().unwrap().db.clone();
 
         db.call(move |conn| {
             let result = conn.prepare("SELECT refresh_token FROM auth WHERE id = ?1")
@@ -618,8 +615,7 @@ pub async fn serve(
         .with(tracing_subscriber::fmt::layer())
         .init();
 
-    let db = vector_db(&vec_db_path).expect("Failed to connect to db");
-    let a_db = async_db(&vec_db_path).await.expect("Failed to connect to async db");
+    let db = async_db(&vec_db_path).await.expect("Failed to connect to async db");
 
     let app_config = AppConfig {
         notes_path,
@@ -631,7 +627,7 @@ pub async fn serve(
         gmail_api_client_id,
         gmail_api_client_secret,
     };
-    let app_state = AppState::new(db, a_db.clone(), app_config.clone());
+    let app_state = AppState::new(db.clone(), app_config.clone());
     let shared_state = Arc::new(RwLock::new(app_state));
     let app = app(Arc::clone(&shared_state));
 
@@ -646,7 +642,7 @@ pub async fn serve(
 
     // Run background jobs. Each job is spawned in it's own tokio task
     // in a loop.
-    // spawn_periodic_job(app_config, a_db, ProcessEmail);
+    // spawn_periodic_job(app_config, db, ProcessEmail);
 
     axum::serve(listener, app).await.unwrap();
 }

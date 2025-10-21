@@ -15,7 +15,6 @@ mod tests {
     };
     use indexer::db::async_db;
     use indexer::db::initialize_db;
-    use indexer::db::vector_db;
     use indexer::indexing::index_all;
     use indexer::openai;
     use indexer::openai::BoxedToolCall;
@@ -60,12 +59,13 @@ use indexer::config::AppConfig;
         let db_path_str = dir.join(&vec_db_path);
         let db_path_str = db_path_str.to_str().unwrap();
 
-        let mut db =
-            vector_db(db_path_str).expect("Failed to connect to db");
-        initialize_db(&db).expect("Failed to migrate db");
-        let a_db = async_db(db_path_str).await.expect("Failed to connect to async db");
+        let db = async_db(db_path_str).await.expect("Failed to connect to async db");
+        db.call(|conn| {
+            initialize_db(conn).expect("Failed to migrate db");
+            Ok(())
+        }).await.unwrap();
 
-        index_dummy_notes_async(&a_db, dir.clone()).await;
+        index_dummy_notes_async(&db, dir.clone()).await;
 
         let app_config = AppConfig {
             notes_path: notes_path.display().to_string(),
@@ -77,11 +77,11 @@ use indexer::config::AppConfig;
             gmail_api_client_id: String::from("test_client_id"),
             gmail_api_client_secret: String::from("test_client_secret"),
         };
-        let app_state = AppState::new(db, a_db, app_config);
+        let app_state = AppState::new(db, app_config);
         app(Arc::new(RwLock::new(app_state)))
     }
 
-    async fn index_dummy_notes_async(a_db: &tokio_rusqlite::Connection, temp_dir: PathBuf) {
+    async fn index_dummy_notes_async(db: &tokio_rusqlite::Connection, temp_dir: PathBuf) {
         let index_dir = temp_dir.join("index");
         let index_dir_path = index_dir.to_str().unwrap();
         fs::create_dir_all(index_dir_path).expect("Failed to create directory");
@@ -104,7 +104,7 @@ use indexer::config::AppConfig;
         )
         .unwrap();
 
-        index_all(a_db, index_dir_path, notes_dir_path, true, true, Some(paths)).await.unwrap();
+        index_all(db, index_dir_path, notes_dir_path, true, true, Some(paths)).await.unwrap();
     }
 
 

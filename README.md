@@ -55,8 +55,8 @@ docker run -p 2222:2222 -d indexer:latest
 3. Generate a new key pair on the `dokku` server `ssh-keygen -q -t rsa -b 2048 -f "/var/lib/dokku/data/storage/indexer/.ssh/notes_id_rsa" -N ""`
 4. Store the public key in the GitHub repo (Settings -> Deploy Keys)
 5. Generate GitHub known hosts `sudo bash -c "ssh-keyscan -t rsa github.com >> /var/lib/dokku/data/storage/indexer/.ssh/known_hosts"`
-6. Mount the volume `dokku storage:mount indexer /var/lib/dokku/data/storage/indexer:/root/.ssh`
 7. Create data directory to persist indices between deploys `mkdir /var/lib/dokku/data/storage/indexer/data && dokku storage:mount indexer /var/lib/dokku/data/storage/indexer:/root/data`
-7. Add environment variables for `INDEXER_NOTES_REPO_URL` and `INDEXER_NOTES_DEPLOY_KEY_PATH="/root/.ssh"` and `INDEXER_STORAGE_PATH` (this will allow indices to be persisted between deploys)
-8. On local, add remote `git remote add dokku dokku@<dokku-host>:indexer`
-9. Push to build and start `git push dokku main`
+8. Generate a VAPID key pair, private key with `openssl ecparam -genkey -name prime256v1 -out private_key.pem`, and public key with `openssl ec -in private_key.pem -pubout -outform DER|tail -c 65|base64|tr '/+' '_-'|tr -d '\n'` (remove the trailing `=` in the public key and hard code it into `index.js`)
+9. Add environment variables for `INDEXER_NOTES_REPO_URL` and `INDEXER_NOTES_DEPLOY_KEY_PATH="/root/.ssh"` and `INDEXER_STORAGE_PATH` (this will allow indices to be persisted between deploys) and `INDEXER_VAPID_KEY_PATH` (for push notifications) using `dokku config:set indexer {ENV_VAR}`
+10. On local, add remote `git remote add dokku dokku@<dokku-host>:indexer`
+11. Push to build and start `git push dokku main`

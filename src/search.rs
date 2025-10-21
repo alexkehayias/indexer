@@ -7,7 +7,7 @@ use tantivy::collector::TopDocs;
 use tantivy::query::QueryParser;
 use tantivy::schema::*;
 use tantivy::{Index, ReloadPolicy};
-use zerocopy::AsBytes;
+use zerocopy::IntoBytes;
 
 use super::schema::note_schema;
 

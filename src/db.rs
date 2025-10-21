@@ -16,7 +16,10 @@ pub fn initialize_db(db: &Connection) -> Result<()> {
     tags TEXT NULLABLE,
     body TEXT,
     type TEXT,
-    status TEXT
+    status TEXT,
+    scheduled TEXT NULLABLE,
+    deadline TEXT NULLABLE,
+    closed TEXT NULLABLE
 );",
         [],
     );
@@ -58,11 +61,14 @@ CREATE TABLE IF NOT EXISTS note_meta_new (
     tags TEXT NULLABLE,
     body TEXT,
     type TEXT DEFAULT 'note',
-    status TEXT
+    status TEXT,
+    scheduled TEXT NULLABLE,
+    deadline TEXT NULLABLE,
+    closed TEXT NULLABLE
 );
 
 INSERT INTO note_meta_new (id, file_name, title, category, tags, body)
-SELECT id, file_name, title, 'placeholder', tags, body FROM note_meta;
+SELECT id, file_name, title, catgory, tags, body FROM note_meta;
 
 DROP TABLE note_meta;
 

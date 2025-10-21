@@ -163,6 +163,12 @@ async fn main() -> Result<()> {
         Some(Command::Serve { host, port }) => {
             let note_search_api_url = env::var("INDEXER_NOTE_SEARCH_API_URL")
                 .unwrap_or(format!("http://{}:{}", host, port));
+            let searxng_api_url = env::var("INDEXER_SEARXNG_API_URL")
+                    .unwrap_or(format!("http://{}:{}", host, "8080"));
+            let gmail_client_id = std::env::var("INDEXER_GMAIL_CLIENT_ID")
+                .expect("Missing INDEXER_GMAIL_CLIENT_ID");
+            let gmail_client_secret = std::env::var("INDEXER_GMAIL_CLIENT_SECRET")
+                .expect("Missing INDEXER_GMAIL_CLIENT_SECRET");
 
             server::serve(
                 host.clone(),
@@ -173,8 +179,10 @@ async fn main() -> Result<()> {
                 deploy_key_path,
                 vapid_key_path,
                 note_search_api_url,
-                env::var("INDEXER_SEARXNG_API_URL")
-                    .unwrap_or(format!("http://{}:{}", host, "8080")),
+                searxng_api_url,
+                gmail_client_id,
+                gmail_client_secret,
+
             )
             .await;
         }
@@ -329,7 +337,7 @@ let user_email = user_email.trim();
                     let token = exchange_code_for_token(
                         &client_id,
                         &client_secret,
-                        &code,
+                        code,
                         &redirect_uri,
                     ).await?;
 
@@ -344,7 +352,7 @@ let user_email = user_email.trim();
                     ).expect("Failed to insert/update refresh token in DB");
 
                     println!("Refresh token for {} saved to DB.", user_email);
-                    
+
                 }
             }
         }

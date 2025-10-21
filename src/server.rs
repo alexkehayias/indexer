@@ -73,6 +73,8 @@ pub struct AppConfig {
     pub vapid_key_path: String,
     pub note_search_api_url: String,
     pub searxng_api_url: String,
+    pub gmail_api_client_id: String,
+    pub gmail_api_client_secret: String,
 }
 
 #[derive(Debug, Deserialize)]
@@ -524,6 +526,8 @@ pub async fn serve(
     vapid_key_path: String,
     note_search_api_url: String,
     searxng_api_url: String,
+    gmail_api_client_id: String,
+    gmail_api_client_secret: String,
 ) {
     tracing_subscriber::registry()
         .with(
@@ -547,6 +551,8 @@ pub async fn serve(
         vapid_key_path,
         note_search_api_url,
         searxng_api_url,
+        gmail_api_client_id,
+        gmail_api_client_secret,
     };
     let app_state = AppState::new(db, app_config);
     let app = app(app_state);

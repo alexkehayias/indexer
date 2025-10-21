@@ -101,7 +101,7 @@ async fn main() -> tantivy::Result<()> {
     }
 
     if args.serve {
-        server::serve(args.host, args.port, notes_path, index_path, vec_db_path).await;
+        server::serve(args.host, args.port, notes_path.clone(), index_path, vec_db_path).await;
     }
 
     Ok(())

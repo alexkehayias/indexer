@@ -8,7 +8,7 @@ use std::path::PathBuf;
 use tantivy::schema::*;
 use tantivy::{doc, Index, IndexWriter};
 use text_splitter::{ChunkConfig, TextSplitter};
-use tiktoken_rs::cl100k_base;
+use tiktoken_rs::{cl100k_base, CoreBPE};
 use zerocopy::AsBytes;
 
 struct Note {
@@ -118,6 +118,57 @@ pub fn index_notes_all(index_path: &str, notes_path: &str) {
     index_writer.commit().expect("Index write failed");
 }
 
+pub fn index_note_vector(db: &mut Connection, embeddings_model: &TextEmbedding, splitter: &TextSplitter<CoreBPE>, note_path: &str) -> Result<()> {
+    // Generate embeddings and store it in the DB
+    let mut note_meta_stmt = db.prepare(
+        "REPLACE INTO note_meta(id, file_name, title, tags, body) VALUES (?, ?, ?, ?, ?)",
+    )?;
+    let mut embedding_stmt =
+        db.prepare("INSERT OR REPLACE INTO vec_items(note_meta_id, embedding) VALUES (?, ?)")?;
+    let mut embedding_update_stmt =
+        db.prepare("UPDATE vec_items set embedding = ? WHERE note_meta_id = ?")?;
+
+    tracing::debug!("Vector indexing note: {}", &note_path);
+
+    let content = fs::read_to_string(note_path).unwrap();
+    let note = parse_note(&content);
+
+    // Update the note meta table
+    note_meta_stmt
+        .execute(rusqlite::params![
+            note.id, note_path, note.title, note.tags, note.body
+        ])
+        .expect("Note meta upsert failed");
+
+    // Assume that chunks returns an iterator of &str
+    let mut accum = Vec::new();
+    for chunk in splitter.chunks(content.as_str()) {
+        // Convert the &str chunk into an owned String
+        accum.push(chunk.to_string());
+    }
+
+    let items = embeddings_model
+        .embed(accum, None)
+        .expect("Failed to generate embeddings");
+    for item in items {
+        // Upserts are not currently supported by sqlite for
+        // virtual tables like the vector embeddings table so this
+        // attempts to insert a new row and then falls back to an
+        // update statement.
+        embedding_stmt
+            .execute(rusqlite::params![note.id, item.as_bytes()])
+            .unwrap_or_else(|_| {
+                embedding_update_stmt
+                    .execute(rusqlite::params![item.as_bytes(), note.id])
+                    .expect("Update failed")
+            });
+    }
+
+
+    Ok(())
+}
+
+
 /// Index each note's embeddings
 /// Target model has N tokens or roughly a M sized context window
 ///
@@ -141,60 +192,9 @@ pub fn index_notes_vector_all(db: &mut Connection, notes_path: &str) -> Result<(
     let splitter = TextSplitter::new(ChunkConfig::new(max_tokens).with_sizer(tokenizer));
 
     // Generate embeddings and store it in the DB
-    let mut note_meta_stmt = db.prepare(
-        "REPLACE INTO note_meta(id, file_name, title, tags, body) VALUES (?, ?, ?, ?, ?)",
-    )?;
-    let mut embedding_stmt =
-        db.prepare("INSERT OR REPLACE INTO vec_items(note_meta_id, embedding) VALUES (?, ?)")?;
-    let mut embedding_update_stmt =
-        db.prepare("UPDATE vec_items set embedding = ? WHERE note_meta_id = ?")?;
     for p in notes(notes_path).iter() {
-        tracing::debug!("Vector indexing note: {}", &p.display());
-
-        let content = fs::read_to_string(p).unwrap();
-        let note = parse_note(&content);
-
-        // Note IDs are unique by the filename
-        let file_name = p
-            .file_name()
-            .expect("No file name found")
-            .to_str()
-            .expect("Failed to convert file name to string");
-
-        // Update the note meta table
-        note_meta_stmt
-            .execute(rusqlite::params![
-                note.id, file_name, note.title, note.tags, note.body
-            ])
-            .expect("Note meta upsert failed");
-
-        // Read the file content into a String
-        let content = fs::read_to_string(p)
-            .unwrap_or_else(|_| panic!("Failed to read note {}", &p.display()));
-
-        // Assume that chunks returns an iterator of &str
-        let mut accum = Vec::new();
-        for chunk in splitter.chunks(content.as_str()) {
-            // Convert the &str chunk into an owned String
-            accum.push(chunk.to_string());
-        }
-        tracing::debug!("Generating embeddings for note {}", &p.display());
-        let items = embeddings_model
-            .embed(accum, None)
-            .expect("Failed to generate embeddings");
-        for item in items {
-            // Upserts are not currently supported by sqlite for
-            // virtual tables like the vector embeddings table so this
-            // attempts to insert a new row and then falls back to an
-            // update statement.
-            embedding_stmt
-                .execute(rusqlite::params![note.id, item.as_bytes()])
-                .unwrap_or_else(|_| {
-                    embedding_update_stmt
-                        .execute(rusqlite::params![item.as_bytes(), note.id])
-                        .expect("Update failed")
-                });
-        }
+        let file_name = p.to_str().unwrap();
+        index_note_vector(db, &embeddings_model, &splitter, file_name)?;
     }
 
     Ok(())

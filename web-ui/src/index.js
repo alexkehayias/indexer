@@ -5,13 +5,26 @@
 
   const handleSearch = async (includeSimilarity, viewSelected, val) => {
     try {
+      const queryEncoded = encodeURIComponent(val);
       // Auto hide results from journal entries
-      const query = encodeURIComponent("-title:journal " + val);
+      const defaultParams = encodeURIComponent("-title:journal");
+
+      // Update the URL params so the link to the results can be
+      // shared nicely
+      const url = new URL(window.location);
+      const params = url.searchParams;
+      params.set('query', queryEncoded);
+      window.history.replaceState(null, '', url);
+
       const headers = new Headers();
       headers.append("Content-Type", "application/json");
 
+      // Join the original query and default search params with a
+      // space
+      const queryWithDefaults = `${queryEncoded}%20${defaultParams}`;
+
       const response = await fetch(
-        `/notes/search?query=${query}&include_similarity=${includeSimilarity}`,
+        `/notes/search?query=${queryWithDefaults}&include_similarity=${includeSimilarity}`,
         {
           method: "GET",
           headers,
@@ -250,8 +263,8 @@
   const viewSelected = urlParams.get("view_selected") === "true";
 
   if (initQuery) {
-    searchInput.value = initQuery;
-    handleSearch(includeSimilarity, viewSelected, initQuery);
+    searchInput.value = decodeURIComponent(initQuery);
+    handleSearch(includeSimilarity, viewSelected, searchInput.value);
   }
 
   // Handle search as you type

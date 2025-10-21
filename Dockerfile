@@ -37,5 +37,7 @@ COPY ./web-ui/src/chat/img/ ./web-ui/src/chat/img/
 
 EXPOSE 2222
 
-# Initialize the index and run the server
-ENTRYPOINT ["./indexer", "serve", "--host", "0.0.0.0", "--port", "2222"]
+# Default command with run in docker so we can use `dokku run`
+# Need to update $DOKKU_DOCKERFILE_START_CMD so that the server starts
+#  with `./indexer serve --host 0.0.0.0 --port 2222`
+ENTRYPOINT ["./indexer"]

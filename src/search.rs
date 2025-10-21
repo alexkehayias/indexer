@@ -1,7 +1,6 @@
 use fastembed::{EmbeddingModel, InitOptions, TextEmbedding};
 use itertools::Itertools;
-use rusqlite::Result;
-use tokio_rusqlite::Connection;
+use tokio_rusqlite::{Connection, Result};
 use serde::Serialize;
 use serde_json::json;
 use tantivy::collector::TopDocs;
@@ -81,10 +80,10 @@ fn fulltext_search(index_path: &str, query: &aql::Expr, limit: usize) -> Result<
 /// are ordered by ascending distance because sqlite-vec only supports
 /// ascending distance.
 pub async fn search_similar_notes(
-    db: &tokio_rusqlite::Connection,
+    db: &Connection,
     query: &aql::Expr,
     limit: usize,
-) -> anyhow::Result<Vec<SearchHit>> {
+) -> Result<Vec<SearchHit>> {
     // Extract the relevant text to use for similar search from the
     // AQL query. It's possible there is nothing to use for a
     // similarity search. This can happen when the query is entirely
@@ -128,7 +127,7 @@ pub async fn search_similar_notes(
                 score: r.get(5)?,
             })
         })?
-        .collect::<Result<Vec<SearchHit>, _>>()?;
+        .collect::<std::result::Result<Vec<SearchHit>, _>>()?;
         Ok(found)
     }).await?;
     Ok(result)
@@ -245,8 +244,8 @@ pub async fn search_notes(
                     task_closed: r.get(10)?,
                     meeting_date: r.get(11)?,
                 })
-            }).unwrap()
-            .collect::<Result<Vec<SearchResult>, _>>()?;
+            })?
+            .collect::<std::result::Result<Vec<SearchResult>, _>>()?;
             Ok(found)
         }).await.unwrap()
     } else {
@@ -269,8 +268,8 @@ pub async fn search_notes(
                     task_closed: r.get(10)?,
                     meeting_date: r.get(11)?,
                 })
-            }).unwrap()
-            .collect::<Result<Vec<SearchResult>, _>>()?;
+            })?
+            .collect::<std::result::Result<Vec<SearchResult>, _>>()?;
             Ok(found)
         }).await.unwrap()
     };

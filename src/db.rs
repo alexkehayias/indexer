@@ -1,10 +1,9 @@
-use rusqlite::Connection;
-use tokio_rusqlite::{Connection as AsyncConnection, Result, ffi::sqlite3_auto_extension};
+use tokio_rusqlite::{Connection, Result, ffi::sqlite3_auto_extension};
 use sqlite_vec::sqlite3_vec_init;
 
 /// Initialize the db by creating all tables. This function should
 /// always succeed and is safe to run multiple times.
-pub fn initialize_db(db: &Connection) -> Result<()> {
+pub fn initialize_db(db: &rusqlite::Connection) -> Result<()> {
     // Create a metadata table that has a foreign key to the
     // embeddings virtual table. This will be used to coordinate
     // upserts and hydrating the notes
@@ -113,7 +112,7 @@ embedding float[384]
 
 /// Migrate the db from a previous schema to a new one. This is NOT
 /// safe to run more than once.
-pub fn migrate_db(db: &Connection) -> Result<()> {
+pub fn migrate_db(db: &rusqlite::Connection) -> Result<()> {
     // 2024-12-29 Add columns for type and status
     // 2025-03-30 Add column for category
     // 2025-04-05 Add columns for task scheduled, deadline, and
@@ -154,7 +153,7 @@ COMMIT;",
     Ok(())
 }
 
-pub async fn async_db(path_to_db_file: &str) -> anyhow::Result<AsyncConnection, anyhow::Error> {
+pub async fn async_db(path_to_db_file: &str) -> anyhow::Result<Connection, anyhow::Error> {
     unsafe {
         sqlite3_auto_extension(Some(std::mem::transmute::<
             *const (),
@@ -165,6 +164,6 @@ pub async fn async_db(path_to_db_file: &str) -> anyhow::Result<AsyncConnection, 
             ) -> i32,
         >(sqlite3_vec_init as *const ())));
     }
-    let db = AsyncConnection::open(format!("{}/vector.db", path_to_db_file)).await;
+    let db = Connection::open(format!("{}/vector.db", path_to_db_file)).await;
     Ok(db?)
 }

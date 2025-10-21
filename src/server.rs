@@ -259,7 +259,7 @@ async fn push_subscription(
             let mut subscription_stmt = conn.prepare(
                 "REPLACE INTO push_subscription(endpoint, p256dh, auth) VALUES (?, ?, ?)",
             )?;
-            subscription_stmt.execute(rusqlite::params![
+            subscription_stmt.execute(tokio_rusqlite::params![
                 subscription.endpoint,
                 p256dh,
                 auth,

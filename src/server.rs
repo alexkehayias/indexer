@@ -3,18 +3,21 @@ use std::env;
 use std::path::PathBuf;
 use std::sync::{Arc, Mutex, RwLock};
 
+use axum::middleware;
+use http::{header, HeaderValue};
 use tantivy::doc;
 use axum::extract::Query;
 use axum::{
     Router,
-    extract::{Path, State},
-    response::Json,
+    extract::{Path, State, Request},
+    response::{Json, Response},
     routing::{get, post},
 };
 use rusqlite::Connection;
 use serde::{Deserialize, Serialize};
 use serde_json::{Value, json};
 use tokio::task::JoinSet;
+use tower::ServiceBuilder;
 use tower_http::cors::CorsLayer;
 use tower_http::services::ServeDir;
 use tower_http::trace::TraceLayer;
@@ -396,10 +399,18 @@ async fn send_notification(
     Json(resp)
 }
 
+async fn set_static_cache_control(request: Request, next: middleware::Next) -> Response {
+    let mut response = next.run(request).await;
+    response.headers_mut().insert(
+        header::CACHE_CONTROL,
+        HeaderValue::from_static("no-cache"),
+    );
+    response
+}
+
 pub fn app(app_state: AppState) -> Router {
     let shared_state = SharedState::new(RwLock::new(app_state));
     let cors = CorsLayer::permissive();
-    let serve_dir = ServeDir::new("./web-ui/src");
 
     Router::new()
         // Search API endpoint
@@ -418,7 +429,15 @@ pub fn app(app_state: AppState) -> Router {
         .route("/push/subscribe", post(push_subscription))
         .route("/push/notification", post(send_notification))
         // Static server of assets in ./web-ui
-        .fallback_service(serve_dir)
+        .fallback_service(
+            ServiceBuilder::new()
+                .layer(middleware::from_fn(set_static_cache_control))
+                .service(
+                    ServeDir::new("./web-ui/src")
+                        .precompressed_br()
+                        .precompressed_gzip(),
+                ),
+        )
         .layer(TraceLayer::new_for_http())
         .layer(cors)
         .with_state(Arc::clone(&shared_state))

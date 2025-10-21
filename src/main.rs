@@ -125,6 +125,10 @@ struct Args {
     serve: bool,
 
     /// Set the server host address
+    #[arg(long, default_value="127.0.0.1")]
+    host: String,
+
+    /// Set the server port
     #[arg(long, default_value="1111")]
     port: String,
 }
@@ -132,7 +136,6 @@ struct Args {
 
 // Fulltext search of all notes
 async fn search(Query(params): Query<HashMap<String, String>>) -> Json<Value> {
-
     let schema = note_schema();
     let index_path = tantivy::directory::MmapDirectory::open("./.index").expect("Index not found");
     let idx = Index::open_or_create(index_path, schema.clone()).expect("Unable to open or create index");
@@ -171,11 +174,11 @@ async fn search(Query(params): Query<HashMap<String, String>>) -> Json<Value> {
 }
 
 
-async fn serve(port: String) {
+async fn serve(host: String, port: String) {
     let app = Router::new()
         .route("/notes/search", get(search));
 
-    let listener = tokio::net::TcpListener::bind(format!("127.0.0.1:{}", port))
+    let listener = tokio::net::TcpListener::bind(format!("{}:{}", host, port))
         .await
         .unwrap();
 
@@ -221,7 +224,7 @@ async fn main() -> tantivy::Result<()> {
     }
 
     if args.serve {
-        serve(args.port).await;
+        serve(args.host, args.port).await;
     }
 
     Ok(())

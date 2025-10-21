@@ -1,5 +1,4 @@
 /// Utilities for getting source documents for indexing
-
 use std::fs;
 use std::path::PathBuf;
 

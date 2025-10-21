@@ -20,8 +20,8 @@ use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
 
 use crate::indexing::index_notes_all;
 
-use super::search::search_notes;
 use super::git::maybe_pull_and_reset_repo;
+use super::search::search_notes;
 
 type SharedState = Arc<RwLock<AppState>>;
 

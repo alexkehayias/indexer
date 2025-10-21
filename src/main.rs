@@ -5,24 +5,24 @@ use clap::Parser;
 use tantivy::collector::TopDocs;
 use tantivy::query::QueryParser;
 use tantivy::schema::*;
-use tantivy::{Index, IndexWriter, ReloadPolicy};
+use tantivy::{Index, ReloadPolicy};
 
 mod schema;
 use schema::note_schema;
+mod indexing;
 mod search;
 mod server;
-mod indexing;
 use indexing::index_notes_all;
-mod source;
 mod git;
-use git::maybe_clone_repo;
+mod source;
+use git::{maybe_clone_repo, maybe_pull_and_reset_repo};
 
 #[derive(Parser, Debug)]
 #[command(version, about, long_about = None)]
 struct Args {
     /// Path to notes to index
-    #[arg(short, long)]
-    path: Option<String>,
+    #[arg(short, long, action)]
+    reindex: bool,
 
     /// Search notes with query
     #[arg(short, long)]
@@ -53,14 +53,14 @@ async fn main() -> tantivy::Result<()> {
     let index_path = tantivy::directory::MmapDirectory::open("./.index")?;
     let idx = Index::open_or_create(index_path, schema.clone())?;
 
-    if let Some(notes_path) = args.path {
-        let mut index_writer: IndexWriter = idx.writer(50_000_000)?;
-
-        for note in source::notes(&notes_path) {
-            let _ = indexing::index_note(&mut index_writer, &schema, note);
-        }
-
-        index_writer.commit()?;
+    if args.reindex {
+        // Clone the notes repo and index it
+        let repo_url =
+            env::var("INDEXER_NOTES_REPO_URL").expect("Missing env var INDEXER_NOTES_REPO_URL");
+        let deploy_key_path = env::var("INDEXER_NOTES_DEPLOY_KEY_PATH")
+            .expect("Missing env var INDEXER_NOTES_REPO_URL");
+        maybe_pull_and_reset_repo(&repo_url, deploy_key_path);
+        indexing::index_notes_all();
     }
 
     if let Some(query) = args.query {

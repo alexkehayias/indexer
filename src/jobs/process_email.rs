@@ -7,7 +7,7 @@ use super::PeriodicJob;
 use crate::{
     chat::insert_chat_message,
     config::AppConfig,
-    notification::{broadcast_push_notification, find_all_notification_subscriptions},
+    notification::{broadcast_push_notification, find_all_notification_subscriptions, PushNotificationPayload},
     oauth::find_all_gmail_auth_emails,
 };
 
@@ -51,11 +51,17 @@ impl PeriodicJob for ProcessEmail {
         }
 
         // Broadcast push notification to all subscribers, using a new read lock for DB/config each time
+        let payload = PushNotificationPayload::new(
+            "Background job update",
+            &format!("Emails processed! {}", summary),
+            None,
+            None,
+        );
         let subscriptions = find_all_notification_subscriptions(db).await.unwrap();
         broadcast_push_notification(
             subscriptions,
             vapid_key_path.to_string(),
-            format!("Emails processed! {}", summary).to_string(),
+            payload,
         )
         .await;
     }

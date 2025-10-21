@@ -11,36 +11,27 @@ use text_splitter::{ChunkConfig, TextSplitter};
 use tiktoken_rs::cl100k_base;
 use zerocopy::AsBytes;
 
-// There is no such thing as updates in tantivy so this function will
-// produce duplicates if called repeatedly
-pub fn index_note(
-    index_writer: &mut IndexWriter,
-    schema: &Schema,
-    path: PathBuf,
-) -> tantivy::Result<()> {
-    tracing::debug!("Indexing note: {}", &path.display());
+struct Note {
+    id: String,
+    title: String,
+    body: String,
+    tags: String,
+}
 
-    let id = schema.get_field("id")?;
-    let title = schema.get_field("title")?;
-    let body = schema.get_field("body")?;
-    let tags = schema.get_field("tags")?;
-    let file_name = schema.get_field("file_name")?;
-
-    // Parse the file from the path
-    let content = fs::read_to_string(&path)?;
+/// Parse the content into a `Note`
+fn parse_note(content: &str) -> Note {
     let config = ParseConfig {
         ..Default::default()
     };
-    let p = config.parse(&content);
+    let p = config.parse(content);
 
     let props = p.document().properties().expect(
         "Missing property
 drawer",
     );
-    let id_value = props.get("ID").expect("Missing org-id").to_string();
-    let file_name_value = path.file_name().unwrap().to_string_lossy().into_owned();
-    let title_value = p.title().expect("No title found");
-    let body_value = p.document().raw();
+    let id = props.get("ID").expect("Missing org-id").to_string();
+    let title = p.title().expect("No title found");
+    let body = p.document().raw();
     let filetags: Vec<Vec<String>> = p
         .keywords()
         .filter_map(|k| match k.key().to_string().as_str() {
@@ -58,18 +49,46 @@ drawer",
 
     // For now, tags are a comma separated string which should
     // allow it to still be searchable
-    let tags_value = if filetags.is_empty() {
+    let tags = if filetags.is_empty() {
         String::new()
     } else {
         filetags[0].to_owned().join(",")
     };
 
+    Note {
+        id,
+        title,
+        body,
+        tags,
+    }
+}
+
+// There is no such thing as updates in tantivy so this function will
+// produce duplicates if called repeatedly
+pub fn index_note(
+    index_writer: &mut IndexWriter,
+    schema: &Schema,
+    path: PathBuf,
+) -> tantivy::Result<()> {
+    tracing::debug!("Indexing note: {}", &path.display());
+
+    let id = schema.get_field("id")?;
+    let title = schema.get_field("title")?;
+    let body = schema.get_field("body")?;
+    let tags = schema.get_field("tags")?;
+    let file_name = schema.get_field("file_name")?;
+
+    // Parse the file from the path
+    let content = fs::read_to_string(&path)?;
+    let file_name_value = path.file_name().unwrap().to_string_lossy().into_owned();
+    let note = parse_note(&content);
+
     index_writer.add_document(doc!(
-        id => id_value,
-        title => title_value,
-        body => body_value,
+        id => note.id,
+        title => note.title,
+        body => note.body,
         file_name => file_name_value,
-        tags => tags_value,
+        tags => note.tags,
     ))?;
 
     Ok(())
@@ -117,14 +136,19 @@ pub fn index_notes_vector_all(db: &mut Connection, notes_path: &str) -> Result<(
     let splitter = TextSplitter::new(ChunkConfig::new(max_tokens).with_sizer(tokenizer));
 
     // Generate embeddings and store it in the DB
-    let mut note_meta_stmt = db.prepare("REPLACE INTO note_meta(id) VALUES (?)")?;
+    let mut note_meta_stmt = db.prepare(
+        "REPLACE INTO note_meta(id, file_name, title, tags, body) VALUES (?, ?, ?, ?, ?)",
+    )?;
     let mut embedding_stmt =
         db.prepare("INSERT OR REPLACE INTO vec_items(note_meta_id, embedding) VALUES (?, ?)")?;
     let mut embedding_update_stmt =
         db.prepare("UPDATE vec_items set embedding = ? WHERE note_meta_id = ?")?;
     for p in notes(notes_path).iter() {
+        let content = fs::read_to_string(p).unwrap();
+        let note = parse_note(&content);
+
         // Note IDs are unique by the filename
-        let id = p
+        let file_name = p
             .file_name()
             .expect("No file name found")
             .to_str()
@@ -132,7 +156,9 @@ pub fn index_notes_vector_all(db: &mut Connection, notes_path: &str) -> Result<(
 
         // Update the note meta table
         note_meta_stmt
-            .execute(rusqlite::params![id])
+            .execute(rusqlite::params![
+                note.id, file_name, note.title, note.tags, note.body
+            ])
             .expect("Note meta upsert failed");
 
         // Read the file content into a String
@@ -155,10 +181,10 @@ pub fn index_notes_vector_all(db: &mut Connection, notes_path: &str) -> Result<(
             // attempts to insert a new row and then falls back to an
             // update statement.
             embedding_stmt
-                .execute(rusqlite::params![id, item.as_bytes()])
+                .execute(rusqlite::params![note.id, item.as_bytes()])
                 .unwrap_or_else(|_| {
                     embedding_update_stmt
-                        .execute(rusqlite::params![item.as_bytes(), id])
+                        .execute(rusqlite::params![item.as_bytes(), note.id])
                         .expect("Update failed")
                 });
         }

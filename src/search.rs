@@ -19,7 +19,6 @@ pub struct FullTextSearchHit {
     tags: Option<String>,
 }
 
-
 fn fulltext_search(query: &str) -> Vec<FullTextSearchHit> {
     let schema = note_schema();
     let index_path = tantivy::directory::MmapDirectory::open("./.index").expect("Index not found");
@@ -53,21 +52,40 @@ fn fulltext_search(query: &str) -> Vec<FullTextSearchHit> {
 
             // Parse the document into a more reasonable format
             // Wow this is gross
-            let title_val = doc.get("title").unwrap()[0].as_ref().as_str().unwrap().to_string();
-            let id_val = doc.get("id").unwrap()[0].as_ref().as_str().unwrap().to_string();
-            let tags_val = doc.get("tags").unwrap()[0].as_ref().as_str().unwrap().to_string();
-            let file_name_val = doc.get("file_name").unwrap()[0].as_ref().as_str().unwrap().to_string();
+            let title_val = doc.get("title").unwrap()[0]
+                .as_ref()
+                .as_str()
+                .unwrap()
+                .to_string();
+            let id_val = doc.get("id").unwrap()[0]
+                .as_ref()
+                .as_str()
+                .unwrap()
+                .to_string();
+            let tags_val = doc.get("tags").unwrap()[0]
+                .as_ref()
+                .as_str()
+                .unwrap()
+                .to_string();
+            let file_name_val = doc.get("file_name").unwrap()[0]
+                .as_ref()
+                .as_str()
+                .unwrap()
+                .to_string();
             FullTextSearchHit {
                 score: *score,
                 id: id_val,
                 title: title_val,
-                tags: if tags_val.is_empty() { None } else { Some(tags_val) },
+                tags: if tags_val.is_empty() {
+                    None
+                } else {
+                    Some(tags_val)
+                },
                 file_name: file_name_val,
             }
         })
         .collect()
 }
-
 
 #[derive(Serialize)]
 pub struct SemanticSearchHit {
@@ -98,15 +116,28 @@ pub fn search_similar_notes(db: &Connection, query: &str) -> Result<Vec<Semantic
           LIMIT 10
         ",
         )?
-        .query_map(
-            [q.as_bytes()],
-            |r| Ok(SemanticSearchHit { file_name: r.get(0)?, score: r.get(1)?})
-        )?
+        .query_map([q.as_bytes()], |r| {
+            Ok(SemanticSearchHit {
+                file_name: r.get(0)?,
+                score: r.get(1)?,
+            })
+        })?
         .collect::<Result<Vec<SemanticSearchHit>, _>>()?;
     Ok(result)
 }
 
 // Fulltext search of all notes
-pub fn search_notes(_db: &Connection, query: &str, _include_similarity: bool) -> Vec<FullTextSearchHit> {
-    fulltext_search(query)
+pub fn search_notes(
+    db: &Connection,
+    query: &str,
+    include_similarity: bool,
+) -> Vec<FullTextSearchHit> {
+    let fts_result = fulltext_search(query);
+    if include_similarity {
+        let _vec_search_result = search_similar_notes(db, query).unwrap_or_default();
+        // TODO: Do something to combine search results
+        fts_result
+    } else {
+        fts_result
+    }
 }

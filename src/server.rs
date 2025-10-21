@@ -35,9 +35,16 @@ struct AppConfig {
     index_path: String,
 }
 
+#[derive(Debug, Deserialize)]
+struct LastSelection {
+    id: String,
+    title: String,
+    file_name: String,
+}
+
 struct AppState {
     // Stores the latest search hit selected by the user
-    latest_selection: HashMap<String, String>,
+    latest_selection: Option<LastSelection>,
     db: Mutex<Connection>,
     config: AppConfig,
 }
@@ -45,45 +52,32 @@ struct AppState {
 impl AppState {
     fn new(db: Connection, config: AppConfig) -> Self {
         Self {
-            latest_selection: HashMap::new(),
+            latest_selection: None,
             db: Mutex::new(db),
             config,
         }
     }
 }
 
-#[derive(Debug, Deserialize)]
-struct SetLatest {
-    id: String,
-    title: String,
-    file_name: String,
+async fn kv_get(State(state): State<SharedState>) -> Json<Option<Value>> {
+    if let Some(LastSelection {id, file_name, title}) = &state.read().unwrap().latest_selection {
+        let resp = json!({
+            "id": id,
+            "file_name": file_name,
+            "title": title,
+        });
+        Json(Some(resp))
+    } else {
+        Json(None)
+    }
 }
 
-async fn kv_get(State(state): State<SharedState>) -> Json<Value> {
-    let resp = json!({
-        "id": state.read().unwrap().latest_selection.get("id"),
-        "file_name": state.read().unwrap().latest_selection.get("file_name"),
-        "title": state.read().unwrap().latest_selection.get("title"),
+async fn kv_set(State(state): State<SharedState>, Json(data): Json<LastSelection>) {
+    state.write().unwrap().latest_selection = Some(LastSelection {
+        id: data.id,
+        file_name: data.file_name,
+        title: data.title,
     });
-    Json(resp)
-}
-
-async fn kv_set(State(state): State<SharedState>, Json(data): Json<SetLatest>) {
-    state
-        .write()
-        .unwrap()
-        .latest_selection
-        .insert(String::from("id"), data.id);
-    state
-        .write()
-        .unwrap()
-        .latest_selection
-        .insert(String::from("file_name"), data.file_name);
-    state
-        .write()
-        .unwrap()
-        .latest_selection
-        .insert(String::from("title"), data.title);
 }
 
 // Fulltext search of all notes

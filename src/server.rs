@@ -91,18 +91,6 @@ impl ChatResponse {
     }
 }
 
-#[derive(Clone, Debug)]
-struct ChatSession {
-    #[allow(unused)]
-    session_id: String,
-    transcript: Vec<Message>,
-}
-
-type ChatSessions = HashMap<String, ChatSession>;
-
-// AppConfig is now in config/mod.rs
-
-
 #[derive(Debug, Deserialize)]
 struct LastSelection {
     id: String,
@@ -243,13 +231,11 @@ pub struct PushSubscriptionRequest {
 }
 
 // Register a client for push notifications
+#[debug_handler]
 async fn push_subscription(
     State(state): State<SharedState>,
     Json(subscription): Json<PushSubscriptionRequest>,
-) {
-    let shared_state = state.read().unwrap();
-    let db = shared_state.db.lock().unwrap_or_else(|e| e.into_inner());
-
+) -> Result<Json<Value>, ApiError> {
     let p256dh = subscription
         .keys
         .get("p256dh")
@@ -261,18 +247,23 @@ async fn push_subscription(
         .expect("Missing auth key")
         .clone();
 
-    let mut subscription_stmt = db.prepare(
-        "REPLACE INTO push_subscription(endpoint, p256dh, auth) VALUES (?, ?, ?)",
-    ).unwrap();
-    subscription_stmt
-        .execute(rusqlite::params![
-            subscription.endpoint,
-            p256dh,
-            auth,
-        ])
-        .expect("Note meta upsert failed");
-    db.execute("DELETE FROM vec_items", [])
-        .expect("Failed to delete vec_items data");
+    {
+        let db = state.read().unwrap().a_db.clone();
+        db.call(move |conn| {
+            let mut subscription_stmt = conn.prepare(
+                "REPLACE INTO push_subscription(endpoint, p256dh, auth) VALUES (?, ?, ?)",
+            )?;
+            subscription_stmt.execute(rusqlite::params![
+                subscription.endpoint,
+                p256dh,
+                auth,
+            ])?;
+            conn.execute("DELETE FROM vec_items", [])?;
+            Ok(())
+        }).await?;
+    }
+
+    Ok(Json(json!({"success": true})))
 }
 
 async fn search(

@@ -3,6 +3,7 @@ use std::fs;
 
 use clap::Parser;
 use serde_json::json;
+use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
 
 mod indexing;
 mod schema;
@@ -47,6 +48,23 @@ struct Args {
 #[tokio::main]
 async fn main() -> tantivy::Result<()> {
     let args = Args::parse();
+
+    // If using the CLI only and not the webserver, set up tracing to
+    // output to stdout and stderr
+    if !args.serve {
+        tracing_subscriber::registry()
+            .with(
+                tracing_subscriber::EnvFilter::try_from_default_env().unwrap_or_else(|_| {
+                    format!(
+                        "{}=debug",
+                        env!("CARGO_CRATE_NAME")
+                    )
+                        .into()
+                }),
+            )
+            .with(tracing_subscriber::fmt::layer())
+            .init();
+    }
 
     let storage_path = env::var("INDEXER_STORAGE_PATH").unwrap_or("./".to_string());
     let index_path = format!("{}/index", storage_path);

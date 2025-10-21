@@ -85,9 +85,9 @@
               {
                 method: "POST",
                 body: JSON.stringify({
-                  id: r.id[0],
-                  file_name: r.file_name[0],
-                  title: r.title[0],
+                  id: r.id,
+                  file_name: r.file_name,
+                  title: r.title,
                 }),
                 headers: {
                   'Accept': 'application/json',

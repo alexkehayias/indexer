@@ -17,6 +17,7 @@ pub struct NoteSearchArgs {
 pub struct NoteSearchTool {
     pub r#type: ToolType,
     pub function: Function<NoteSearchProps>,
+    api_base_url: String,
 }
 
 impl ToolCall for NoteSearchTool {
@@ -26,12 +27,17 @@ impl ToolCall for NoteSearchTool {
         let curl = Command::new("sh")
             .arg("-c")
             .arg(format!(
-                "curl --get --data-urlencode \"query={}\" \"http://localhost:2222/notes/search\"",
-                fn_args.query
+                "curl --get --data-urlencode \"query={}\" \"{}/notes/search\"",
+                fn_args.query,
+                self.api_base_url
             ))
             .output()
             .expect("failed to execute process");
 
+        if !&curl.status.success() {
+            let stderr = std::str::from_utf8(&curl.stderr).expect("Failed to parse stderr");
+            panic!("Note search API request failed: {}", stderr);
+        }
         let stdout = std::str::from_utf8(&curl.stdout).expect("Failed to parse stdout");
         stdout.to_string()
     }
@@ -41,8 +47,8 @@ impl ToolCall for NoteSearchTool {
     }
 }
 
-impl Default for NoteSearchTool {
-    fn default() -> Self {
+impl NoteSearchTool {
+    pub fn new(api_base_url: &str) -> Self {
         let function = Function {
             name: String::from("search_notes"),
             description: String::from("Find notes the user has written about."),
@@ -62,6 +68,13 @@ impl Default for NoteSearchTool {
         Self {
             r#type: ToolType::Function,
             function,
+            api_base_url: api_base_url.to_string(),
         }
+    }
+}
+
+impl Default for NoteSearchTool {
+    fn default() -> Self {
+        Self::new("http://localhost:2222")
     }
 }

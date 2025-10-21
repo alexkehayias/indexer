@@ -33,12 +33,33 @@ pub struct MessageDetail {
     pub thread_id: String,
     pub snippet: Option<String>,
     pub payload: Option<MessagePayload>,
+    #[serde(rename = "labelIds")]
+    pub label_ids: Option<Vec<String>>,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct MessagePartBody {
+    #[serde(rename = "attachmentId")]
+    attachment_id: Option<String>,
+    size: u64,
+    // Base64 encoded
+    data: Option<String>,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct MessagePart {
+    #[serde(rename = "partId")]
+    pub part_id: String,
+    #[serde(rename = "mimeType")]
+    pub mimetype: String,
+    pub body: Option<MessagePartBody>,
 }
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct MessagePayload {
     pub headers: Option<Vec<MessageHeader>>,
-    // ... Additional fields as needed
+    pub body: Option<MessagePartBody>,
+    pub parts: Option<Vec<MessagePart>>,
 }
 
 #[derive(Debug, Serialize, Deserialize)]

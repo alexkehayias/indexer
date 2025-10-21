@@ -148,9 +148,84 @@
               console.log(`Updated latest hit to ${r.id}`)
             }
 
-            // Redirect to view the note
+            // Show note in fullscreen modal if viewSelected
             if (viewSelected) {
-              window.location.href = `/notes/${r.id}/view`;
+              // Create or reuse overlay modal
+              let modal = document.getElementById('note-modal');
+              let addedModal = false;
+              if (!modal) {
+                modal = document.createElement('div');
+                modal.id = 'note-modal';
+                modal.className = 'fixed inset-0 flex items-center justify-center bg-black bg-opacity-85 z-[10000]';
+                modal.innerHTML = `<div id=\"note-modal-content\" class=\"relative bg-white max-w-2xl w-[95vw] max-h-[90vh] rounded-lg shadow-xl p-8 overflow-auto\"></div>`;
+                document.body.appendChild(modal);
+                addedModal = true;
+              }
+              const content = modal.querySelector('#note-modal-content');
+
+              // Show loading
+              content.innerHTML = '<div class="mb-4 text-center text-xl">Loading...</div>';
+              modal.style.display = 'flex';
+
+              function dismissModal() {
+                modal.style.display = 'none';
+                document.removeEventListener('keydown', escListener);
+                if (addedModal) {
+                  modal.remove();
+                }
+              }
+
+              // Click outside the modal content to close
+              modal.onclick = function(e) {
+                if (e.target === modal) {
+                  dismissModal();
+                }
+              }
+
+              // ESC key closes modal
+              function escListener(e) {
+                if (e.key === 'Escape') {
+                  dismissModal();
+                }
+              }
+              document.addEventListener('keydown', escListener);
+
+              // Make modal closable via button
+              if (!document.getElementById('modal-close-btn')) {
+                const closeBtn = document.createElement('button');
+                closeBtn.id = 'modal-close-btn';
+                closeBtn.innerText = '×';
+                closeBtn.className = 'absolute top-3 right-6 bg-transparent border-0 text-3xl text-gray-500 hover:text-black cursor-pointer';
+                closeBtn.onclick = dismissModal;
+                content.appendChild(closeBtn);
+              }
+
+              // Fetch and render the note JSON
+              fetch(`/notes/${r.id}/view`,{
+                  headers: { 'Accept': 'application/json' }
+                })
+                .then(async(resp) => {
+                  if (!resp.ok) throw new Error('Failed to fetch note');
+                  return resp.json();
+                })
+                .then(noteData => {
+                  let html = '';
+                  // Show title
+                  html += `<div class=\"text-2xl font-bold mb-2\">${noteData.title||''}</div>`;
+                  // Tags
+                  if (noteData.tags) {
+                    html += `<div class=\"mb-4\">${noteData.tags.split(',').map(t=>`<span class=\\"inline-block mr-2 bg-gray-200 text-gray-700 text-xs px-2 py-0.5 rounded-full\\">#${t}</span>`).join('')}</div>`;
+                  }
+                  // Content (plain text, preserving white space)
+                  html += `<div class=\"whitespace-pre-wrap leading-relaxed text-base text-gray-800\">${noteData.body||''}</div>`;
+                  // Insert and keep the close button on top
+                  content.innerHTML = `<button id=\"modal-close-btn\" class=\"absolute top-3 right-6 bg-transparent border-0 text-3xl text-gray-500 hover:text-black cursor-pointer\">×</button>` + html;
+                  content.querySelector('#modal-close-btn').onclick = dismissModal;
+                })
+                .catch(err => {
+                  content.innerHTML = `<div class=\"text-center text-red-700 p-8\">Failed to load note: ${err.message}</div>`;
+                })
+              ;
               return;
             }
           })

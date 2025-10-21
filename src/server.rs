@@ -1,7 +1,7 @@
 use std::collections::HashMap;
-use std::path::PathBuf;
 use std::env;
 use std::fs;
+use std::path::PathBuf;
 use std::sync::{Arc, Mutex, RwLock};
 
 use axum::response::Html;
@@ -92,8 +92,8 @@ async fn search(
     Query(params): Query<HashMap<String, String>>,
 ) -> Json<Value> {
     let query = params.get("query");
-    let include_body = params.contains_key("include_body")
-        && params.get("include_body").unwrap() == "true";
+    let include_body =
+        params.contains_key("include_body") && params.get("include_body").unwrap() == "true";
 
     let results = if let Some(query) = query {
         let shared_state = state.read().unwrap();
@@ -150,8 +150,9 @@ async fn index_notes(State(state): State<SharedState>) -> Json<Value> {
         .map(|f| PathBuf::from(format!("{}/{}", notes_path, f)))
         .collect();
     let filter_paths = if paths.is_empty() { None } else { Some(paths) };
+
     // Re-index just the notes that changed
-    index_all(&mut db, index_path, notes_path, filter_paths)
+    index_all(&mut db, index_path, notes_path, true, true, filter_paths)
         .expect("Vector indexing failed");
 
     let resp = json!({

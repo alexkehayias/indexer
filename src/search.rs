@@ -31,7 +31,12 @@ pub struct SearchHit {
     body: Option<String>,
 }
 
-fn fulltext_search(index_path: &str, include_body: bool, query: &str, limit: usize) -> Vec<SearchHit> {
+fn fulltext_search(
+    index_path: &str,
+    include_body: bool,
+    query: &str,
+    limit: usize,
+) -> Vec<SearchHit> {
     let schema = note_schema();
     let index_path = tantivy::directory::MmapDirectory::open(index_path).expect("Index not found");
     let idx =
@@ -105,7 +110,7 @@ fn fulltext_search(index_path: &str, include_body: bool, query: &str, limit: usi
                 file_name: file_name_val,
                 is_task: doc_type_val == "task",
                 task_status: status_val,
-                body: if include_body {Some(body_val)} else {None}
+                body: if include_body { Some(body_val) } else { None },
             }
         })
         .collect()
@@ -114,7 +119,12 @@ fn fulltext_search(index_path: &str, include_body: bool, query: &str, limit: usi
 /// Returns the note ID and similarity distance for the query. Results
 /// are ordered by ascending distance because sqlite-vec only supports
 /// ascending distance.
-pub fn search_similar_notes(db: &Connection, include_body: bool, query: &str, limit: usize) -> Result<Vec<SearchHit>> {
+pub fn search_similar_notes(
+    db: &Connection,
+    include_body: bool,
+    query: &str,
+    limit: usize,
+) -> Result<Vec<SearchHit>> {
     let embeddings_model = TextEmbedding::try_new(
         InitOptions::new(EmbeddingModel::BGESmallENV15).with_show_download_progress(true),
     )
@@ -146,7 +156,7 @@ pub fn search_similar_notes(db: &Connection, include_body: bool, query: &str, li
                 file_name: r.get(1)?,
                 title: r.get(2)?,
                 tags: r.get(3)?,
-                body: if include_body { Some(r.get(4)?)} else { None },
+                body: if include_body { Some(r.get(4)?) } else { None },
                 score: r.get(5)?,
                 // TODO: update this once task meta data is stored in
                 // the DB
@@ -173,7 +183,8 @@ pub fn search_notes(
     if include_similarity {
         let mut result = fulltext_search(index_path, include_body, query, limit);
         let similarity_query = query.replace("-title:journal ", "");
-        let mut vec_search_result = search_similar_notes(db, include_body, &similarity_query, limit).unwrap_or_default();
+        let mut vec_search_result =
+            search_similar_notes(db, include_body, &similarity_query, limit).unwrap_or_default();
 
         // Combine the results, dedupe, then sort by score
         result.append(&mut vec_search_result);

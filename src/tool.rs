@@ -24,10 +24,13 @@ impl ToolCall for NoteSearchTool {
     fn call(&self, args: &str) -> String {
         let fn_args: NoteSearchArgs = serde_json::from_str(args).unwrap();
 
+        // Use system curl to query the search API with a max timeout
+        // of 10s TODO: Remove this blocking call and replace with an
+        // async http client
         let curl = Command::new("sh")
             .arg("-c")
             .arg(format!(
-                "curl --get --data-urlencode \"query={}\" \"{}/notes/search\"",
+                "curl --get --data-urlencode \"query={}\" \"{}/notes/search\" -m 10",
                 fn_args.query, self.api_base_url
             ))
             .output()

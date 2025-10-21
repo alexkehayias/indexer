@@ -13,6 +13,7 @@ mod tests {
         body::Body,
         http::{Request, StatusCode},
     };
+    use indexer::db::async_db;
     use indexer::db::initialize_db;
     use indexer::db::vector_db;
     use indexer::indexing::index_all;
@@ -35,7 +36,7 @@ use indexer::config::AppConfig;
     /// to a lock held by `tantivy` during index writing so add a
     /// `#[serial]` to the test function or run `cargo test --
     /// --test-threads=1`.
-    fn test_app() -> Router {
+    async fn test_app() -> Router {
         // Create a unique directory for the test with a randomly
         // generated name using a timestamp to avoid collisions and
         // vulnerabilities
@@ -56,9 +57,13 @@ use indexer::config::AppConfig;
         fs::create_dir_all(&index_path).expect("Failed to create index directory");
         fs::create_dir_all(&vec_db_path).expect("Failed to create db directory");
 
+        let db_path_str = dir.join(&vec_db_path);
+        let db_path_str = db_path_str.to_str().unwrap();
+
         let mut db =
-            vector_db(dir.join(&vec_db_path).to_str().unwrap()).expect("Failed to connect to db");
+            vector_db(db_path_str).expect("Failed to connect to db");
         initialize_db(&db).expect("Failed to migrate db");
+        let a_db = async_db(db_path_str).await.expect("Failed to connect to async db");
 
         index_dummy_notes(&mut db, dir);
 
@@ -72,7 +77,7 @@ use indexer::config::AppConfig;
             gmail_api_client_id: String::from("test_client_id"),
             gmail_api_client_secret: String::from("test_client_secret"),
         };
-        let app_state = AppState::new(db, app_config);
+        let app_state = AppState::new(db, a_db, app_config);
         app(Arc::new(RwLock::new(app_state)))
     }
 
@@ -105,7 +110,7 @@ use indexer::config::AppConfig;
     #[tokio::test]
     #[serial]
     async fn it_serves_web_ui() {
-        let app = test_app();
+        let app = test_app().await;
 
         let response = app
             .oneshot(Request::builder().uri("/").body(Body::empty()).unwrap())
@@ -121,7 +126,7 @@ use indexer::config::AppConfig;
     #[tokio::test]
     #[serial]
     async fn it_searches_full_text() {
-        let app = test_app();
+        let app = test_app().await;
 
         let response = app
             .oneshot(

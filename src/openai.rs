@@ -1,11 +1,11 @@
 use anyhow::{Error, Result};
 use async_trait::async_trait;
 use erased_serde;
-use serde::Serialize;
+use serde::{Serialize, Deserialize};
 use serde_json::{Value, json};
 use std::env;
 
-#[derive(Clone, Serialize, Debug)]
+#[derive(Clone, Serialize, Deserialize, Debug)]
 pub enum Role {
     #[serde(rename = "system")]
     System,
@@ -32,20 +32,20 @@ pub enum Role {
 //         }
 //     ]
 // }
-#[derive(Clone, Serialize, Debug)]
+#[derive(Clone, Serialize, Deserialize, Debug)]
 pub struct FunctionCallFn {
     pub arguments: String,
     pub name: String,
 }
 
-#[derive(Clone, Serialize, Debug)]
+#[derive(Clone, Serialize, Deserialize, Debug)]
 pub struct FunctionCall {
     pub function: FunctionCallFn,
     pub id: String,
     pub r#type: String,
 }
 
-#[derive(Clone, Serialize, Debug)]
+#[derive(Clone, Serialize, Deserialize, Debug)]
 pub struct Message {
     role: Role,
     #[serde(skip_serializing_if = "Option::is_none")]

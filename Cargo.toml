@@ -6,7 +6,7 @@ edition = "2024"
 [dependencies]
 anyhow = "1.0.93"
 async-trait = "0.1.86"
-axum = "0.8.1"
+axum = { version = "0.8.1", features = ["macros"] }
 clap = { version = "4.5.17", features = ["derive"] }
 erased-serde = "0.4.5"
 fastembed = "4.1.0"

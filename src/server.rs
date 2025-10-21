@@ -5,6 +5,7 @@ use std::sync::{Arc, Mutex, RwLock};
 
 use axum::extract::Query;
 use axum::middleware;
+use axum::debug_handler;
 use axum::{
     Router,
     extract::{Path, Request, State},
@@ -14,6 +15,7 @@ use axum::{
 };
 use http::{HeaderValue, header};
 use rusqlite::Connection;
+use tokio_rusqlite::Connection as AsyncConnection;
 use serde::{Deserialize, Serialize};
 use serde_json::{Value, json};
 use tantivy::doc;
@@ -26,7 +28,7 @@ use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
 
 use crate::aql;
 use crate::config::AppConfig;
-use crate::chat::chat;
+use crate::chat::{chat, find_chat_session_by_id, insert_chat_message};
 use crate::indexing::index_all;
 use crate::jobs::{
     spawn_periodic_job,
@@ -112,17 +114,17 @@ pub struct AppState {
     // Stores the latest search hit selected by the user
     latest_selection: Option<LastSelection>,
     db: Mutex<Connection>,
-    config: AppConfig,
-    chat_sessions: ChatSessions,
+    a_db: AsyncConnection,
+    config: AppConfig
 }
 
 impl AppState {
-    pub fn new(db: Connection, config: AppConfig) -> Self {
+    pub fn new(db: Connection, a_db: AsyncConnection, config: AppConfig) -> Self {
         Self {
             latest_selection: None,
             db: Mutex::new(db),
-            config,
-            chat_sessions: HashMap::new(),
+            a_db,
+            config
         }
     }
 }
@@ -132,37 +134,24 @@ struct ChatTranscriptResponse {
     transcript: Vec<Message>,
 }
 
+#[debug_handler]
 async fn chat_session(
     State(state): State<SharedState>,
     // This is the session ID of the chat
     Path(id): Path<String>,
 ) -> impl IntoResponse {
-    let session = {
-        let sessions = state
-            .read()
-            .expect("Unable to read share state")
-            .chat_sessions
-            .clone();
-        sessions.get(&id).cloned()
-    };
+    let db = state.read().expect("Unable to read share state").a_db.clone();
+    // TODO: How to handle no session found?
+    let transcript = find_chat_session_by_id(&db, &id).await.unwrap().to_owned();
 
-    if let Some(s) = session {
-        Json(ChatTranscriptResponse {
-            transcript: s.transcript,
-        }).into_response()
-    } else {
-        (
-            StatusCode::NOT_FOUND,
-            format!("Chat session not found for {}", id),
-        )
-            .into_response()
-    }
+    Json(ChatTranscriptResponse {transcript}).into_response()
 }
 
+#[debug_handler]
 async fn chat_handler(
     State(state): State<SharedState>,
     Json(payload): Json<ChatRequest>,
-) -> Json<ChatResponse> {
+) -> impl IntoResponse {
     let (note_search_tool, searx_search_tool, email_unread_tool) = {
         let shared_state = state.read().expect("Unable to read share state");
         let AppConfig {
@@ -183,44 +172,34 @@ async fn chat_handler(
         Box::new(email_unread_tool),
     ]);
     let user_msg = Message::new(Role::User, &payload.message);
+    let mut accum_new: Vec<Message> = vec![user_msg];
+
+    let session_id = &payload.session_id;
 
     let mut transcript = {
-        let mut sessions = state.write().unwrap().chat_sessions.clone();
-
-        let session = sessions
-            .entry(payload.session_id.clone())
-            .and_modify(|v| v.transcript.push(user_msg.clone()))
-            .or_insert(ChatSession {
-                session_id: payload.session_id.clone(),
-                transcript: vec![
-                    Message::new(Role::System, "You are a helpful assistant."),
-                    user_msg,
-                ],
-            });
-
-        // Take the entire transcript so we don't hold the lock across .await
-        std::mem::take(&mut session.transcript)
+        // If this is the first message in the session, then add in
+        // the system message and insert both into the db
+        // If this is the second or later message in the session,
+        // insert the message only
+        let db = state.read().expect("Unable to read share state").a_db.clone();
+        find_chat_session_by_id(&db, session_id).await.unwrap()
     };
 
-    chat(&mut transcript, &tools).await;
+    chat(&tools, &mut transcript, &mut accum_new).await;
+
+    // Write new messages that were appended to the
+    {
+        for m in accum_new {
+            let db = state.read().expect("Unable to read share state").a_db.clone();
+            insert_chat_message(&db, session_id, &m).await.unwrap();
+        }
+    }
 
     // Re-acquire the lock and write the transcript back into the session
     let assistant_msg = transcript.last().expect("Transcript was empty").clone();
 
-    state
-        .write()
-        .unwrap()
-        .chat_sessions
-        .entry(payload.session_id.clone())
-        .and_modify(|v| v.transcript = transcript.clone())
-        .or_insert(ChatSession {
-            session_id: payload.session_id.clone(),
-            transcript,
-        });
-
     let resp = ChatResponse::new(&assistant_msg.content.unwrap());
-
-    Json(resp)
+    Json(resp).into_response()
 }
 
 async fn kv_get(State(state): State<SharedState>) -> Json<Option<Value>> {
@@ -663,7 +642,9 @@ pub async fn serve(
         )
         .with(tracing_subscriber::fmt::layer())
         .init();
+
     let db = vector_db(&vec_db_path).expect("Failed to connect to db");
+    let a_db = async_db(&vec_db_path).await.expect("Failed to connect to async db");
 
     let app_config = AppConfig {
         notes_path,
@@ -675,7 +656,7 @@ pub async fn serve(
         gmail_api_client_id,
         gmail_api_client_secret,
     };
-    let app_state = AppState::new(db, app_config.clone());
+    let app_state = AppState::new(db, a_db.clone(), app_config.clone());
     let shared_state = Arc::new(RwLock::new(app_state));
     let app = app(Arc::clone(&shared_state));
 
@@ -690,7 +671,6 @@ pub async fn serve(
 
     // Run background jobs. Each job is spawned in it's own tokio task
     // in a loop.
-    let a_db = async_db(&vec_db_path).await.expect("Failed to connect to async db");
     spawn_periodic_job(app_config, a_db, ProcessEmail);
 
     axum::serve(listener, app).await.unwrap();

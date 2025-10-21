@@ -132,6 +132,10 @@ struct Args {
     #[arg(short, long)]
     query: Option<String>,
 
+    /// Clone notes from version control
+    #[arg(short, long, action)]
+    init: bool,
+
     /// Run the server
     #[arg(short, long, action)]
     serve: bool,
@@ -227,10 +231,6 @@ fn maybe_clone_repo(url: String, deploy_key_path: String) {
 
 // Build the index for all notes
 async fn index_notes() -> Json<Value> {
-    let repo_url = env::var("INDEXER_NOTES_REPO_URL").expect("Missing env var INDEXER_NOTES_REPO_URL");
-    let deploy_key_path = env::var("INDEXER_NOTES_DEPLOY_KEY_PATH").expect("Missing env var INDEXER_NOTES_REPO_URL");
-    maybe_clone_repo(repo_url, deploy_key_path);
-
     let notes_path = "./notes";
     let schema = note_schema();
     let index_path = tantivy::directory::MmapDirectory::open("./.index").expect("Index not found");
@@ -314,6 +314,14 @@ async fn main() -> tantivy::Result<()> {
     }
 
     if args.serve {
+        if args.init {
+            // Clone the notes repo and index it
+            let repo_url = env::var("INDEXER_NOTES_REPO_URL").expect("Missing env var INDEXER_NOTES_REPO_URL");
+            let deploy_key_path = env::var("INDEXER_NOTES_DEPLOY_KEY_PATH").expect("Missing env var INDEXER_NOTES_REPO_URL");
+            maybe_clone_repo(repo_url, deploy_key_path);
+            let _res = index_notes().await;
+        }
+
         serve(args.host, args.port).await;
     }
 

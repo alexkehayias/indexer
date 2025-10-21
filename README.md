@@ -56,6 +56,7 @@ docker run -p 2222:2222 -d indexer:latest
 4. Store the public key in the GitHub repo (Settings -> Deploy Keys)
 5. Generate GitHub known hosts `sudo bash -c "ssh-keyscan -t rsa github.com >> /var/lib/dokku/data/storage/indexer/.ssh/known_hosts"`
 6. Mount the volume `dokku storage:mount indexer /var/lib/dokku/data/storage/indexer:/root/.ssh`
+7. Create data directory to persist indices between deploys `mkdir /var/lib/dokku/data/storage/indexer/data && dokku storage:mount indexer /var/lib/dokku/data/storage/indexer:/root/data`
 7. Add environment variables for `INDEXER_NOTES_REPO_URL` and `INDEXER_NOTES_DEPLOY_KEY_PATH="/root/.ssh"` and `INDEXER_STORAGE_PATH` (this will allow indices to be persisted between deploys)
 8. On local, add remote `git remote add dokku dokku@<dokku-host>:indexer`
 9. Push to build and start `git push dokku main`

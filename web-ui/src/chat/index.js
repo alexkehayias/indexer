@@ -61,7 +61,7 @@ document.addEventListener('DOMContentLoaded', () => {
       imgElement.alt = isUserMessage ? 'User image' : 'Bot image';
 
       const messageContent = document.createElement('div');
-      messageContent.className = 'flex flex-col gap-1 w-full max-w-[320px]';
+      messageContent.className = 'flex flex-col gap-1 w-[320px] lg:w-full';
 
       const messageBody = document.createElement('div');
       messageBody.className = isUserMessage
@@ -71,7 +71,7 @@ document.addEventListener('DOMContentLoaded', () => {
       const messageHTML = marked.parse(message, { breaks: true });
 
       const messageText = document.createElement('div');
-      messageText.className = 'markdown text-sm font-normal';
+      messageText.className = 'markdown text-sm lg:text-base font-normal';
       messageText.innerHTML = messageHTML;
       messageBody.appendChild(messageText);
       messageContent.appendChild(messageBody);
@@ -125,27 +125,6 @@ document.addEventListener('DOMContentLoaded', () => {
 // CSS styles for loading animation
 const style = document.createElement('style');
 style.innerHTML = `
-.hidden {
-  display: none;
-}
-.flex {
-  display: flex;
-}
-.gap-2 {
-  gap: 0.5rem;
-}
-.justify-center {
-  justify-content: center;
-}
-.my-4 {
-  margin: 1rem 0;
-}
-.w-8 {
-  width: 2rem;
-}
-.h-8 {
-  height: 2rem;
-}
 .animate-bounce-dog1 {
   animation: bounce 1s infinite 0.2s;
 }

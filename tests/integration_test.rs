@@ -3,8 +3,8 @@ mod tests {
     use std::env;
     use std::fs;
     use std::path::PathBuf;
-    use std::time::SystemTime;
     use std::sync::{Arc, RwLock};
+    use std::time::SystemTime;
 
     use anyhow::{Error, Result};
     use async_trait::async_trait;
@@ -13,6 +13,7 @@ mod tests {
         body::Body,
         http::{Request, StatusCode},
     };
+    use indexer::config::AppConfig;
     use indexer::db::async_db;
     use indexer::db::initialize_db;
     use indexer::indexing::index_all;
@@ -20,7 +21,6 @@ mod tests {
     use indexer::openai::BoxedToolCall;
     use indexer::prompt::{self, Prompt};
     use indexer::server::{AppState, app};
-use indexer::config::AppConfig;
     use serde::Serialize;
     use serde_json::json;
     use serial_test::serial;
@@ -59,11 +59,15 @@ use indexer::config::AppConfig;
         let db_path_str = dir.join(&vec_db_path);
         let db_path_str = db_path_str.to_str().unwrap();
 
-        let db = async_db(db_path_str).await.expect("Failed to connect to async db");
+        let db = async_db(db_path_str)
+            .await
+            .expect("Failed to connect to async db");
         db.call(|conn| {
             initialize_db(conn).expect("Failed to migrate db");
             Ok(())
-        }).await.unwrap();
+        })
+        .await
+        .unwrap();
 
         index_dummy_notes_async(&db, dir.clone()).await;
 
@@ -76,6 +80,10 @@ use indexer::config::AppConfig;
             searxng_api_url: String::from("http://localhost:8080"),
             gmail_api_client_id: String::from("test_client_id"),
             gmail_api_client_secret: String::from("test_client_secret"),
+            openai_model: String::from("gpt-4o"),
+            openai_api_hostname: String::from("https://api.openai.com"),
+            openai_api_key: String::from("test-api-key"),
+            system_message: String::from("You are a helpful assistant."),
         };
         let app_state = AppState::new(db, app_config);
         app(Arc::new(RwLock::new(app_state)))
@@ -104,9 +112,10 @@ use indexer::config::AppConfig;
         )
         .unwrap();
 
-        index_all(db, index_dir_path, notes_dir_path, true, true, Some(paths)).await.unwrap();
+        index_all(db, index_dir_path, notes_dir_path, true, true, Some(paths))
+            .await
+            .unwrap();
     }
-
 
     #[tokio::test]
     #[serial]
@@ -197,7 +206,14 @@ use indexer::config::AppConfig;
             ),
         ];
         let tools = None;
-        let response = openai::completion(&messages, &tools).await;
+        let response = openai::completion(
+            &messages,
+            &tools,
+            "https://api.openai.com",
+            "test-api-key",
+            "gpt-4o",
+        )
+        .await;
         assert!(response.is_ok());
     }
 
@@ -251,7 +267,15 @@ use indexer::config::AppConfig;
         };
         let tools: Option<Vec<BoxedToolCall>> =
             Some(vec![Box::new(dummy_tool), Box::new(dummy_tool_2)]);
-        let response = openai::completion(&messages, &tools).await.unwrap();
+        let response = openai::completion(
+            &messages,
+            &tools,
+            "https://api.openai.com",
+            "test-api-key",
+            "gpt-4o",
+        )
+        .await
+        .unwrap();
         let tool_calls = response["choices"][0]["message"]["tool_calls"]
             .as_array()
             .unwrap();

@@ -1,9 +1,9 @@
 //! OAuth 2.0 token exchange & refresh for Gmail API
 
+use anyhow::{Error, Result};
 use reqwest::Client;
 use serde::{Deserialize, Serialize};
 use tokio_rusqlite::Connection;
-use anyhow::{Result, Error};
 
 /// Response from Google's token endpoint
 #[derive(Debug, Deserialize, Serialize, Clone)]

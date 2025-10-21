@@ -1,5 +1,5 @@
-use tokio_rusqlite::{Connection, Result, ffi::sqlite3_auto_extension};
 use sqlite_vec::sqlite3_vec_init;
+use tokio_rusqlite::{Connection, Result, ffi::sqlite3_auto_extension};
 
 /// Initialize the db by creating all tables. This function should
 /// always succeed and is safe to run multiple times.

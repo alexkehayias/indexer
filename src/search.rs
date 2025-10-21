@@ -1,11 +1,11 @@
 use fastembed::{EmbeddingModel, InitOptions, TextEmbedding};
 use itertools::Itertools;
-use tokio_rusqlite::{Connection, Result};
 use serde::Serialize;
 use serde_json::json;
 use tantivy::collector::TopDocs;
 use tantivy::schema::*;
 use tantivy::{Index, ReloadPolicy};
+use tokio_rusqlite::{Connection, Result};
 use zerocopy::IntoBytes;
 
 use crate::aql::{self};
@@ -102,9 +102,10 @@ pub async fn search_similar_notes(
         .embed(vec![similarity_string.unwrap()], None)
         .unwrap();
     let q = query_vector[0].clone();
-    let result: Vec<SearchHit> = db.call(move |conn| {
-        let mut stmt = conn.prepare(
-            r#"
+    let result: Vec<SearchHit> = db
+        .call(move |conn| {
+            let mut stmt = conn.prepare(
+                r#"
           SELECT
             note_meta.id,
             note_meta.file_name,
@@ -119,17 +120,19 @@ pub async fn search_similar_notes(
           ORDER BY distance
           LIMIT ?
         "#,
-        )?;
-        let found = stmt.query_map([q.as_bytes(), limit.as_bytes(), limit.as_bytes()], |r| {
-            Ok(SearchHit {
-                r#type: SearchHitType::Similarity,
-                id: r.get(0)?,
-                score: r.get(5)?,
-            })
-        })?
-        .collect::<std::result::Result<Vec<SearchHit>, _>>()?;
-        Ok(found)
-    }).await?;
+            )?;
+            let found = stmt
+                .query_map([q.as_bytes(), limit.as_bytes(), limit.as_bytes()], |r| {
+                    Ok(SearchHit {
+                        r#type: SearchHitType::Similarity,
+                        id: r.get(0)?,
+                        score: r.get(5)?,
+                    })
+                })?
+                .collect::<std::result::Result<Vec<SearchHit>, _>>()?;
+            Ok(found)
+        })
+        .await?;
     Ok(result)
 }
 
@@ -170,7 +173,9 @@ pub async fn search_notes(
     // relevance
     let mut search_hits = fulltext_search(index_path, query, 10000).unwrap_or_else(|_| Vec::new());
     if include_similarity {
-        let mut vec_search_result = search_similar_notes(db, query, limit).await.unwrap_or_default();
+        let mut vec_search_result = search_similar_notes(db, query, limit)
+            .await
+            .unwrap_or_default();
 
         // Combine the results, dedupe, then sort by score
         search_hits.append(&mut vec_search_result);
@@ -227,51 +232,57 @@ pub async fn search_notes(
     let results: Vec<SearchResult> = if !result_ids.is_empty() {
         db.call(move |conn| {
             let mut stmt = conn.prepare(&sql).unwrap();
-            let found = stmt.query_map([result_ids_str.as_bytes()], |r| {
-                let maybe_task_status: Option<String> = r.get(7)?;
-                Ok(SearchResult {
-                    id: r.get(0)?,
-                    r#type: r.get(1)?,
-                    category: r.get(2)?,
-                    file_name: r.get(3)?,
-                    title: r.get(4)?,
-                    tags: r.get(5)?,
-                    body: r.get(6)?,
-                    is_task: maybe_task_status.is_some(),
-                    task_status: maybe_task_status,
-                    task_scheduled: r.get(8)?,
-                    task_deadline: r.get(9)?,
-                    task_closed: r.get(10)?,
-                    meeting_date: r.get(11)?,
-                })
-            })?
-            .collect::<std::result::Result<Vec<SearchResult>, _>>()?;
+            let found = stmt
+                .query_map([result_ids_str.as_bytes()], |r| {
+                    let maybe_task_status: Option<String> = r.get(7)?;
+                    Ok(SearchResult {
+                        id: r.get(0)?,
+                        r#type: r.get(1)?,
+                        category: r.get(2)?,
+                        file_name: r.get(3)?,
+                        title: r.get(4)?,
+                        tags: r.get(5)?,
+                        body: r.get(6)?,
+                        is_task: maybe_task_status.is_some(),
+                        task_status: maybe_task_status,
+                        task_scheduled: r.get(8)?,
+                        task_deadline: r.get(9)?,
+                        task_closed: r.get(10)?,
+                        meeting_date: r.get(11)?,
+                    })
+                })?
+                .collect::<std::result::Result<Vec<SearchResult>, _>>()?;
             Ok(found)
-        }).await.unwrap()
+        })
+        .await
+        .unwrap()
     } else {
         db.call(move |conn| {
             let mut stmt = conn.prepare(&sql).unwrap();
-            let found = stmt.query_map([], |r| {
-                let maybe_task_status: Option<String> = r.get(7)?;
-                Ok(SearchResult {
-                    id: r.get(0)?,
-                    r#type: r.get(1)?,
-                    category: r.get(2)?,
-                    file_name: r.get(3)?,
-                    title: r.get(4)?,
-                    tags: r.get(5)?,
-                    body: r.get(6)?,
-                    is_task: maybe_task_status.is_some(),
-                    task_status: maybe_task_status,
-                    task_scheduled: r.get(8)?,
-                    task_deadline: r.get(9)?,
-                    task_closed: r.get(10)?,
-                    meeting_date: r.get(11)?,
-                })
-            })?
-            .collect::<std::result::Result<Vec<SearchResult>, _>>()?;
+            let found = stmt
+                .query_map([], |r| {
+                    let maybe_task_status: Option<String> = r.get(7)?;
+                    Ok(SearchResult {
+                        id: r.get(0)?,
+                        r#type: r.get(1)?,
+                        category: r.get(2)?,
+                        file_name: r.get(3)?,
+                        title: r.get(4)?,
+                        tags: r.get(5)?,
+                        body: r.get(6)?,
+                        is_task: maybe_task_status.is_some(),
+                        task_status: maybe_task_status,
+                        task_scheduled: r.get(8)?,
+                        task_deadline: r.get(9)?,
+                        task_closed: r.get(10)?,
+                        meeting_date: r.get(11)?,
+                    })
+                })?
+                .collect::<std::result::Result<Vec<SearchResult>, _>>()?;
             Ok(found)
-        }).await.unwrap()
+        })
+        .await
+        .unwrap()
     };
     Ok(results)
 }

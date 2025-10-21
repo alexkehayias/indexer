@@ -8,13 +8,13 @@ use crate::source::{note_filter, notes};
 use fastembed::{EmbeddingModel, InitOptions, TextEmbedding};
 use orgize::ParseConfig;
 use orgize::rowan::ast::AstNode;
-use tokio_rusqlite::{Connection, Result};
 use std::fs;
 use std::hash::DefaultHasher;
 use tantivy::schema::*;
 use tantivy::{Index, IndexWriter, doc};
 use text_splitter::{ChunkConfig, TextSplitter};
 use tiktoken_rs::{CoreBPE, cl100k_base};
+use tokio_rusqlite::{Connection, Result};
 use zerocopy::IntoBytes;
 
 #[derive(Debug, Clone)]
@@ -543,7 +543,9 @@ pub async fn index_all(
     );
     let tokenizer = cl100k_base().unwrap();
     let max_tokens = 1280;
-    let splitter = Arc::new(TextSplitter::new(ChunkConfig::new(max_tokens).with_sizer(tokenizer)));
+    let splitter = Arc::new(TextSplitter::new(
+        ChunkConfig::new(max_tokens).with_sizer(tokenizer),
+    ));
 
     let note_paths: Vec<PathBuf> = if let Some(path_bufs) = paths {
         note_filter(notes_dir_path, path_bufs)
@@ -566,7 +568,8 @@ pub async fn index_all(
         // Arc the shared items so that it can be safely passed to the
         // async closure.
         let file_name = Arc::new(p.file_name().unwrap().to_str().unwrap().to_owned());
-        let content = fs::read_to_string(p).unwrap_or_else(|err| panic!("Error {} file: {:?}", err, p));
+        let content =
+            fs::read_to_string(p).unwrap_or_else(|err| panic!("Error {} file: {:?}", err, p));
         let note = Arc::new(parse_note(&content));
 
         let embeddings_model = Arc::clone(&embeddings_model);
@@ -575,14 +578,17 @@ pub async fn index_all(
         let file_name_inner = Arc::clone(&file_name);
 
         db.call(move |conn| {
-            index_note_meta(conn, &file_name_inner, &note_inner).expect("Upserting note meta failed");
+            index_note_meta(conn, &file_name_inner, &note_inner)
+                .expect("Upserting note meta failed");
 
             if index_vector {
                 index_note_vector(conn, &embeddings_model, &splitter, &note_inner)
                     .expect("Upserting note vector failed");
             }
             Ok(())
-        }).await.expect("DB work failed");
+        })
+        .await
+        .expect("DB work failed");
 
         if index_full_text {
             index_note_full_text(&mut index_writer, &schema, &file_name, &note)

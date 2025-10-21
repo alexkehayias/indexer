@@ -13,7 +13,10 @@ document.addEventListener('DOMContentLoaded', () => {
     .then(response => response.json())
     .then(data => {
       data.transcript.map(message => {
-        renderMessageBubble(message.content, message.role === "user");
+        const isUser = message.role === 'user';
+        const isAssistant = message.role === 'assistant';
+        const isToolCall = (message.role === 'tool') || (isAssistant && !message.content);
+        renderMessageBubble(message.content, isUser, isToolCall);
       });
     })
     .catch(error => console.error('Error:', error));
@@ -31,7 +34,14 @@ document.addEventListener('DOMContentLoaded', () => {
     if (e.key === 'Enter') sendMessage();
   });
 
-  const renderMessageBubble = (message, isUserMessage, isLoading = false) => {
+  const renderMessageBubble = (message, isUserMessage, isToolCall, isLoading = false) => {
+    // Empty messages mean this was a tool call or a response to a //
+    // tool call so skip this for now. Maybe later will render some debug
+    // info for inspecting tool calls.
+    if (isToolCall) {
+      return
+    };
+
     const messageElement = document.createElement('div');
     messageElement.className = isLoading ? 'flex justify-center my-4' : 'flex items-start gap-2.5 mb-4';
 
@@ -67,11 +77,11 @@ document.addEventListener('DOMContentLoaded', () => {
       messageElement.appendChild(imgElement);
       messageElement.appendChild(messageContent);
     }
-    
+
     chatDisplay.prepend(messageElement);
     chatDisplay.scrollTop = chatDisplay.scrollHeight;
 
-    return messageElement; 
+    return messageElement;
   };
 
   const sendMessage = () => {
@@ -81,7 +91,7 @@ document.addEventListener('DOMContentLoaded', () => {
     renderMessageBubble(message, true);
 
     // Show loading indicator below user's message
-    const loadingElement = renderMessageBubble('', false, true);
+    const loadingElement = renderMessageBubble('', false, false, true);
 
     const chatRequest = {
       session_id: sessionId,
@@ -97,7 +107,8 @@ document.addEventListener('DOMContentLoaded', () => {
     })
     .then(response => response.json())
     .then(data => {
-      renderMessageBubble(data.message, false);
+      // Responses to a user message will never be tool calls
+      renderMessageBubble(data.message, false, false, false);
       // Remove loading indicator
       loadingElement.remove();
     })

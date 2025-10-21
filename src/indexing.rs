@@ -52,7 +52,11 @@ struct Note {
 fn parse_note(content: &str) -> Note {
     let config = ParseConfig {
         todo_keywords: (
-            vec!["TODO".to_string(), "NEXT".to_string(), "WAITING".to_string()],
+            vec![
+                "TODO".to_string(),
+                "NEXT".to_string(),
+                "WAITING".to_string(),
+            ],
             vec![
                 "DONE".to_string(),
                 "CANCELED".to_string(),
@@ -63,9 +67,7 @@ fn parse_note(content: &str) -> Note {
     };
     let p = config.parse(content);
 
-    let props = p.document().properties().expect(
-        "Missing property drawer",
-    );
+    let props = p.document().properties().expect("Missing property drawer");
     let note_id = props.get("ID").expect("Missing org-id").to_string();
     let note_title = p.title().expect("No title found");
 

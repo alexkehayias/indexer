@@ -26,7 +26,7 @@ use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
 
 use crate::chat::chat;
 use crate::indexing::index_all;
-use crate::openai::{Message, Role, ToolCall, BoxedToolCall};
+use crate::openai::{BoxedToolCall, Message, Role};
 use crate::tool::NoteSearchTool;
 
 use super::db::vector_db;
@@ -49,12 +49,15 @@ struct ChatResponse {
 
 impl ChatResponse {
     fn new(message: &str) -> Self {
-        Self { message: message.into() }
+        Self {
+            message: message.into(),
+        }
     }
 }
 
 #[derive(Clone)]
 struct ChatSession {
+    #[allow(unused)]
     session_id: String,
     transcript: Vec<Message>,
 }
@@ -99,17 +102,13 @@ impl AppState {
     }
 }
 
-pub async fn chat_handler(
+async fn chat_handler(
     State(state): State<SharedState>,
     Json(payload): Json<ChatRequest>,
 ) -> Json<ChatResponse> {
     let note_search_tool = {
         let shared_state = state.read().expect("Unable to read share state");
-        let AppConfig {
-            host,
-            port,
-            ..
-        } = &shared_state.config;
+        let AppConfig { host, port, .. } = &shared_state.config;
         NoteSearchTool::new(&format!("http://{}:{}", host, port))
     };
 
@@ -147,16 +146,15 @@ pub async fn chat_handler(
 
         // Grab the last message to build our response
         // clone so we can safely use it outside the lock
-        session.get()
+        session
+            .get()
             .transcript
             .last()
             .expect("Transcript was empty; no message found")
             .clone()
     };
 
-    let resp = ChatResponse::new(
-        &assistant_msg.content.unwrap()
-    );
+    let resp = ChatResponse::new(&assistant_msg.content.unwrap());
 
     Json(resp)
 }

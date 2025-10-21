@@ -54,9 +54,14 @@ async fn handle_tool_calls(
 /// `accum_new` so there's no need to diff after calling this to
 /// figure out what's new.
 pub async fn chat(
-    tools: &Option<Vec<BoxedToolCall>>, history: &mut Vec<Message>, accum_new: &mut Vec<Message>
+    tools: &Option<Vec<BoxedToolCall>>, 
+    history: &mut Vec<Message>, 
+    accum_new: &mut Vec<Message>,
+    api_hostname: &str,
+    api_key: &str,
+    model: &str
 ) {
-    let mut resp = completion(history, tools)
+    let mut resp = completion(history, tools, api_hostname, api_key, model)
         .await
         .expect("OpenAI API call failed");
 
@@ -68,7 +73,7 @@ pub async fn chat(
         handle_tool_calls(tools_ref, history, accum_new, tool_calls).await;
 
         // Provide the results of the tool calls back to the chat
-        resp = completion(history, tools)
+        resp = completion(history, tools, api_hostname, api_key, model)
             .await
             .expect("OpenAI API call failed");
     }

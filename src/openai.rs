@@ -3,7 +3,6 @@ use async_trait::async_trait;
 use erased_serde;
 use serde::{Serialize, Deserialize};
 use serde_json::{Value, json};
-use std::env;
 
 #[derive(Clone, Serialize, Deserialize, Debug)]
 pub enum Role {
@@ -140,18 +139,21 @@ pub type BoxedToolCall = Box<dyn ToolCall + Send + Sync + 'static>;
 pub async fn completion(
     messages: &Vec<Message>,
     tools: &Option<Vec<BoxedToolCall>>,
+    api_hostname: &str,
+    api_key: &str,
+    model: &str,
 ) -> Result<Value, Error> {
-    let open_ai_key = env::var("OPENAI_API_KEY").unwrap();
     let mut payload = json!({
-        "model": "gpt-4.1-mini",
+        "model": model,
         "messages": messages,
     });
     if let Some(tools) = tools {
         payload["tools"] = json!(tools);
     }
+    let url = format!("{}/v1/chat/completions", api_hostname.trim_end_matches("/"));
     let response = reqwest::Client::new()
-        .post("https://api.openai.com/v1/chat/completions")
-        .bearer_auth(open_ai_key)
+        .post(url)
+        .bearer_auth(api_key)
         .header("Content-Type", "application/json")
         .json(&payload)
         .send()

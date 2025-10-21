@@ -26,7 +26,7 @@ impl ToolCall for NoteSearchTool {
         let curl = Command::new("sh")
             .arg("-c")
             .arg(format!(
-                "curl \"http://localhost:2222/notes/search?query={}\"",
+                "curl --get --data-urlencode \"query={}\" \"http://localhost:2222/notes/search\"",
                 fn_args.query
             ))
             .output()

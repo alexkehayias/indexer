@@ -2,7 +2,8 @@ use async_trait::async_trait;
 use std::time::Duration;
 use crate::config::AppConfig;
 use tokio_rusqlite::Connection;
-pub mod email_agent;
+pub mod process_email;
+pub use process_email::ProcessEmail;
 
 #[async_trait]
 pub trait PeriodicJob: Send + Sync + 'static {

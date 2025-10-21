@@ -20,7 +20,7 @@ pub fn notes(path: &str) -> Vec<PathBuf> {
             let path = entry.path();
             let ext = path.extension().unwrap_or_default();
             let name = path.file_name().unwrap_or_default();
-            if meta.is_file() && ext == "org" && name != "config.org" && name != "capture.org" {
+            if meta.is_file() && ext == "org" && name != "config.org" {
                 return vec![entry.path()];
             }
             vec![]

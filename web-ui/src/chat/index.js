@@ -1,7 +1,27 @@
 document.addEventListener('DOMContentLoaded', () => {
   const urlParams = new URLSearchParams(window.location.search);
-  const sessionId = urlParams.get("session_id") || crypto.randomUUID();
-  history.replaceState({}, '', `?session_id=${sessionId}`);
+  let sessionId;
+  const maybeSessionId = urlParams.get("session_id");
+  if (maybeSessionId) {
+    sessionId = maybeSessionId;
+    // Restore the transcript from the session
+    fetch(`/notes/chat/${sessionId}`, {
+      method: 'GET',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+    })
+    .then(response => response.json())
+    .then(data => {
+      data.transcript.map(message => {
+        renderMessageBubble(message.content, message.role === "user");
+      });
+    })
+    .catch(error => console.error('Error:', error));
+  } else {
+    sessionId = crypto.randomUUID();
+    history.replaceState({}, '', `?session_id=${sessionId}`);
+  }
 
   const chatDisplay = document.getElementById('chat-display');
   const chatInput = document.getElementById('chat-input');

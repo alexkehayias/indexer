@@ -6,12 +6,10 @@ use std::sync::{Arc, Mutex, RwLock};
 
 use anyhow::{anyhow, Result, Error};
 use axum::response::Html;
-use axum::response::IntoResponse;
 use tantivy::doc;
 
 use axum::extract::Query;
 use axum::{
-    http::StatusCode,
     extract::{Path, State},
     response::Json,
     routing::{get, post},
@@ -105,6 +103,7 @@ impl AppState {
     }
 }
 
+#[derive(Serialize)]
 struct ChatTranscriptResponse {
     transcript: Vec<Message>
 }
@@ -113,13 +112,18 @@ async fn chat_session(
     State(state): State<SharedState>,
     // This is the session ID of the chat
     Path(id): Path<String>,
-) -> Result<Json<ChatTranscriptResponse>, Error> {
-    if let Some(session) = state.read()
-        .expect("Unable to read share state")
-        .chat_sessions.get(&id) {
-        Ok(Json(ChatTranscriptResponse { transcript: session.transcript.clone() }))
+) -> Json<ChatTranscriptResponse> {
+    let session = {
+        let sessions = state.read()
+            .expect("Unable to read share state").chat_sessions.clone();
+        sessions.get(&id).cloned()
+    };
+    // FIX: Yuck! Figure out how to return a result that maps to a 404
+    // or a response.
+    if let Some(s) = session {
+        Json(ChatTranscriptResponse { transcript: s.transcript })
     } else {
-        Err(anyhow!("Session not found. ID {}", id))
+        Json(ChatTranscriptResponse { transcript: Vec::new() })
     }
 }
 

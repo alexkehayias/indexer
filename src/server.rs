@@ -90,7 +90,10 @@ async fn search(
         let db = shared_state
             .db
             .lock()
-            .expect("Failed to get db connection from app state");
+        // Ignoring any previous panics since we are trying to get the
+        // db connection and it's probably fine
+            .unwrap_or_else(|e| e.into_inner());
+
         let include_similarity = params.contains_key("include_similarity") && params.get("include_similarity").unwrap() == "true";
         if include_similarity {
             // TODO: Handle search query arguments like this default
@@ -138,7 +141,9 @@ async fn view_note(
     let db = shared_state
         .db
         .lock()
-        .expect("Failed to get db connection from app state");
+        // Ignoring any previous panics since we are trying to get the
+        // db connection and it's probably fine
+        .unwrap_or_else(|e| e.into_inner());
 
     let result: Vec<String> = db
         .prepare(
@@ -158,20 +163,25 @@ async fn view_note(
         .expect("Query failed")
         .collect::<Result<Vec<String>, _>>()
         .expect("Query failed");
-    let file_name = result.first().unwrap();
-    // TODO: Add this to shared state so it's not hardcoded
-    let notes_path = "./notes";
-    let note_path = format!("{}/{}", notes_path, file_name);
-    let content = fs::read_to_string(&note_path).expect("Failed to get file content");
+    let file_name = result.first();
+    if let Some(f) = file_name {
+        // TODO: Add this to shared state so it's not hardcoded
+        let notes_path = "./notes";
+        let note_path = format!("{}/{}", notes_path, f);
+        let content = fs::read_to_string(&note_path).expect("Failed to get file content");
 
-    // Render the org-mode content in HTML
-    let config = ParseConfig {
-        ..Default::default()
-    };
-    // TODO: replace org-id links with note viewer links
-    let output = config.parse(content).to_html();
+        // Render the org-mode content in HTML
+        let config = ParseConfig {
+            ..Default::default()
+        };
+        // TODO: replace org-id links with note viewer links
+        let output = config.parse(content).to_html();
 
-    Html(output)
+        Html(output)
+    } else {
+        // TODO replace with a 404
+        Html("".to_string())
+    }
 }
 
 // Run the server

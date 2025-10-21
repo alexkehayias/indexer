@@ -13,6 +13,7 @@ pub mod notification;
 pub mod oauth;
 pub mod openai;
 pub mod prompt;
+pub mod public;
 pub mod query;
 pub mod search;
 pub mod server;

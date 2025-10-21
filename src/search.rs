@@ -11,6 +11,7 @@ use zerocopy::IntoBytes;
 use crate::aql::{self};
 use crate::fts::schema::note_schema;
 use crate::query::{aql_to_index_query, expr_to_sql, query_to_similarity};
+use crate::public::SearchResult;
 
 #[derive(Serialize)]
 pub enum SearchHitType {
@@ -136,23 +137,6 @@ pub async fn search_similar_notes(
     Ok(result)
 }
 
-#[derive(Serialize)]
-pub struct SearchResult {
-    id: String,
-    r#type: String,
-    title: String,
-    category: String,
-    file_name: String,
-    tags: Option<String>,
-    is_task: bool,
-    task_status: Option<String>,
-    task_scheduled: Option<String>,
-    task_deadline: Option<String>,
-    task_closed: Option<String>,
-    meeting_date: Option<String>,
-    body: String,
-}
-
 // Performs a full-text search of all notes for the given query. If
 // `include_similarity`, also includes vector search results appended
 // to the end of the list of results. This way, if there is a keyword
@@ -236,6 +220,7 @@ pub async fn search_notes(
             let found = stmt
                 .query_map([result_ids_str.as_bytes()], |r| {
                     let maybe_task_status: Option<String> = r.get(7)?;
+                    // TODO: Truncate the results
                     Ok(SearchResult {
                         id: r.get(0)?,
                         r#type: r.get(1)?,

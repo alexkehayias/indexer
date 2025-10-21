@@ -1,4 +1,5 @@
 use crate::openai::{Function, Parameters, Property, ToolCall, ToolType};
+use crate::public::SearchResponse;
 use anyhow::{Error, Result};
 use async_trait::async_trait;
 use reqwest;
@@ -32,16 +33,22 @@ impl ToolCall for NoteSearchTool {
             .expect("Invalid URL");
         url.query_pairs_mut().append_pair("query", &fn_args.query);
 
-        let resp: Value = reqwest::Client::new()
+        let resp = reqwest::Client::new()
             .get(url.as_str())
             .header("Content-Type", "application/json")
             .send()
             .await?
-            .json()
-            .await?;
+            .error_for_status()?;
 
-        let result = json!(resp).to_string();
-        Ok(result)
+        let search_resp: SearchResponse = resp.json().await?;
+
+        let mut accum = vec![];
+        for r in search_resp.results.iter() {
+            accum.push(format!("## {}\n{}\n{}", r.title, r.id, r.body))
+        }
+
+        let out = accum.join("\n\n");
+        Ok(out)
     }
 
     fn function_name(&self) -> String {

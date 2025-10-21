@@ -1,0 +1,7 @@
+tell application "Google Chrome"
+	reload active tab of window 1
+end tell
+
+# add current time to message
+set message to (time string of (current date)) & " refreshed Chrome"
+return message

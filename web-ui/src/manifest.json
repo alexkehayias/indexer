@@ -1,20 +1,28 @@
 {
-  "name": "Indexer",
-  "short_name": "Indexer",
-  "start_url": "/index.html",
-  "display": "standalone",
-  "background_color": "#ffffff",
-  "description": "Notifications for the indexer service.",
+  "theme_color": "#8936FF",
+  "background_color": "#2EC6FE",
   "icons": [
     {
-      "src": "/icons/icon-192x192.png",
-      "sizes": "192x192",
+      "purpose": "maskable",
+      "sizes": "512x512",
+      "src": "icon512_maskable.png",
       "type": "image/png"
     },
     {
-      "src": "/icons/icon-512x512.png",
+      "purpose": "any",
       "sizes": "512x512",
+      "src": "icon512_rounded.png",
       "type": "image/png"
     }
-  ]
+  ],
+  "orientation": "portrait",
+  "display": "standalone",
+  "dir": "auto",
+  "lang": "en-US",
+  "name": "Indexer",
+  "short_name": "Indexer",
+  "start_url": "/index.html",
+  "scope": "/index.html",
+  "description": "Search and chat with your notes.",
+  "id": "/index.html"
 }

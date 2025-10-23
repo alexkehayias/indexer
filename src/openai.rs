@@ -315,8 +315,6 @@ pub async fn completion_stream(
                 break;
             }
 
-            dbg!(&data);
-
             // Process the delta
             let chunk = serde_json::from_str::<CompletionChunk>(data)?;
             let choice = chunk.choices.first().expect("Missing choices field");
@@ -384,7 +382,6 @@ pub async fn completion_stream(
         let out = json!({
             "choices": [{"message": {"tool_calls": tool_call_message}}]
         });
-        dbg!(&out);
         return Ok(out);
     }
 

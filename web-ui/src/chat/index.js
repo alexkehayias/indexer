@@ -96,9 +96,17 @@ document.addEventListener('DOMContentLoaded', () => {
 
       const messageHTML = marked.parse(message, { breaks: true });
 
+      // Add syntax highlighting to code blocks
+      const tempDiv = document.createElement('div');
+      tempDiv.innerHTML = messageHTML;
+      tempDiv.querySelectorAll('pre code').forEach((block) => {
+        hljs.highlightElement(block);
+      });
+      const highlightedHTML = tempDiv.innerHTML;
+
       const messageText = document.createElement('div');
       messageText.className = 'markdown overflow-auto text-sm lg:text-base font-normal';
-      messageText.innerHTML = messageHTML;
+      messageText.innerHTML = highlightedHTML;
       messageBody.appendChild(messageText);
       messageContent.appendChild(messageBody);
       messageElement.appendChild(imgElement);
@@ -107,7 +115,14 @@ document.addEventListener('DOMContentLoaded', () => {
       // Add methods for streaming updates to the content.
       messageElement.updateContent = function(txt) {
         const updatedHTML = marked.parse(txt, { breaks: true });
-        messageText.innerHTML = updatedHTML;
+        
+        // Add syntax highlighting to code blocks
+        const tempDiv = document.createElement('div');
+        tempDiv.innerHTML = updatedHTML;
+        tempDiv.querySelectorAll('pre code').forEach((block) => {
+          hljs.highlightElement(block);
+        });
+        messageText.innerHTML = tempDiv.innerHTML;
       }
     }
 

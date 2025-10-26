@@ -4,7 +4,9 @@ const urlsToCache = [
   '/',
   '/index.html',
   '/output.css',
-  '/index.js'
+  '/index.js',
+  '/chat/index.html',
+  '/chat/index.js',
 ];
 
 self.addEventListener('install', (event) => {

@@ -29,8 +29,12 @@ COPY --from=builder /target/release/indexer /indexer
 COPY ./web-ui/src/index.html ./web-ui/src/index.html
 COPY ./web-ui/src/index.js ./web-ui/src/index.js
 COPY ./web-ui/src/output.css ./web-ui/src/output.css
+COPY ./web-ui/src/favicon.ico ./web-ui/src/favicon.ico
+COPY ./web-ui/src/icon512_maskable.png ./web-ui/src/icon512_maskable.png
 COPY ./web-ui/src/manifest.json ./web-ui/src/manifest.json
 COPY ./web-ui/src/service-worker.js ./web-ui/src/service-worker.js
+COPY ./web-ui/src/vendor/marked.min.js ./web-ui/src/vendor/marked.min.js
+COPY ./web-ui/src/vendor/highlight.min.js ./web-ui/src/vendor/highlight.min.js
 COPY ./web-ui/src/chat/index.html ./web-ui/src/chat/index.html
 COPY ./web-ui/src/chat/index.js ./web-ui/src/chat/index.js
 COPY ./web-ui/src/chat/img/ ./web-ui/src/chat/img/

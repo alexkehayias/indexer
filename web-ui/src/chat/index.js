@@ -82,12 +82,12 @@ document.addEventListener('DOMContentLoaded', () => {
       }
     } else {
       const imgElement = document.createElement('img');
-      imgElement.className = 'w-8 h-8 rounded-full';
+      imgElement.className = 'hidden w-8 h-8 rounded-full md:block';
       imgElement.src = isUserMessage ? './img/me.jpeg' : './img/bot.jpeg';
       imgElement.alt = isUserMessage ? 'User image' : 'Bot image';
 
       const messageContent = document.createElement('div');
-      messageContent.className = 'flex flex-col gap-1 w-[320px] lg:w-full overflow-auto';
+      messageContent.className = 'flex flex-col gap-1 w-full overflow-auto';
 
       const messageBody = document.createElement('div');
       messageBody.className = isUserMessage
@@ -115,7 +115,7 @@ document.addEventListener('DOMContentLoaded', () => {
       // Add methods for streaming updates to the content.
       messageElement.updateContent = function(txt) {
         const updatedHTML = marked.parse(txt, { breaks: true });
-        
+
         // Add syntax highlighting to code blocks
         const tempDiv = document.createElement('div');
         tempDiv.innerHTML = updatedHTML;
@@ -214,26 +214,3 @@ document.addEventListener('DOMContentLoaded', () => {
     chatInput.value = ''; // Clear input field
   };
 });
-
-// CSS styles for loading animation
-const style = document.createElement('style');
-style.innerHTML = `
-.animate-bounce-dog1 {
-  animation: bounce 1s infinite 0.2s;
-}
-.animate-bounce-dog2 {
-  animation: bounce 1s infinite 0.4s;
-}
-.animate-bounce-dog3 {
-  animation: bounce 1s infinite 0.6s;
-}
-@keyframes bounce {
-  0%, 100% {
-    transform: translateY(0);
-  }
-  50% {
-    transform: translateY(-10px);
-  }
-}
-`;
-document.head.appendChild(style);

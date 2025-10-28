@@ -349,7 +349,7 @@ async fn main() -> Result<()> {
             let mut accum_new: Vec<Message> = Vec::new();
 
             loop {
-                let readline = rl.readline("> ");
+                let readline = rl.readline(">>> ");
                 match readline {
                     Ok(line) => {
                         history.push(Message::new(Role::User, line.as_str()));

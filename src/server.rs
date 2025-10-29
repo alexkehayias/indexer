@@ -36,7 +36,7 @@ use crate::indexing::index_all;
 use crate::jobs::{ResearchMeetingAttendees, spawn_periodic_job};
 use crate::openai::{BoxedToolCall, Message, Role};
 use crate::public::{self};
-use crate::tools::{CalendarTool, EmailUnreadTool, NoteSearchTool, SearxSearchTool};
+use crate::tools::{CalendarTool, EmailUnreadTool, NoteSearchTool, SearxSearchTool, WebsiteViewTool};
 
 use super::db::async_db;
 use super::git::{diff_last_commit_files, maybe_pull_and_reset_repo};
@@ -104,6 +104,7 @@ async fn chat_handler(
         searx_search_tool,
         email_unread_tool,
         calendar_tool,
+        website_view_tool,
         openai_api_hostname,
         openai_api_key,
         openai_model,
@@ -122,6 +123,7 @@ async fn chat_handler(
             SearxSearchTool::new(searxng_api_url),
             EmailUnreadTool::new(note_search_api_url),
             CalendarTool::new(note_search_api_url),
+            WebsiteViewTool::new(),
             openai_api_hostname.clone(),
             openai_api_key.clone(),
             openai_model.clone(),
@@ -133,6 +135,7 @@ async fn chat_handler(
         Box::new(searx_search_tool),
         Box::new(email_unread_tool),
         Box::new(calendar_tool),
+        Box::new(website_view_tool),
     ]);
     let user_msg = Message::new(Role::User, &payload.message);
     let mut accum_new: Vec<Message> = vec![];

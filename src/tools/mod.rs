@@ -9,3 +9,6 @@ pub use calendar::CalendarTool;
 
 pub mod email;
 pub use email::EmailUnreadTool;
+
+pub mod website_view;
+pub use website_view::WebsiteViewTool;

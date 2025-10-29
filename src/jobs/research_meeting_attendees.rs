@@ -8,10 +8,10 @@ use crate::{
     chat::insert_chat_message,
     config::AppConfig,
     notification::{
-        PushNotificationPayload, broadcast_push_notification, find_all_notification_subscriptions,
+        broadcast_push_notification, find_all_notification_subscriptions, PushNotificationPayload
     },
     openai::BoxedToolCall,
-    tools::{CalendarTool, SearxSearchTool},
+    tools::{CalendarTool, SearxSearchTool, WebsiteViewTool},
 };
 
 #[derive(Default, Debug)]
@@ -39,6 +39,7 @@ impl PeriodicJob for ResearchMeetingAttendees {
         let tools: Vec<BoxedToolCall> = vec![
             Box::new(CalendarTool::new(note_search_api_url)),
             Box::new(SearxSearchTool::new(searxng_api_url)),
+            Box::new(WebsiteViewTool::new()),
         ];
 
         // Create a session ID for this job

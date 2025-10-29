@@ -60,6 +60,10 @@ impl ToolCall for WebsiteViewTool {
             .text()
             .await?;
 
+        // TODO: If the request failed, provide a default answer so we
+        // don't crash the whole chat. For example: "Fetching the link
+        // failed and due to a 500 status code"
+
         // Convert HTML to Markdown using htmd
         let converter = HtmlToMarkdown::builder()
             .skip_tags(vec!["script", "style", "footer", "img", "svg"])

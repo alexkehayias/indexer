@@ -344,19 +344,16 @@ async fn main() -> Result<()> {
             let openai_model =
                 env::var("INDEXER_LOCAL_LLM_MODEL").unwrap_or_else(|_| "gpt-4.1-mini".to_string());
 
-            // TODO: Window the list of history
             let mut history = vec![Message::new(Role::System, "You are a helpful assistant.")];
-            let mut accum_new: Vec<Message> = Vec::new();
 
             loop {
                 let readline = rl.readline(">>> ");
                 match readline {
                     Ok(line) => {
                         history.push(Message::new(Role::User, line.as_str()));
-                        chat(
+                        let _ = chat(
                             &tools,
-                            &mut history,
-                            &mut accum_new,
+                            &history,
                             &openai_api_hostname,
                             &openai_api_key,
                             &openai_model,

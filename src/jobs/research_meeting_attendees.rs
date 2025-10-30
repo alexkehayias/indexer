@@ -5,12 +5,12 @@ use uuid::Uuid;
 
 use super::PeriodicJob;
 use crate::{
-    chat::insert_chat_message,
+    chat::{insert_chat_message, chat},
     config::AppConfig,
     notification::{
         broadcast_push_notification, find_all_notification_subscriptions, PushNotificationPayload
     },
-    openai::BoxedToolCall,
+    openai::{Role, Message, BoxedToolCall},
     tools::{CalendarTool, SearxSearchTool, WebsiteViewTool},
 };
 
@@ -86,26 +86,25 @@ Frank is the VP of People at Acme. He was previously HR Manager at Acme and befo
 [LinkedIn profile](https://linkedin.com/in/frank-bar)", calendar_email.clone().unwrap());
 
         // Create initial message for chat
-        let mut history = vec![crate::openai::Message::new(
-            crate::openai::Role::User,
+        let history = vec![Message::new(
+            Role::User,
             &prompt,
         )];
 
         // Create a new chat session with the tools
-        let mut accum_new = Vec::new();
-        crate::chat::chat(
+        let messages = chat(
             &Some(tools),
-            &mut history,
-            &mut accum_new,
+            &history,
             openai_api_hostname,
             openai_api_key,
             openai_model,
         )
-        .await;
+            .await
+            .expect("Chat session failed");
 
         // Store the chat messages so the session can be picked up later
         {
-            for m in &history {
+            for m in &messages {
                 insert_chat_message(db, &session_id, m).await.unwrap();
             }
         }

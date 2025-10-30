@@ -1,4 +1,4 @@
-use crate::chat;
+use crate::chat::chat;
 use crate::openai::{Message, Role, ToolCall};
 use crate::tools::EmailUnreadTool;
 
@@ -19,21 +19,18 @@ pub async fn email_chat_response(
         emails.join(", ")
     );
     let user_msg = "Summarize my unread emails.";
-
-    let mut history = vec![
+    let history = vec![
         Message::new(Role::System, &system_msg),
         Message::new(Role::User, user_msg),
     ];
-    let mut accum_new: Vec<Message> = Vec::new();
-    chat::chat(
+
+    chat(
         &tools,
-        &mut history,
-        &mut accum_new,
+        &history,
         openai_api_hostname,
         openai_api_key,
         openai_model,
     )
-    .await;
-
-    history
+        .await
+        .expect("Chat session failed")
 }

@@ -1,4 +1,4 @@
-use anyhow::{bail, Error, Result};
+use anyhow::{anyhow, bail, Error, Result};
 use futures_util::future::try_join_all;
 use serde_json::{Value, json};
 use tokio::sync::mpsc;
@@ -10,21 +10,22 @@ use crate::openai::{
 };
 
 async fn handle_tool_call(tools: &Vec<BoxedToolCall>, tool_call: &Value) -> Result<Vec<Message>, Error> {
-    let tool_call_id = &tool_call["id"].as_str().unwrap();
+    let tool_call_id = &tool_call["id"].as_str().ok_or(anyhow!("Tool call missing ID: {}", tool_call))?;
     let tool_call_function = &tool_call["function"];
-    let tool_call_args = tool_call_function["arguments"].as_str().unwrap();
-    let tool_call_name = tool_call_function["name"].as_str().unwrap();
+    let tool_call_args = tool_call_function["arguments"].as_str().ok_or(anyhow!("Tool call missing arguments: {}", tool_call))?;
+    let tool_call_name = tool_call_function["name"].as_str().ok_or(anyhow!("Tool call missing name: {}", tool_call))?;
+
+    tracing::debug!("\nTool call: {}\nargs: {}", &tool_call_name, &tool_call_args);
 
     // Call the tool and get the next completion from the result
     let tool_call_result = tools
         .iter()
         .find(|i| *i.function_name() == *tool_call_name)
-        .unwrap_or_else(|| panic!("Received tool call that doesn't exist: {}", tool_call_name))
+        .ok_or( anyhow!("Received tool call that doesn't exist: {}", tool_call_name))?
         .call(tool_call_args)
-        .await
-        .expect("Tool call returned an error");
+        .await?;
 
-    let tool_call_requests = vec![FunctionCall {
+    let tool_call_request = vec![FunctionCall {
         function: FunctionCallFn {
             arguments: tool_call_args.to_string(),
             name: tool_call_name.to_string(),
@@ -33,7 +34,7 @@ async fn handle_tool_call(tools: &Vec<BoxedToolCall>, tool_call: &Value) -> Resu
         r#type: String::from("function"),
     }];
     let results = vec![
-        Message::new_tool_call_request(tool_call_requests),
+        Message::new_tool_call_request(tool_call_request),
         Message::new_tool_call_response(
             &tool_call_result,
             tool_call_id,
@@ -70,6 +71,7 @@ pub async fn chat(
     api_key: &str,
     model: &str,
 ) -> Result<Vec<Message>, Error> {
+    let mut updated_history = history.to_owned();
     let mut messages = Vec::new();
 
     let mut resp = completion(history, tools, api_hostname, api_key, model)
@@ -88,11 +90,12 @@ pub async fn chat(
 
         let tool_call_msgs = handle_tool_calls(tools_ref, tool_calls).await?;
         for m in tool_call_msgs.into_iter() {
-            messages.push(m);
+            messages.push(m.clone());
+            updated_history.push(m);
         }
 
         // Provide the results of the tool calls back to the chat
-        resp = completion(history, tools, api_hostname, api_key, model)
+        resp = completion(&updated_history, tools, api_hostname, api_key, model)
             .await
             .expect("OpenAI API call failed");
     }
@@ -118,7 +121,9 @@ pub async fn chat_stream(
     api_key: &str,
     model: &str,
 ) -> Result<Vec<Message>, Error> {
+    let mut updated_history = history.to_owned();
     let mut messages = Vec::new();
+
     let mut resp = completion_stream(tx.clone(), history, tools, api_hostname, api_key, model)
         .await
         .expect("OpenAI API call failed");
@@ -135,11 +140,12 @@ pub async fn chat_stream(
         // TODO: Update this to be streaming
         let tool_call_msgs = handle_tool_calls(tools_ref, tool_calls).await?;
         for m in tool_call_msgs.into_iter() {
-            messages.push(m);
+            messages.push(m.clone());
+            updated_history.push(m);
         }
 
         // Provide the results of the tool calls back to the chat
-        resp = completion_stream(tx.clone(), history, tools, api_hostname, api_key, model)
+        resp = completion_stream(tx.clone(), &updated_history, tools, api_hostname, api_key, model)
             .await
             .expect("OpenAI API call failed");
     }

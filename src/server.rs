@@ -185,8 +185,10 @@ async fn chat_handler(
                 };
             },
             Err(e) => {
-                // If the chat turn failed, stream back a default
-                // message as a response letting the user know what happened
+                tracing::error!("Chat handler error: {}. Root cause: {}", e, e.root_cause());
+
+                // Stream back a default message as a response letting
+                // the user know what happened
                 let err_msg = format!("Something went wrong: {}", e);
                 let completion_chunk = json!({
                     "id": "error",

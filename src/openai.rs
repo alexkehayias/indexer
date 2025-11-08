@@ -284,7 +284,7 @@ pub async fn completion_stream(
     let mut reasoning_buf: String = String::from("");
     let mut tool_calls: HashMap<usize, ToolCallFinal> = HashMap::new();
 
-    while let Some(chunk) = stream.next().await {
+    'outer: while let Some(chunk) = stream.next().await {
         let chunk = chunk.expect("Invalid chunk");
         let chunk_str = std::str::from_utf8(&chunk)?.trim();
         let _ = tx.send(
@@ -312,23 +312,24 @@ pub async fn completion_stream(
 
             // Handle the end of the stream
             if data == "[DONE]" {
-                break;
+                break 'outer;
             }
 
             // Process the delta
-            let chunk = serde_json::from_str::<CompletionChunk>(data)?;
+            let chunk = serde_json::from_str::<CompletionChunk>(data)
+                .inspect_err(|e| tracing::error!("Parsing completion chunk failed for {}\nError:{}", data, e))?;
             let choice = chunk.choices.first().expect("Missing choices field");
 
             match &choice.delta {
                 Delta::Reasoning { reasoning } => {
                     if choice.finish_reason.is_some() {
-                        break;
+                        break 'outer;
                     }
                     reasoning_buf += &reasoning.clone();
                 }
                 Delta::Content { content } => {
                     if choice.finish_reason.is_some() {
-                        break;
+                        break 'outer;
                     }
 
                     content_buf += &content.clone();
@@ -337,7 +338,7 @@ pub async fn completion_stream(
                     tool_calls: tool_call_deltas,
                 } => {
                     if choice.finish_reason.is_some() {
-                        break;
+                        break 'outer;
                     }
                     for tool_call_delta in tool_call_deltas.iter() {
                         match tool_call_delta {
@@ -370,7 +371,7 @@ pub async fn completion_stream(
                     }
                 }
                 Delta::Stop {} => {
-                    break;
+                    break 'outer;
                 }
             }
         }

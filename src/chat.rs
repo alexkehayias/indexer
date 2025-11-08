@@ -75,8 +75,7 @@ pub async fn chat(
     let mut messages = Vec::new();
 
     let mut resp = completion(history, tools, api_hostname, api_key, model)
-        .await
-        .expect("OpenAI API call failed");
+        .await?;
 
     let tools_ref = tools
         .as_ref()
@@ -96,8 +95,7 @@ pub async fn chat(
 
         // Provide the results of the tool calls back to the chat
         resp = completion(&updated_history, tools, api_hostname, api_key, model)
-            .await
-            .expect("OpenAI API call failed");
+            .await?;
     }
 
     if let Some(msg) = resp["choices"][0]["message"]["content"].as_str() {
@@ -125,8 +123,7 @@ pub async fn chat_stream(
     let mut messages = Vec::new();
 
     let mut resp = completion_stream(tx.clone(), history, tools, api_hostname, api_key, model)
-        .await
-        .expect("OpenAI API call failed");
+        .await?;
 
     // Tool calls need to be handled for the chat to proceed
     while let Some(tool_calls) = resp["choices"][0]["message"]["tool_calls"].as_array() {
@@ -146,8 +143,7 @@ pub async fn chat_stream(
 
         // Provide the results of the tool calls back to the chat
         resp = completion_stream(tx.clone(), &updated_history, tools, api_hostname, api_key, model)
-            .await
-            .expect("OpenAI API call failed");
+            .await?;
     }
 
     if let Some(msg) = resp["choices"][0]["message"]["content"].as_str() {

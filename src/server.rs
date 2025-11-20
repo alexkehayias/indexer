@@ -37,6 +37,7 @@ use crate::jobs::{ResearchMeetingAttendees, spawn_periodic_job};
 use crate::openai::{BoxedToolCall, Message, Role};
 use crate::public::{self};
 use crate::tools::{CalendarTool, EmailUnreadTool, NoteSearchTool, SearxSearchTool, WebsiteViewTool};
+use crate::utils;
 
 use super::db::async_db;
 use super::git::{diff_last_commit_files, maybe_pull_and_reset_repo};
@@ -88,6 +89,76 @@ async fn chat_session(
     }
 
     Ok(Json(public::ChatTranscriptResponse { transcript }).into_response())
+}
+
+/// Get a list of all chat sessions
+async fn chat_sessions(State(state): State<SharedState>) -> Result<Json<Vec<public::ChatSession>>, public::ApiError> {
+    let db = state.read().expect("Unable to read share state").db.clone();
+
+    let sessions = db.call(move |conn| {
+        // Get distinct session IDs and the timestamp of their first message
+        let mut stmt = conn.prepare(
+            "SELECT DISTINCT session_id FROM chat_message GROUP BY session_id ORDER BY MIN(rowid) DESC"
+        )?;
+
+        let rows = stmt.query_map([], |row| {
+            let session_id: String = row.get(0)?;
+            Ok(session_id)
+        })?
+        .filter_map(Result::ok)
+        .collect::<Vec<String>>();
+
+        Ok(rows)
+    }).await?;
+
+    // For each session, get the last message to show as preview
+    let mut session_list = Vec::new();
+    for session_id in sessions {
+        // Clone session_id to avoid move issues
+        let session_id_clone = session_id.clone();
+
+        // Get the last message in this session to show as preview
+        let last_message = db.call(move |conn| {
+            let mut stmt = conn.prepare(
+                "SELECT data FROM chat_message WHERE session_id=? ORDER BY rowid DESC LIMIT 1"
+            )?;
+            let result = stmt.query_map([session_id_clone], |row| {
+                let data: String = row.get(0)?;
+                Ok(data)
+            })?
+            .filter_map(Result::ok)
+            .collect::<Vec<String>>();
+
+            Ok(result.first().cloned())
+        }).await?;
+
+        let last_message_preview = if let Some(msg_data) = last_message {
+            // Parse the JSON to extract message content for preview
+            if let Ok(msg) = serde_json::from_str::<Message>(&msg_data) {
+                // Handle the Option<String> properly
+                if let Some(content) = msg.content {
+                    if content.len() > 50 {
+                        format!("{}...", utils::truncate(&content, 50))
+                    } else {
+                        content
+                    }
+                } else {
+                    "No content".to_string()
+                }
+            } else {
+                "Unknown message".to_string()
+            }
+        } else {
+            "No messages".to_string()
+        };
+
+        session_list.push(public::ChatSession {
+            id: session_id,
+            last_message_preview,
+        });
+    }
+
+    Ok(Json(session_list))
 }
 
 /// Initiate or add to a chat session and stream the response using
@@ -649,6 +720,8 @@ pub fn app(shared_state: Arc<RwLock<AppState>>) -> Router {
         .route("/notes/chat", post(chat_handler))
         // Retrieve a past chat session
         .route("/notes/chat/{id}", get(chat_session))
+        // Get list of chat sessions
+        .route("/notes/chat/sessions", get(chat_sessions))
         // Storage for push subscriptions
         .route("/push/subscribe", post(push_subscription))
         .route("/push/notification", post(send_notification))

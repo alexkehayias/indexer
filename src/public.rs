@@ -181,3 +181,9 @@ pub struct CalendarResponse {
     pub end: String,   // Using String for datetime to maintain compatibility
     pub attendees: Option<Vec<CalendarAttendee>>,
 }
+
+#[derive(Serialize)]
+pub struct ChatSession {
+    pub id: String,
+    pub last_message_preview: String,
+}

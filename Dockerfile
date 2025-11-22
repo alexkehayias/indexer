@@ -38,6 +38,8 @@ COPY ./web-ui/src/vendor/highlight.min.js ./web-ui/src/vendor/highlight.min.js
 COPY ./web-ui/src/chat/index.html ./web-ui/src/chat/index.html
 COPY ./web-ui/src/chat/index.js ./web-ui/src/chat/index.js
 COPY ./web-ui/src/chat/img/ ./web-ui/src/chat/img/
+COPY ./web-ui/src/chat/sessions/index.html ./web-ui/src/chat/sessions/index.html
+COPY ./web-ui/src/chat/sessions/index.js ./web-ui/src/chat/sessions/index.js
 
 EXPOSE 2222
 

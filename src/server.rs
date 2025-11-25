@@ -92,16 +92,32 @@ async fn chat_session(
 }
 
 /// Get a list of all chat sessions
-async fn chat_sessions(State(state): State<SharedState>) -> Result<Json<Vec<public::ChatSession>>, public::ApiError> {
+async fn chat_sessions(
+    State(state): State<SharedState>,
+    Query(params): Query<public::ChatSessionsQuery>,
+) -> Result<Json<public::ChatSessionsResponse>, public::ApiError> {
     let db = state.read().expect("Unable to read share state").db.clone();
+    let page = params.page.unwrap_or(1);
+    let limit = params.limit.unwrap_or(20);
+    let offset = (page - 1) * limit;
 
+    // Get total count of sessions
+    let total_sessions = db.call(move |conn| {
+        let mut stmt = conn.prepare(
+            "SELECT COUNT(DISTINCT session_id) FROM chat_message"
+        )?;
+        let count: i64 = stmt.query_row([], |row| row.get(0))?;
+        Ok(count)
+    }).await?;
+
+    // Get distinct session IDs with pagination
     let sessions = db.call(move |conn| {
         // Get distinct session IDs and the timestamp of their first message
         let mut stmt = conn.prepare(
-            "SELECT DISTINCT session_id FROM chat_message GROUP BY session_id ORDER BY MIN(rowid) DESC"
+            "SELECT DISTINCT session_id FROM chat_message GROUP BY session_id ORDER BY MIN(rowid) DESC LIMIT ? OFFSET ?"
         )?;
 
-        let rows = stmt.query_map([], |row| {
+        let rows = stmt.query_map([limit, offset], |row| {
             let session_id: String = row.get(0)?;
             Ok(session_id)
         })?
@@ -158,7 +174,15 @@ async fn chat_sessions(State(state): State<SharedState>) -> Result<Json<Vec<publ
         });
     }
 
-    Ok(Json(session_list))
+    let total_pages = (total_sessions as f64 / limit as f64).ceil() as i64;
+
+    Ok(Json(public::ChatSessionsResponse {
+        sessions: session_list,
+        page,
+        limit,
+        total_sessions,
+        total_pages,
+    }))
 }
 
 /// Initiate or add to a chat session and stream the response using

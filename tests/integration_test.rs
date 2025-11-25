@@ -321,4 +321,126 @@ mod tests {
         assert!(actual.contains("CONTEXT:\ntest test"));
         Ok(())
     }
+
+    #[tokio::test]
+    #[serial]
+    async fn it_gets_chat_sessions() {
+        let app = test_app().await;
+
+        // First create some chat sessions by making a request to the chat endpoint
+        let response = app
+            .clone()
+            .oneshot(
+                Request::builder()
+                    .uri("/notes/chat")
+                    .method("POST")
+                    .header("content-type", "application/json")
+                    .body(Body::from(
+                        json!({
+                            "session_id": "test-session-1",
+                            "message": "Hello"
+                        })
+                        .to_string(),
+                    ))
+                    .unwrap(),
+            )
+            .await
+            .unwrap();
+
+        assert_eq!(response.status(), StatusCode::OK);
+
+        // Now test the sessions endpoint
+        let response = app
+            .oneshot(
+                Request::builder()
+                    .uri("/notes/chat/sessions")
+                    .body(Body::empty())
+                    .unwrap(),
+            )
+            .await
+            .unwrap();
+
+        assert_eq!(response.status(), StatusCode::OK);
+
+        let body = body_to_string(response.into_body()).await;
+        // Verify we get valid JSON response
+        assert!(body.contains("\"sessions\""));
+        assert!(body.contains("\"page\""));
+        assert!(body.contains("\"limit\""));
+        assert!(body.contains("\"total_sessions\""));
+        assert!(body.contains("\"total_pages\""));
+    }
+
+    #[tokio::test]
+    #[serial]
+    async fn it_gets_chat_sessions_with_pagination() {
+        let app = test_app().await;
+
+        // Create multiple chat sessions to test pagination
+        for i in 1..=5 {
+            let response = app
+                .clone()
+                .oneshot(
+                    Request::builder()
+                        .uri("/notes/chat")
+                        .method("POST")
+                        .header("content-type", "application/json")
+                        .body(Body::from(
+                            json!({
+                                "session_id": format!("test-session-{}", i),
+                                "message": format!("Message {}", i)
+                            })
+                            .to_string(),
+                        ))
+                        .unwrap(),
+                )
+                .await
+                .unwrap();
+
+            assert_eq!(response.status(), StatusCode::OK);
+        }
+
+        // Test pagination with limit=2, page=1
+        let response = app
+            .clone()
+            .oneshot(
+                Request::builder()
+                    .uri("/notes/chat/sessions?page=1&limit=2")
+                    .body(Body::empty())
+                    .unwrap(),
+            )
+            .await
+            .unwrap();
+
+        assert_eq!(response.status(), StatusCode::OK);
+
+        let body = body_to_string(response.into_body()).await;
+        // Verify we get valid JSON response with pagination data
+        assert!(body.contains("\"sessions\""));
+        // Just check that the response has the basic structure we expect
+        assert!(body.contains("\"page\""));
+        assert!(body.contains("\"limit\""));
+        assert!(body.contains("\"total_sessions\""));
+        assert!(body.contains("\"total_pages\""));
+
+        // Test pagination with limit=2, page=2
+        let response = app
+            .oneshot(
+                Request::builder()
+                    .uri("/notes/chat/sessions?page=2&limit=2")
+                    .body(Body::empty())
+                    .unwrap(),
+            )
+            .await
+            .unwrap();
+
+        assert_eq!(response.status(), StatusCode::OK);
+
+        let body = body_to_string(response.into_body()).await;
+        // Verify we get valid JSON response with pagination data for second page
+        assert!(body.contains("\"page\""));
+        assert!(body.contains("\"limit\""));
+        assert!(body.contains("\"total_sessions\""));
+        assert!(body.contains("\"total_pages\""));
+    }
 }

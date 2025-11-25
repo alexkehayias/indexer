@@ -100,6 +100,21 @@ pub struct ChatRequest {
     pub message: String,
 }
 
+#[derive(Deserialize)]
+pub struct ChatSessionsQuery {
+    pub page: Option<usize>,
+    pub limit: Option<usize>,
+}
+
+#[derive(Serialize)]
+pub struct ChatSessionsResponse {
+    pub sessions: Vec<ChatSession>,
+    pub page: usize,
+    pub limit: usize,
+    pub total_sessions: i64,
+    pub total_pages: i64,
+}
+
 #[derive(Serialize)]
 pub struct ChatResponse {
     message: String,

@@ -174,6 +174,24 @@ pub async fn insert_chat_message(
     Ok(result)
 }
 
+pub async fn create_session_if_not_exists(
+    db: &Connection,
+    session_id: &str,
+) -> Result<(), Error> {
+    let s_id = session_id.to_owned();
+    db.call(move |conn| {
+        // Insert a new session record if it doesn't already exist
+        let result = conn.execute(
+            "INSERT OR IGNORE INTO session (id) VALUES (?)",
+            [s_id],
+        )?;
+        Ok(result)
+    })
+    .await?;
+
+    Ok(())
+}
+
 pub async fn find_chat_session_by_id(
     db: &Connection,
     session_id: &str,

@@ -29,7 +29,7 @@ use tower_http::trace::TraceLayer;
 use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
 
 use crate::aql;
-use crate::chat::{chat_stream, find_chat_session_by_id, insert_chat_message};
+use crate::chat::{chat_stream, create_session_if_not_exists, find_chat_session_by_id, insert_chat_message};
 use crate::config::AppConfig;
 use crate::gcal::list_events;
 use crate::indexing::index_all;
@@ -242,6 +242,9 @@ async fn chat_handler(
 
     let session_id = payload.session_id;
     let db = state.read().expect("Unable to read share state").db.clone();
+
+    // Create session in database if it doesn't already exist
+    create_session_if_not_exists(&db, &session_id).await?;
 
     // Try to fetch the session from the db. If it doesn't exist then
     // initialize the transcript with a system message and the user's

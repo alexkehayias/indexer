@@ -5,12 +5,12 @@ use uuid::Uuid;
 
 use super::PeriodicJob;
 use crate::{
-    chat::{insert_chat_message, chat},
+    chat::{chat, create_session_if_not_exists, insert_chat_message},
     config::AppConfig,
     notification::{
         broadcast_push_notification, find_all_notification_subscriptions, PushNotificationPayload
     },
-    openai::{Role, Message, BoxedToolCall},
+    openai::{BoxedToolCall, Message, Role},
     tools::{CalendarTool, SearxSearchTool, WebsiteViewTool},
 };
 
@@ -41,9 +41,6 @@ impl PeriodicJob for ResearchMeetingAttendees {
             Box::new(SearxSearchTool::new(searxng_api_url)),
             Box::new(WebsiteViewTool::new()),
         ];
-
-        // Create a session ID for this job
-        let session_id = Uuid::new_v4().to_string();
 
         // Early return if there is no calendar email specified.
         if calendar_email.is_none() {
@@ -102,11 +99,12 @@ Frank is the VP of People at Acme. He was previously HR Manager at Acme and befo
             .await
             .expect("Chat session failed");
 
+        let session_id = Uuid::new_v4().to_string();
+        create_session_if_not_exists(db, &session_id).await.unwrap();
+
         // Store the chat messages so the session can be picked up later
-        {
-            for m in &messages {
-                insert_chat_message(db, &session_id, m).await.unwrap();
-            }
+        for m in &messages {
+            insert_chat_message(db, &session_id, m).await.unwrap();
         }
 
         // Get the final response from the chat

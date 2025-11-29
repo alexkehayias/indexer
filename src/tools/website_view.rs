@@ -2,6 +2,7 @@ use crate::openai::{Function, Parameters, Property, ToolCall, ToolType};
 use anyhow::{Context, Error, Result};
 use async_trait::async_trait;
 use htmd::HtmlToMarkdown;
+use http::StatusCode;
 use reqwest;
 use serde::{Deserialize, Serialize};
 
@@ -52,28 +53,49 @@ impl ToolCall for WebsiteViewTool {
         // params?
 
         // Fetch the HTML content from the URL
-        let html_content = reqwest::Client::new()
+        let response = reqwest::Client::new()
             .get(&clean_url)
             .send()
             .await?
-            .error_for_status()?
-            .text()
-            .await?;
+            .error_for_status();
 
-        // TODO: If the request failed, provide a default answer so we
-        // don't crash the whole chat. For example: "Fetching the link
-        // failed and due to a 500 status code"
-
-        // Convert HTML to Markdown using htmd
-        let converter = HtmlToMarkdown::builder()
-            .skip_tags(vec!["script", "style", "footer", "img", "svg"])
-            .build();
-        let markdown_content = converter.convert(&html_content).unwrap();
+        let content = match response {
+            Err(e) => {
+                // If the request failed, provide a default answer so we
+                // don't crash the whole chat. For example: "Fetching the link
+                // failed and due to a 500 status code"
+                if let Some(status) = e.status() {
+                    match status {
+                        StatusCode::BAD_REQUEST => {
+                            tracing::warn!("Website view failed due to bad request.");
+                            String::from("Website view failed due to bad request.")
+                        },
+                        StatusCode::NOT_FOUND => {
+                            tracing::warn!("Website view failed because the page was not found.");
+                            String::from("Website view failed because the page was not found.")
+                        },
+                        _ => format!("Website view failed with HTTP status code {}", status)
+                    }
+                } else {
+                    // Not sure how we could end up here with an error
+                    // that doesn't have a status code, but need to
+                    // make the compiler happy
+                    anyhow::bail!("Website view failed: {}", e)
+                }
+            },
+            Ok(resp) => {
+                // Convert HTML to markdown
+                let html_content = resp.text().await?;
+                let converter = HtmlToMarkdown::builder()
+                    .skip_tags(vec!["script", "style", "footer", "img", "svg"])
+                    .build();
+                converter.convert(&html_content)?
+            }
+        };
 
         // TODO: Limit the amount of content returned to avoid filling
         // the context window with noise.
-
-        Ok(markdown_content)
+        Ok(content)
     }
 
     fn function_name(&self) -> String {

@@ -110,35 +110,58 @@ async fn chat_sessions(
         Ok(count)
     }).await?;
 
-    // Get distinct session IDs with pagination
-    let sessions = db.call(move |conn| {
-        // Get distinct session IDs and the timestamp of their first message
+    // Get distinct session IDs with pagination and their tags in a single query
+    let sessions_with_tags = db.call(move |conn| {
+        // Get distinct session IDs with their last message preview and tags
         let mut stmt = conn.prepare(
-            "SELECT DISTINCT session_id FROM chat_message GROUP BY session_id ORDER BY MIN(rowid) DESC LIMIT ? OFFSET ?"
+            r#"
+            SELECT
+                s.session_id,
+                GROUP_CONCAT(DISTINCT t.name) as tags,
+                MAX(cm.rowid) as last_message_rowid
+            FROM (
+                SELECT DISTINCT session_id
+                FROM chat_message
+                GROUP BY session_id
+                ORDER BY MIN(rowid) DESC
+                LIMIT ? OFFSET ?
+            ) s
+            LEFT JOIN session_tag st ON s.session_id = st.session_id
+            LEFT JOIN tag t ON st.tag_id = t.id
+            LEFT JOIN chat_message cm ON s.session_id = cm.session_id
+            GROUP BY s.session_id
+            ORDER BY MAX(cm.rowid) DESC
+            "#,
         )?;
 
         let rows = stmt.query_map([limit, offset], |row| {
             let session_id: String = row.get(0)?;
-            Ok(session_id)
+            let tags_str: Option<String> = row.get(1)?;
+            let last_message_rowid: i64 = row.get(2)?;
+
+            // Parse tags string into Vec<String>
+            let tags = match tags_str {
+                Some(tag_str) => tag_str.split(',').map(|s| s.to_string()).collect(),
+                None => vec![],
+            };
+
+            Ok((session_id, tags, last_message_rowid))
         })?
         .filter_map(Result::ok)
-        .collect::<Vec<String>>();
+        .collect::<Vec<_>>();
 
         Ok(rows)
     }).await?;
 
     // For each session, get the last message to show as preview
     let mut session_list = Vec::new();
-    for session_id in sessions {
-        // Clone session_id to avoid move issues
-        let session_id_clone = session_id.clone();
-
+    for (session_id, tags, last_message_rowid) in sessions_with_tags {
         // Get the last message in this session to show as preview
         let last_message = db.call(move |conn| {
             let mut stmt = conn.prepare(
-                "SELECT data FROM chat_message WHERE session_id=? ORDER BY rowid DESC LIMIT 1"
+                "SELECT data FROM chat_message WHERE rowid=?"
             )?;
-            let result = stmt.query_map([session_id_clone], |row| {
+            let result = stmt.query_map([last_message_rowid], |row| {
                 let data: String = row.get(0)?;
                 Ok(data)
             })?
@@ -171,6 +194,7 @@ async fn chat_sessions(
         session_list.push(public::ChatSession {
             id: session_id,
             last_message_preview,
+            tags,
         });
     }
 

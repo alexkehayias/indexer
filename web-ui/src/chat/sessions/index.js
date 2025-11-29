@@ -26,7 +26,12 @@ window.loadSessions = async function(page = 1) {
       sessionsList.innerHTML = data.sessions.map(session => `
         <div class="border rounded p-4">
           <h2 class="font-semibold">Session: ${session.id}</h2>
-          <p class="text-sm text-gray-600">Preview: ${session.last_message_preview}</p>
+          ${session.tags && session.tags.length > 0 ? `
+            <div class="flex flex-wrap gap-2 mt-2">
+              ${session.tags.map(tag => `<span class="bg-blue-100 text-blue-800 text-xs font-medium px-2.5 py-0.5 rounded">${tag}</span>`).join('')}
+            </div>
+          ` : ''}
+          <p class="text-sm text-gray-600 mt-2">Preview: ${session.last_message_preview}</p>
           <a href="/chat/index.html?session_id=${session.id}" class="text-blue-500 hover:underline mt-2 inline-block">View Session</a>
         </div>
       `).join('');

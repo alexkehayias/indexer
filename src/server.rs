@@ -244,7 +244,7 @@ async fn chat_handler(
     let db = state.read().expect("Unable to read share state").db.clone();
 
     // Create session in database if it doesn't already exist
-    create_session_if_not_exists(&db, &session_id).await?;
+    create_session_if_not_exists(&db, &session_id, &[]).await?;
 
     // Try to fetch the session from the db. If it doesn't exist then
     // initialize the transcript with a system message and the user's

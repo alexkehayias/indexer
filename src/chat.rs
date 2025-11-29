@@ -177,17 +177,52 @@ pub async fn insert_chat_message(
 pub async fn create_session_if_not_exists(
     db: &Connection,
     session_id: &str,
+    tags: &[&str],
 ) -> Result<(), Error> {
-    let s_id = session_id.to_owned();
+    let session_id_owned = session_id.to_owned();               // String
+    let tag_names: Vec<String> = tags.iter()
+        .map(|s| s.to_lowercase().trim().to_string())
+        .collect();
+
     db.call(move |conn| {
+        // All tag-related database calls either all succeed or it
+        // fails and rollsback to avoid inconsistent data
+        let tx = conn.transaction()?;
+
         // Insert a new session record if it doesn't already exist
-        let result = conn.execute(
+        let result = tx.execute(
             "INSERT OR IGNORE INTO session (id) VALUES (?)",
-            [s_id],
+            [&session_id_owned],
         )?;
+        if !tag_names.is_empty() {
+            // Insert all tags first (ignore duplicates)
+            for tag in &tag_names {
+                tx.execute(
+                    "INSERT OR IGNORE INTO tag (name) VALUES (?)",
+                    [tag.clone()],
+                )?;
+            }
+
+            // Insert all session_tag relationships using a single query approach
+            for tag in &tag_names {
+                // Get the tag_id for this tag
+                let tag_id: i64 = tx.query_row(
+                    "SELECT id FROM tag WHERE name = ?",
+                    [tag.clone()],
+                    |row| row.get(0)
+                )?;
+
+                // Insert the session_tag relationship if it doesn't already exist
+                tx.execute(
+                    "INSERT OR IGNORE INTO session_tag (session_id, tag_id) VALUES (?, ?)",
+                    [&session_id_owned, &tag_id.to_string()],
+                )?;
+            }
+        }
+
+        tx.commit()?;
         Ok(result)
-    })
-    .await?;
+    }).await?;
 
     Ok(())
 }

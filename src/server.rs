@@ -33,7 +33,7 @@ use crate::chat::{chat_stream, create_session_if_not_exists, find_chat_session_b
 use crate::config::AppConfig;
 use crate::gcal::list_events;
 use crate::indexing::index_all;
-use crate::jobs::{ResearchMeetingAttendees, spawn_periodic_job};
+use crate::jobs::{ResearchMeetingAttendees, spawn_periodic_job, GenerateSessionTitles};
 use crate::openai::{BoxedToolCall, Message, Role};
 use crate::public::{self};
 use crate::tools::{CalendarTool, EmailUnreadTool, NoteSearchTool, SearxSearchTool, WebsiteViewTool};
@@ -117,6 +117,8 @@ async fn chat_sessions(
             r#"
             SELECT
                 s.session_id,
+                sh.title,
+                sh.summary,
                 GROUP_CONCAT(DISTINCT t.name) as tags,
                 MAX(cm.rowid) as last_message_rowid
             FROM (
@@ -126,6 +128,7 @@ async fn chat_sessions(
                 ORDER BY MIN(rowid) DESC
                 LIMIT ? OFFSET ?
             ) s
+            JOIN session sh ON s.session_id = sh.id
             LEFT JOIN session_tag st ON s.session_id = st.session_id
             LEFT JOIN tag t ON st.tag_id = t.id
             LEFT JOIN chat_message cm ON s.session_id = cm.session_id
@@ -136,8 +139,10 @@ async fn chat_sessions(
 
         let rows = stmt.query_map([limit, offset], |row| {
             let session_id: String = row.get(0)?;
-            let tags_str: Option<String> = row.get(1)?;
-            let last_message_rowid: i64 = row.get(2)?;
+            let title: Option<String> = row.get(1)?;
+            let summary: Option<String> = row.get(2)?;
+            let tags_str: Option<String> = row.get(3)?;
+            let last_message_rowid: i64 = row.get(4)?;
 
             // Parse tags string into Vec<String>
             let tags = match tags_str {
@@ -145,7 +150,7 @@ async fn chat_sessions(
                 None => vec![],
             };
 
-            Ok((session_id, tags, last_message_rowid))
+            Ok((session_id, title, summary, tags, last_message_rowid))
         })?
         .filter_map(Result::ok)
         .collect::<Vec<_>>();
@@ -155,7 +160,7 @@ async fn chat_sessions(
 
     // For each session, get the last message to show as preview
     let mut session_list = Vec::new();
-    for (session_id, tags, last_message_rowid) in sessions_with_tags {
+    for (session_id, title, summary, tags, last_message_rowid) in sessions_with_tags {
         // Get the last message in this session to show as preview
         let last_message = db.call(move |conn| {
             let mut stmt = conn.prepare(
@@ -193,6 +198,8 @@ async fn chat_sessions(
 
         session_list.push(public::ChatSession {
             id: session_id,
+            title,
+            summary,
             last_message_preview,
             tags,
         });
@@ -873,7 +880,8 @@ pub async fn serve(
 
     // Run background jobs. Each job is spawned in it's own tokio task
     // in a loop.
-    spawn_periodic_job(app_config, db, ResearchMeetingAttendees);
+    spawn_periodic_job(app_config.clone(), db.clone(), ResearchMeetingAttendees);
+    spawn_periodic_job(app_config, db, GenerateSessionTitles);
 
     axum::serve(listener, app).await.unwrap();
 }

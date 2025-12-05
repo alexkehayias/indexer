@@ -200,6 +200,8 @@ pub struct CalendarResponse {
 #[derive(Serialize)]
 pub struct ChatSession {
     pub id: String,
+    pub title: Option<String>,
+    pub summary: Option<String>,
     pub last_message_preview: String,
     pub tags: Vec<String>,
 }

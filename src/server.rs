@@ -20,6 +20,7 @@ use tantivy::doc;
 use tokio::sync::mpsc;
 use tokio::task::JoinSet;
 use tokio_rusqlite::Connection;
+use tokio_rusqlite::{params};
 use tokio_stream::StreamExt as _;
 use tokio_stream::wrappers::UnboundedReceiverStream;
 use tower::ServiceBuilder;
@@ -37,7 +38,6 @@ use crate::jobs::{ResearchMeetingAttendees, spawn_periodic_job, GenerateSessionT
 use crate::openai::{BoxedToolCall, Message, Role};
 use crate::public::{self};
 use crate::tools::{CalendarTool, EmailUnreadTool, NoteSearchTool, SearxSearchTool, WebsiteViewTool};
-use crate::utils;
 
 use super::db::async_db;
 use super::git::{diff_last_commit_files, maybe_pull_and_reset_repo};
@@ -100,115 +100,75 @@ async fn chat_sessions(
     let page = params.page.unwrap_or(1);
     let limit = params.limit.unwrap_or(20);
     let offset = (page - 1) * limit;
+    let tags = params.tags.unwrap_or(vec![]);
+    let tag_json_array = format!("[{}]", tags.join(","));
 
-    // Get total count of sessions
+    let tags_array_copy = tag_json_array.clone();
     let total_sessions = db.call(move |conn| {
         let mut stmt = conn.prepare(
-            "SELECT COUNT(DISTINCT session_id) FROM chat_message"
+            r#"
+                     SELECT COUNT(*)
+                     FROM session s
+                     LEFT JOIN session_tag st ON s.id = st.session_id
+                     LEFT JOIN tag t ON st.tag_id = t.id
+                     WHERE (NOT EXISTS (SELECT 1 FROM json_each(?1))
+                            OR t.name in (SELECT value FROM json_each(?1)))
+                 "#
         )?;
-        let count: i64 = stmt.query_row([], |row| row.get(0))?;
+        let count: i64 = stmt.query_row([tags_array_copy.as_bytes()], |row| row.get(0))?;
         Ok(count)
     }).await?;
 
-    // Get distinct session IDs with pagination and their tags in a single query
-    let sessions_with_tags = db.call(move |conn| {
-        // Get distinct session IDs with their last message preview and tags
+    let sessions = db.call(move |conn| {
         let mut stmt = conn.prepare(
             r#"
-            SELECT
-                s.session_id,
-                sh.title,
-                sh.summary,
-                GROUP_CONCAT(DISTINCT t.name) as tags,
-                MAX(cm.rowid) as last_message_rowid
-            FROM (
-                SELECT DISTINCT session_id
-                FROM chat_message
-                GROUP BY session_id
-                ORDER BY MIN(rowid) DESC
-                LIMIT ? OFFSET ?
-            ) s
-            JOIN session sh ON s.session_id = sh.id
-            LEFT JOIN session_tag st ON s.session_id = st.session_id
-            LEFT JOIN tag t ON st.tag_id = t.id
-            LEFT JOIN chat_message cm ON s.session_id = cm.session_id
-            GROUP BY s.session_id
-            ORDER BY MAX(cm.rowid) DESC
-            "#,
+                SELECT
+                    s.id,
+                    s.title,
+                    s.summary,
+                    GROUP_CONCAT(DISTINCT t.name) as tags
+                FROM session s
+                LEFT JOIN session_tag st ON s.id = st.session_id
+                LEFT JOIN tag t ON st.tag_id = t.id
+                WHERE (NOT EXISTS (SELECT 1 FROM json_each(?1))
+                       OR t.name in (SELECT value FROM json_each(?1)))
+                GROUP BY s.id, s.title, s.summary, s.created_at
+                ORDER BY s.created_at DESC
+                LIMIT ?2 OFFSET ?3
+                "#,
         )?;
 
-        let rows = stmt.query_map([limit, offset], |row| {
-            let session_id: String = row.get(0)?;
-            let title: Option<String> = row.get(1)?;
-            let summary: Option<String> = row.get(2)?;
-            let tags_str: Option<String> = row.get(3)?;
-            let last_message_rowid: i64 = row.get(4)?;
+        let session_list = stmt.query_map(
+            params![tag_json_array, limit, offset],
+            |row| {
+                let session_id: String = row.get(0)?;
+                let title: Option<String> = row.get(1)?;
+                let summary: Option<String> = row.get(2)?;
+                let tags_str: Option<String> = row.get(3)?;
 
-            // Parse tags string into Vec<String>
-            let tags = match tags_str {
-                Some(tag_str) => tag_str.split(',').map(|s| s.to_string()).collect(),
-                None => vec![],
-            };
+                // Parse tags string into Vec<String>
+                let tags = match tags_str {
+                    Some(tag_str) => tag_str.split(',').map(|s| s.to_string()).collect(),
+                    None => vec![],
+                };
 
-            Ok((session_id, title, summary, tags, last_message_rowid))
-        })?
-        .filter_map(Result::ok)
-        .collect::<Vec<_>>();
-
-        Ok(rows)
-    }).await?;
-
-    // For each session, get the last message to show as preview
-    let mut session_list = Vec::new();
-    for (session_id, title, summary, tags, last_message_rowid) in sessions_with_tags {
-        // Get the last message in this session to show as preview
-        let last_message = db.call(move |conn| {
-            let mut stmt = conn.prepare(
-                "SELECT data FROM chat_message WHERE rowid=?"
-            )?;
-            let result = stmt.query_map([last_message_rowid], |row| {
-                let data: String = row.get(0)?;
-                Ok(data)
+                Ok(public::ChatSession {
+                    id: session_id,
+                    title,
+                    summary,
+                    tags,
+                })
             })?
             .filter_map(Result::ok)
-            .collect::<Vec<String>>();
+            .collect::<Vec<_>>();
 
-            Ok(result.first().cloned())
-        }).await?;
-
-        let last_message_preview = if let Some(msg_data) = last_message {
-            // Parse the JSON to extract message content for preview
-            if let Ok(msg) = serde_json::from_str::<Message>(&msg_data) {
-                // Handle the Option<String> properly
-                if let Some(content) = msg.content {
-                    if content.len() > 50 {
-                        format!("{}...", utils::truncate(&content, 50))
-                    } else {
-                        content
-                    }
-                } else {
-                    "No content".to_string()
-                }
-            } else {
-                "Unknown message".to_string()
-            }
-        } else {
-            "No messages".to_string()
-        };
-
-        session_list.push(public::ChatSession {
-            id: session_id,
-            title,
-            summary,
-            last_message_preview,
-            tags,
-        });
-    }
+        Ok(session_list)
+    }).await?;
 
     let total_pages = (total_sessions as f64 / limit as f64).ceil() as i64;
 
     Ok(Json(public::ChatSessionsResponse {
-        sessions: session_list,
+        sessions,
         page,
         limit,
         total_sessions,

@@ -104,6 +104,7 @@ pub struct ChatRequest {
 pub struct ChatSessionsQuery {
     pub page: Option<usize>,
     pub limit: Option<usize>,
+    pub tags: Option<Vec<String>>,
 }
 
 #[derive(Serialize)]
@@ -202,6 +203,5 @@ pub struct ChatSession {
     pub id: String,
     pub title: Option<String>,
     pub summary: Option<String>,
-    pub last_message_preview: String,
     pub tags: Vec<String>,
 }

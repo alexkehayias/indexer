@@ -69,12 +69,12 @@ impl ToolCall for WebsiteViewTool {
                         StatusCode::BAD_REQUEST => {
                             tracing::warn!("Website view failed due to bad request.");
                             String::from("Website view failed due to bad request.")
-                        },
+                        }
                         StatusCode::NOT_FOUND => {
                             tracing::warn!("Website view failed because the page was not found.");
                             String::from("Website view failed because the page was not found.")
-                        },
-                        _ => format!("Website view failed with HTTP status code {}", status)
+                        }
+                        _ => format!("Website view failed with HTTP status code {}", status),
                     }
                 } else {
                     // Not sure how we could end up here with an error
@@ -82,7 +82,7 @@ impl ToolCall for WebsiteViewTool {
                     // make the compiler happy
                     anyhow::bail!("Website view failed: {}", e)
                 }
-            },
+            }
             Ok(resp) => {
                 // Convert HTML to markdown
                 let html_content = resp.text().await?;
@@ -107,7 +107,9 @@ impl WebsiteViewTool {
     pub fn new() -> Self {
         let function = Function {
             name: String::from("view_website"),
-            description: String::from("Fetch and convert a website's content to markdown for viewing."),
+            description: String::from(
+                "Fetch and convert a website's content to markdown for viewing.",
+            ),
             parameters: Parameters {
                 r#type: String::from("object"),
                 properties: WebsiteViewProps {

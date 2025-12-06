@@ -8,7 +8,7 @@ use crate::{
     chat::{chat, create_session_if_not_exists, insert_chat_message},
     config::AppConfig,
     notification::{
-        broadcast_push_notification, find_all_notification_subscriptions, PushNotificationPayload
+        PushNotificationPayload, broadcast_push_notification, find_all_notification_subscriptions,
     },
     openai::{BoxedToolCall, Message, Role},
     tools::{CalendarTool, SearxSearchTool, WebsiteViewTool},
@@ -83,10 +83,7 @@ Frank is the VP of People at Acme. He was previously HR Manager at Acme and befo
 [LinkedIn profile](https://linkedin.com/in/frank-bar)", calendar_email.clone().unwrap());
 
         // Create initial message for chat
-        let history = vec![Message::new(
-            Role::User,
-            &prompt,
-        )];
+        let history = vec![Message::new(Role::User, &prompt)];
 
         // Create a new chat session with the tools
         let messages = chat(
@@ -96,11 +93,13 @@ Frank is the VP of People at Acme. He was previously HR Manager at Acme and befo
             openai_api_key,
             openai_model,
         )
-            .await
-            .expect("Chat session failed");
+        .await
+        .expect("Chat session failed");
 
         let session_id = Uuid::new_v4().to_string();
-        create_session_if_not_exists(db, &session_id, &[]).await.unwrap();
+        create_session_if_not_exists(db, &session_id, &[])
+            .await
+            .unwrap();
 
         // Store the chat messages so the session can be picked up later
         for m in &messages {

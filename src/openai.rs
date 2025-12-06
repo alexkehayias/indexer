@@ -316,8 +316,9 @@ pub async fn completion_stream(
             }
 
             // Process the delta
-            let chunk = serde_json::from_str::<CompletionChunk>(data)
-                .inspect_err(|e| tracing::error!("Parsing completion chunk failed for {}\nError:{}", data, e))?;
+            let chunk = serde_json::from_str::<CompletionChunk>(data).inspect_err(|e| {
+                tracing::error!("Parsing completion chunk failed for {}\nError:{}", data, e)
+            })?;
             let choice = chunk.choices.first().expect("Missing choices field");
 
             match &choice.delta {

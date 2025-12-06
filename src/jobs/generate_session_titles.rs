@@ -2,9 +2,9 @@ use async_trait::async_trait;
 use std::time::Duration;
 use tokio_rusqlite::Connection;
 
+use crate::chat::find_chat_session_by_id;
 use crate::config::AppConfig;
 use crate::openai::{Message, Role, completion};
-use crate::chat::find_chat_session_by_id;
 
 #[derive(Debug)]
 pub struct GenerateSessionTitles;
@@ -20,24 +20,27 @@ impl crate::jobs::PeriodicJob for GenerateSessionTitles {
         tracing::info!("Starting session title/summary generation job");
 
         // Find sessions that don't have a title or summary
-        let sessions_to_update = db_conn.call(move |conn| {
-            let mut stmt = conn.prepare(
-                "SELECT DISTINCT s.id FROM session s
+        let sessions_to_update = db_conn
+            .call(move |conn| {
+                let mut stmt = conn.prepare(
+                    "SELECT DISTINCT s.id FROM session s
                  LEFT JOIN chat_message cm ON s.id = cm.session_id
                  WHERE (s.title IS NULL OR s.title = '')
                  AND (s.summary IS NULL OR s.summary = '')
-                 AND cm.session_id IS NOT NULL"
-            )?;
+                 AND cm.session_id IS NOT NULL",
+                )?;
 
-            let rows = stmt.query_map([], |row| {
-                let session_id: String = row.get(0)?;
-                Ok(session_id)
-            })?
-            .filter_map(Result::ok)
-            .collect::<Vec<String>>();
+                let rows = stmt
+                    .query_map([], |row| {
+                        let session_id: String = row.get(0)?;
+                        Ok(session_id)
+                    })?
+                    .filter_map(Result::ok)
+                    .collect::<Vec<String>>();
 
-            Ok(rows)
-        }).await;
+                Ok(rows)
+            })
+            .await;
 
         if let Ok(sessions) = sessions_to_update {
             for session_id in sessions {
@@ -50,14 +53,24 @@ impl crate::jobs::PeriodicJob for GenerateSessionTitles {
                                 config,
                                 db_conn,
                                 &session_id,
-                                &transcript
-                            ).await {
-                                tracing::error!("Failed to generate title/summary for session {}: {}", session_id, e);
+                                &transcript,
+                            )
+                            .await
+                            {
+                                tracing::error!(
+                                    "Failed to generate title/summary for session {}: {}",
+                                    session_id,
+                                    e
+                                );
                             }
                         }
                     }
                     Err(e) => {
-                        tracing::error!("Failed to fetch transcript for session {}: {}", session_id, e);
+                        tracing::error!(
+                            "Failed to fetch transcript for session {}: {}",
+                            session_id,
+                            e
+                        );
                     }
                 }
             }
@@ -78,7 +91,10 @@ async fn generate_and_update_session_info(
 
     // Prepare the messages for the LLM
     let messages = vec![
-        Message::new(Role::System, "You are an assistant that generates concise titles and summaries for chat sessions based on the conversation content."),
+        Message::new(
+            Role::System,
+            "You are an assistant that generates concise titles and summaries for chat sessions based on the conversation content.",
+        ),
         Message::new(Role::User, &prompt),
     ];
 
@@ -89,33 +105,44 @@ async fn generate_and_update_session_info(
         &config.openai_api_hostname,
         &config.openai_api_key,
         &config.openai_model,
-    ).await?;
+    )
+    .await?;
 
     // Extract the generated title and summary from the response
     if let Some(content) = response["choices"][0]["message"]["content"].as_str() {
         // Try to parse the JSON response
         match serde_json::from_str::<serde_json::Value>(content) {
             Ok(json_response) => {
-                if let (Some(title), Some(summary)) = (json_response["title"].as_str(), json_response["summary"].as_str()) {
+                if let (Some(title), Some(summary)) = (
+                    json_response["title"].as_str(),
+                    json_response["summary"].as_str(),
+                ) {
                     let session_id_owned = session_id.to_string();
                     let title_owned = title.to_string();
                     let summary_owned = summary.to_string();
 
                     // Update the session in the database
-                    db_conn.call(move |conn| {
-                        let mut stmt = conn.prepare(
-                            "UPDATE session SET title = ?, summary = ? WHERE id = ?"
-                        )?;
-                        stmt.execute([title_owned, summary_owned, session_id_owned])?;
-                        Ok(())
-                    }).await?;
+                    db_conn
+                        .call(move |conn| {
+                            let mut stmt = conn.prepare(
+                                "UPDATE session SET title = ?, summary = ? WHERE id = ?",
+                            )?;
+                            stmt.execute([title_owned, summary_owned, session_id_owned])?;
+                            Ok(())
+                        })
+                        .await?;
                 } else {
                     tracing::warn!("LLM response missing title or summary fields: {}", content);
                 }
             }
             // Don't do anything but log it if it didn't work
             Err(e) => {
-                tracing::error!("Failed to parse LLM response as JSON for session {}: {} - Response: {}", session_id, e, content);
+                tracing::error!(
+                    "Failed to parse LLM response as JSON for session {}: {} - Response: {}",
+                    session_id,
+                    e,
+                    content
+                );
             }
         }
     } else {

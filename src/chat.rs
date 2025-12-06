@@ -1,27 +1,42 @@
-use anyhow::{anyhow, bail, Error, Result};
+use anyhow::{Error, Result, anyhow, bail};
 use futures_util::future::try_join_all;
 use serde_json::{Value, json};
 use tokio::sync::mpsc;
 use tokio_rusqlite::Connection;
 
 use crate::openai::{
-    BoxedToolCall, FunctionCall, FunctionCallFn, Message, Role, completion,
-    completion_stream,
+    BoxedToolCall, FunctionCall, FunctionCallFn, Message, Role, completion, completion_stream,
 };
 
-async fn handle_tool_call(tools: &Vec<BoxedToolCall>, tool_call: &Value) -> Result<Vec<Message>, Error> {
-    let tool_call_id = &tool_call["id"].as_str().ok_or(anyhow!("Tool call missing ID: {}", tool_call))?;
+async fn handle_tool_call(
+    tools: &Vec<BoxedToolCall>,
+    tool_call: &Value,
+) -> Result<Vec<Message>, Error> {
+    let tool_call_id = &tool_call["id"]
+        .as_str()
+        .ok_or(anyhow!("Tool call missing ID: {}", tool_call))?;
     let tool_call_function = &tool_call["function"];
-    let tool_call_args = tool_call_function["arguments"].as_str().ok_or(anyhow!("Tool call missing arguments: {}", tool_call))?;
-    let tool_call_name = tool_call_function["name"].as_str().ok_or(anyhow!("Tool call missing name: {}", tool_call))?;
+    let tool_call_args = tool_call_function["arguments"]
+        .as_str()
+        .ok_or(anyhow!("Tool call missing arguments: {}", tool_call))?;
+    let tool_call_name = tool_call_function["name"]
+        .as_str()
+        .ok_or(anyhow!("Tool call missing name: {}", tool_call))?;
 
-    tracing::debug!("\nTool call: {}\nargs: {}", &tool_call_name, &tool_call_args);
+    tracing::debug!(
+        "\nTool call: {}\nargs: {}",
+        &tool_call_name,
+        &tool_call_args
+    );
 
     // Call the tool and get the next completion from the result
     let tool_call_result = tools
         .iter()
         .find(|i| *i.function_name() == *tool_call_name)
-        .ok_or( anyhow!("Received tool call that doesn't exist: {}", tool_call_name))?
+        .ok_or(anyhow!(
+            "Received tool call that doesn't exist: {}",
+            tool_call_name
+        ))?
         .call(tool_call_args)
         .await?;
 
@@ -35,10 +50,7 @@ async fn handle_tool_call(tools: &Vec<BoxedToolCall>, tool_call: &Value) -> Resu
     }];
     let results = vec![
         Message::new_tool_call_request(tool_call_request),
-        Message::new_tool_call_response(
-            &tool_call_result,
-            tool_call_id,
-        )
+        Message::new_tool_call_response(&tool_call_result, tool_call_id),
     ];
 
     Ok(results)
@@ -74,8 +86,7 @@ pub async fn chat(
     let mut updated_history = history.to_owned();
     let mut messages = Vec::new();
 
-    let mut resp = completion(history, tools, api_hostname, api_key, model)
-        .await?;
+    let mut resp = completion(history, tools, api_hostname, api_key, model).await?;
 
     let tools_ref = tools
         .as_ref()
@@ -94,8 +105,7 @@ pub async fn chat(
         }
 
         // Provide the results of the tool calls back to the chat
-        resp = completion(&updated_history, tools, api_hostname, api_key, model)
-            .await?;
+        resp = completion(&updated_history, tools, api_hostname, api_key, model).await?;
     }
 
     if let Some(msg) = resp["choices"][0]["message"]["content"].as_str() {
@@ -122,8 +132,8 @@ pub async fn chat_stream(
     let mut updated_history = history.to_owned();
     let mut messages = Vec::new();
 
-    let mut resp = completion_stream(tx.clone(), history, tools, api_hostname, api_key, model)
-        .await?;
+    let mut resp =
+        completion_stream(tx.clone(), history, tools, api_hostname, api_key, model).await?;
 
     // Tool calls need to be handled for the chat to proceed
     while let Some(tool_calls) = resp["choices"][0]["message"]["tool_calls"].as_array() {
@@ -142,8 +152,15 @@ pub async fn chat_stream(
         }
 
         // Provide the results of the tool calls back to the chat
-        resp = completion_stream(tx.clone(), &updated_history, tools, api_hostname, api_key, model)
-            .await?;
+        resp = completion_stream(
+            tx.clone(),
+            &updated_history,
+            tools,
+            api_hostname,
+            api_key,
+            model,
+        )
+        .await?;
     }
 
     if let Some(msg) = resp["choices"][0]["message"]["content"].as_str() {
@@ -179,8 +196,9 @@ pub async fn create_session_if_not_exists(
     session_id: &str,
     tags: &[&str],
 ) -> Result<(), Error> {
-    let session_id_owned = session_id.to_owned();               // String
-    let tag_names: Vec<String> = tags.iter()
+    let session_id_owned = session_id.to_owned(); // String
+    let tag_names: Vec<String> = tags
+        .iter()
         .map(|s| s.to_lowercase().trim().to_string())
         .collect();
 
@@ -197,20 +215,16 @@ pub async fn create_session_if_not_exists(
         if !tag_names.is_empty() {
             // Insert all tags first (ignore duplicates)
             for tag in &tag_names {
-                tx.execute(
-                    "INSERT OR IGNORE INTO tag (name) VALUES (?)",
-                    [tag.clone()],
-                )?;
+                tx.execute("INSERT OR IGNORE INTO tag (name) VALUES (?)", [tag.clone()])?;
             }
 
             // Insert all session_tag relationships using a single query approach
             for tag in &tag_names {
                 // Get the tag_id for this tag
-                let tag_id: i64 = tx.query_row(
-                    "SELECT id FROM tag WHERE name = ?",
-                    [tag.clone()],
-                    |row| row.get(0)
-                )?;
+                let tag_id: i64 =
+                    tx.query_row("SELECT id FROM tag WHERE name = ?", [tag.clone()], |row| {
+                        row.get(0)
+                    })?;
 
                 // Insert the session_tag relationship if it doesn't already exist
                 tx.execute(
@@ -222,7 +236,8 @@ pub async fn create_session_if_not_exists(
 
         tx.commit()?;
         Ok(result)
-    }).await?;
+    })
+    .await?;
 
     Ok(())
 }

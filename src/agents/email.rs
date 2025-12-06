@@ -31,6 +31,6 @@ pub async fn email_chat_response(
         openai_api_key,
         openai_model,
     )
-        .await
-        .expect("Chat session failed")
+    .await
+    .expect("Chat session failed")
 }

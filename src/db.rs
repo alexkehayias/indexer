@@ -229,7 +229,10 @@ COMMIT;",
 
     match add_session_columns {
         Ok(_) => (),
-        Err(e) => println!("Add title and summary columns to session table failed: {}", e),
+        Err(e) => println!(
+            "Add title and summary columns to session table failed: {}",
+            e
+        ),
     };
 
     // 2025-11-27 Add tag table and session_tag linking table

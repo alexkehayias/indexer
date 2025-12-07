@@ -287,6 +287,9 @@ pub async fn completion_stream(
     'outer: while let Some(chunk) = stream.next().await {
         let chunk = chunk.expect("Invalid chunk");
         let chunk_str = std::str::from_utf8(&chunk)?.trim();
+
+        // The result is ignored here because we want to complete
+        // processing the response
         let _ = tx.send(
             chunk_str
                 .strip_prefix("data: ")

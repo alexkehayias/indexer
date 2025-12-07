@@ -17,7 +17,8 @@ use serde::Deserialize;
 use serde_json::{Value, json};
 use std::{convert::Infallible, time::Duration};
 use tantivy::doc;
-use tokio::sync::mpsc;
+use tokio::sync::{broadcast, mpsc};
+
 use tokio::task::JoinSet;
 use tokio_rusqlite::Connection;
 use tokio_stream::StreamExt as _;
@@ -37,11 +38,13 @@ use crate::config::AppConfig;
 use crate::gcal::list_events;
 use crate::indexing::index_all;
 use crate::jobs::{GenerateSessionTitles, ResearchMeetingAttendees, spawn_periodic_job};
+use crate::notification::find_all_notification_subscriptions;
 use crate::openai::{BoxedToolCall, Message, Role};
 use crate::public::{self};
 use crate::tools::{
     CalendarTool, EmailUnreadTool, NoteSearchTool, SearxSearchTool, WebsiteViewTool,
 };
+use crate::utils::DetectDisconnect;
 
 use super::db::async_db;
 use super::git::{diff_last_commit_files, maybe_pull_and_reset_repo};
@@ -121,17 +124,26 @@ async fn chat_list(
 /// Initiate or add to a chat session and stream the response using
 /// OpenAI's API streaming scheme using server sent events (SSE). The
 /// user's message and the assistant's message(s) are stored in the
-/// database. If inference fails, neither the user or assistant's
+/// database.
+///
+/// If the user disconnects before the streaming response completes,
+/// the result is still processed and the messages are stored in the
+/// database.
+///
+/// If inference fails, neither the user or assistant's
 /// messages are stored in the DB. This is on purpose so the user can
 /// try again while keeping the transcript clean.
 async fn chat_handler(
     State(state): State<SharedState>,
     Json(payload): Json<public::ChatRequest>,
 ) -> Result<impl IntoResponse, public::ApiError> {
+    let session_id = payload.session_id;
     let (tx, rx) = mpsc::unbounded_channel::<String>();
 
     let sse_stream = UnboundedReceiverStream::new(rx)
         .map(|chunk| Ok::<Event, Infallible>(Event::default().data(chunk)));
+    let (disconnect_notifier, mut disconnect_receiver) = broadcast::channel::<()>(1);
+    let wrapped_sse_stream = DetectDisconnect::new(sse_stream, disconnect_notifier);
 
     let (
         note_search_tool,
@@ -142,6 +154,7 @@ async fn chat_handler(
         openai_api_hostname,
         openai_api_key,
         openai_model,
+        vapid_key_path,
     ) = {
         let shared_state = state.read().expect("Unable to read share state");
         let AppConfig {
@@ -150,6 +163,7 @@ async fn chat_handler(
             openai_api_hostname,
             openai_api_key,
             openai_model,
+            vapid_key_path,
             ..
         } = &shared_state.config;
         (
@@ -161,6 +175,7 @@ async fn chat_handler(
             openai_api_hostname.clone(),
             openai_api_key.clone(),
             openai_model.clone(),
+            vapid_key_path.clone(),
         )
     };
 
@@ -173,7 +188,6 @@ async fn chat_handler(
     ]);
     let user_msg = Message::new(Role::User, &payload.message);
 
-    let session_id = payload.session_id;
     let db = state.read().expect("Unable to read share state").db.clone();
 
     // Create session in database if it doesn't already exist
@@ -214,6 +228,30 @@ async fn chat_handler(
                 for m in messages {
                     insert_chat_message(&db, &session_id, &m).await?;
                 }
+                // Send a notification if the client disconnected
+                // before the response completed.
+                // Handles the following scenarios:
+                // - [no notification] The SSE stream completes and
+                //   the client is still there
+                // - [notification] The SSE stream completes but the
+                //   client is no longer there
+                if tx.is_closed() {
+                    // The client disconnects when the SSE stream
+                    // completes OR if the user closes their browser
+                    let _ = disconnect_receiver.recv().await.map(async |()| {
+                        tracing::info!("Sending notification!");
+                        // Broadcast push notification to all subscribers, using a new read lock for DB/config each time
+                        let payload = PushNotificationPayload::new(
+                            "New chat response",
+                            "New response after you disconnected.",
+                            Some(&format!("/chat/?session_id={session_id}")),
+                            None,
+                            None,
+                        );
+                        let subscriptions = find_all_notification_subscriptions(&db).await.unwrap();
+                        broadcast_push_notification(subscriptions, vapid_key_path.to_string(), payload).await;
+                    })?.await;
+                };
             }
             Err(e) => {
                 tracing::error!("Chat handler error: {}. Root cause: {}", e, e.root_cause());
@@ -238,7 +276,7 @@ async fn chat_handler(
         Ok::<(), anyhow::Error>(())
     });
 
-    let resp = Sse::new(sse_stream)
+    let resp = Sse::new(wrapped_sse_stream)
         .keep_alive(
             KeepAlive::default()
                 .text("keep-alive")

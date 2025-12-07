@@ -5,7 +5,7 @@ use uuid::Uuid;
 
 use super::PeriodicJob;
 use crate::{
-    chat::{chat, create_session_if_not_exists, insert_chat_message},
+    chat::{chat, get_or_create_session, insert_chat_message},
     config::AppConfig,
     notification::{
         PushNotificationPayload, broadcast_push_notification, find_all_notification_subscriptions,
@@ -97,9 +97,7 @@ Frank is the VP of People at Acme. He was previously HR Manager at Acme and befo
         .expect("Chat session failed");
 
         let session_id = Uuid::new_v4().to_string();
-        create_session_if_not_exists(db, &session_id, &[])
-            .await
-            .unwrap();
+        get_or_create_session(db, &session_id, &[]).await.unwrap();
 
         // Store the chat messages so the session can be picked up later
         for m in &messages {

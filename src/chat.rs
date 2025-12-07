@@ -2,10 +2,13 @@ use anyhow::{Error, Result, anyhow, bail};
 use futures_util::future::try_join_all;
 use serde_json::{Value, json};
 use tokio::sync::mpsc;
-use tokio_rusqlite::Connection;
+use tokio_rusqlite::{Connection, params};
 
-use crate::openai::{
-    BoxedToolCall, FunctionCall, FunctionCallFn, Message, Role, completion, completion_stream,
+use crate::{
+    openai::{
+        BoxedToolCall, FunctionCall, FunctionCallFn, Message, Role, completion, completion_stream,
+    },
+    public::ChatSession,
 };
 
 async fn handle_tool_call(
@@ -58,7 +61,7 @@ async fn handle_tool_call(
 
 async fn handle_tool_calls(
     tools: &Vec<BoxedToolCall>,
-    tool_calls: &Vec<Value>,
+    tool_calls: &[Value],
 ) -> Result<Vec<Message>, Error> {
     // Run each tool call concurrently and return them in order. I'm
     // not sure if ordering really matters for OpenAI compatible API
@@ -191,7 +194,7 @@ pub async fn insert_chat_message(
     Ok(result)
 }
 
-pub async fn create_session_if_not_exists(
+pub async fn get_or_create_session(
     db: &Connection,
     session_id: &str,
     tags: &[&str],
@@ -260,4 +263,81 @@ pub async fn find_chat_session_by_id(
         Ok(rows)
     });
     Ok(history.await?)
+}
+
+pub async fn chat_session_count(db: &Connection, tags: &[String]) -> Result<i64, Error> {
+    let tag_json_array = format!("[{}]", tags.join(","));
+    let count = db
+        .call(move |conn| {
+            let mut stmt = conn.prepare(
+                r#"
+                     SELECT COUNT(*)
+                     FROM session s
+                     LEFT JOIN session_tag st ON s.id = st.session_id
+                     LEFT JOIN tag t ON st.tag_id = t.id
+                     WHERE (NOT EXISTS (SELECT 1 FROM json_each(?1))
+                            OR t.name in (SELECT value FROM json_each(?1)))
+                 "#,
+            )?;
+            let count: i64 = stmt.query_row([tag_json_array.as_bytes()], |row| row.get(0))?;
+            Ok(count)
+        })
+        .await?;
+    Ok(count)
+}
+
+pub async fn chat_session_list(
+    db: &Connection,
+    tags: &[String],
+    limit: usize,
+    offset: usize,
+) -> Result<Vec<ChatSession>, Error> {
+    let tag_json_array = format!("[{}]", tags.join(","));
+    let results = db
+        .call(move |conn| {
+            let mut stmt = conn.prepare(
+                r#"
+                SELECT
+                    s.id,
+                    s.title,
+                    s.summary,
+                    GROUP_CONCAT(DISTINCT t.name) as tags
+                FROM session s
+                LEFT JOIN session_tag st ON s.id = st.session_id
+                LEFT JOIN tag t ON st.tag_id = t.id
+                WHERE (NOT EXISTS (SELECT 1 FROM json_each(?1))
+                       OR t.name in (SELECT value FROM json_each(?1)))
+                GROUP BY s.id, s.title, s.summary, s.created_at
+                ORDER BY s.created_at DESC
+                LIMIT ?2 OFFSET ?3
+                "#,
+            )?;
+
+            let session_list = stmt
+                .query_map(params![tag_json_array, limit, offset], |row| {
+                    let session_id: String = row.get(0)?;
+                    let title: Option<String> = row.get(1)?;
+                    let summary: Option<String> = row.get(2)?;
+                    let tags_str: Option<String> = row.get(3)?;
+
+                    // Parse tags string into Vec<String>
+                    let tags = match tags_str {
+                        Some(tag_str) => tag_str.split(',').map(|s| s.to_string()).collect(),
+                        None => vec![],
+                    };
+
+                    Ok(ChatSession {
+                        id: session_id,
+                        title,
+                        summary,
+                        tags,
+                    })
+                })?
+                .filter_map(Result::ok)
+                .collect::<Vec<_>>();
+
+            Ok(session_list)
+        })
+        .await?;
+    Ok(results)
 }

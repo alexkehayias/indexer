@@ -20,7 +20,6 @@ use tantivy::doc;
 use tokio::sync::mpsc;
 use tokio::task::JoinSet;
 use tokio_rusqlite::Connection;
-use tokio_rusqlite::params;
 use tokio_stream::StreamExt as _;
 use tokio_stream::wrappers::UnboundedReceiverStream;
 use tower::ServiceBuilder;
@@ -31,7 +30,8 @@ use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
 
 use crate::aql;
 use crate::chat::{
-    chat_stream, create_session_if_not_exists, find_chat_session_by_id, insert_chat_message,
+    chat_session_count, chat_session_list, chat_stream, find_chat_session_by_id,
+    get_or_create_session, insert_chat_message,
 };
 use crate::config::AppConfig;
 use crate::gcal::list_events;
@@ -96,7 +96,7 @@ async fn chat_session(
 }
 
 /// Get a list of all chat sessions
-async fn chat_sessions(
+async fn chat_list(
     State(state): State<SharedState>,
     Query(params): Query<public::ChatSessionsQuery>,
 ) -> Result<Json<public::ChatSessionsResponse>, public::ApiError> {
@@ -105,73 +105,8 @@ async fn chat_sessions(
     let limit = params.limit.unwrap_or(20);
     let offset = (page - 1) * limit;
     let tags = params.tags.unwrap_or(vec![]);
-    let tag_json_array = format!("[{}]", tags.join(","));
-
-    let tags_array_copy = tag_json_array.clone();
-    let total_sessions = db
-        .call(move |conn| {
-            let mut stmt = conn.prepare(
-                r#"
-                     SELECT COUNT(*)
-                     FROM session s
-                     LEFT JOIN session_tag st ON s.id = st.session_id
-                     LEFT JOIN tag t ON st.tag_id = t.id
-                     WHERE (NOT EXISTS (SELECT 1 FROM json_each(?1))
-                            OR t.name in (SELECT value FROM json_each(?1)))
-                 "#,
-            )?;
-            let count: i64 = stmt.query_row([tags_array_copy.as_bytes()], |row| row.get(0))?;
-            Ok(count)
-        })
-        .await?;
-
-    let sessions = db
-        .call(move |conn| {
-            let mut stmt = conn.prepare(
-                r#"
-                SELECT
-                    s.id,
-                    s.title,
-                    s.summary,
-                    GROUP_CONCAT(DISTINCT t.name) as tags
-                FROM session s
-                LEFT JOIN session_tag st ON s.id = st.session_id
-                LEFT JOIN tag t ON st.tag_id = t.id
-                WHERE (NOT EXISTS (SELECT 1 FROM json_each(?1))
-                       OR t.name in (SELECT value FROM json_each(?1)))
-                GROUP BY s.id, s.title, s.summary, s.created_at
-                ORDER BY s.created_at DESC
-                LIMIT ?2 OFFSET ?3
-                "#,
-            )?;
-
-            let session_list = stmt
-                .query_map(params![tag_json_array, limit, offset], |row| {
-                    let session_id: String = row.get(0)?;
-                    let title: Option<String> = row.get(1)?;
-                    let summary: Option<String> = row.get(2)?;
-                    let tags_str: Option<String> = row.get(3)?;
-
-                    // Parse tags string into Vec<String>
-                    let tags = match tags_str {
-                        Some(tag_str) => tag_str.split(',').map(|s| s.to_string()).collect(),
-                        None => vec![],
-                    };
-
-                    Ok(public::ChatSession {
-                        id: session_id,
-                        title,
-                        summary,
-                        tags,
-                    })
-                })?
-                .filter_map(Result::ok)
-                .collect::<Vec<_>>();
-
-            Ok(session_list)
-        })
-        .await?;
-
+    let total_sessions = chat_session_count(&db, &tags).await?;
+    let sessions = chat_session_list(&db, &tags, limit, offset).await?;
     let total_pages = (total_sessions as f64 / limit as f64).ceil() as i64;
 
     Ok(Json(public::ChatSessionsResponse {
@@ -242,7 +177,7 @@ async fn chat_handler(
     let db = state.read().expect("Unable to read share state").db.clone();
 
     // Create session in database if it doesn't already exist
-    create_session_if_not_exists(&db, &session_id, &[]).await?;
+    get_or_create_session(&db, &session_id, &[]).await?;
 
     // Try to fetch the session from the db. If it doesn't exist then
     // initialize the transcript with a system message and the user's
@@ -747,7 +682,7 @@ pub fn app(shared_state: Arc<RwLock<AppState>>) -> Router {
         // Retrieve a past chat session
         .route("/notes/chat/{id}", get(chat_session))
         // Get list of chat sessions
-        .route("/notes/chat/sessions", get(chat_sessions))
+        .route("/notes/chat/sessions", get(chat_list))
         // Storage for push subscriptions
         .route("/push/subscribe", post(push_subscription))
         .route("/push/notification", post(send_notification))

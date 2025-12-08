@@ -97,7 +97,7 @@ Frank is the VP of People at Acme. He was previously HR Manager at Acme and befo
         .expect("Chat session failed");
 
         let session_id = Uuid::new_v4().to_string();
-        get_or_create_session(db, &session_id, &[]).await.unwrap();
+        get_or_create_session(db, &session_id, &["background"]).await.unwrap();
 
         // Store the chat messages so the session can be picked up later
         for m in &messages {

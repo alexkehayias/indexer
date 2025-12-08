@@ -2,6 +2,8 @@ use std::env;
 use std::path::PathBuf;
 use std::sync::{Arc, RwLock};
 
+// Use axum-extra to get HTML form style query param parsing needed
+// for arrays like tags
 use axum_extra::extract::Query;
 use axum::middleware;
 use axum::{

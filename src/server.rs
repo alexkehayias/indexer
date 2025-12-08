@@ -2,7 +2,7 @@ use std::env;
 use std::path::PathBuf;
 use std::sync::{Arc, RwLock};
 
-use axum::extract::Query;
+use axum_extra::extract::Query;
 use axum::middleware;
 use axum::{
     Router,
@@ -108,6 +108,8 @@ async fn chat_list(
     let limit = params.limit.unwrap_or(20);
     let offset = (page - 1) * limit;
     let tags = params.tags.unwrap_or(vec![]);
+    tracing::info!("Fetching chats with tags {:?}", tags.clone());
+
     let total_sessions = chat_session_count(&db, &tags).await?;
     let sessions = chat_session_list(&db, &tags, limit, offset).await?;
     let total_pages = (total_sessions as f64 / limit as f64).ceil() as i64;

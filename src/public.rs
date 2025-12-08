@@ -104,6 +104,7 @@ pub struct ChatRequest {
 pub struct ChatSessionsQuery {
     pub page: Option<usize>,
     pub limit: Option<usize>,
+    // Use HTML form syntax "?tags=t1&tags=t2"
     pub tags: Option<Vec<String>>,
 }
 

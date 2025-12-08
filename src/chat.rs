@@ -266,7 +266,7 @@ pub async fn find_chat_session_by_id(
 }
 
 pub async fn chat_session_count(db: &Connection, tags: &[String]) -> Result<i64, Error> {
-    let tag_json_array = format!("[{}]", tags.join(","));
+    let tag_json_array = json!(tags).to_string();
     let count = db
         .call(move |conn| {
             let mut stmt = conn.prepare(
@@ -292,7 +292,7 @@ pub async fn chat_session_list(
     limit: usize,
     offset: usize,
 ) -> Result<Vec<ChatSession>, Error> {
-    let tag_json_array = format!("[{}]", tags.join(","));
+    let tag_json_array = json!(tags).to_string();
     let results = db
         .call(move |conn| {
             let mut stmt = conn.prepare(

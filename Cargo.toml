@@ -8,6 +8,7 @@ rust-version = "1.89"
 anyhow = "1.0.93"
 async-trait = "0.1.86"
 axum = { version = "0.8.4", features = ["macros"] }
+axum-extra = { version = "0.12.2", features = ["query"] }
 clap = { version = "4.5.17", features = ["derive"] }
 erased-serde = "0.4.5"
 fastembed = "4.9.1"

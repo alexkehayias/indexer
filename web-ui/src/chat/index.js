@@ -186,6 +186,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 try {
                   const parsed = JSON.parse(data);
                   const content = parsed.choices[0].delta.content;
+                  const reasoning = parsed.choices[0].delta.reasoning;
 
                   // Handle content delta
                   if (content) {
@@ -194,7 +195,40 @@ document.addEventListener('DOMContentLoaded', () => {
                     messageBubbleEl.updateContent(contentAccum);
                   }
 
-                  // TODO: Handle other kinds of deltas
+                  // Handle reasoning delta
+                  if (reasoning) {
+                    loadingElement.remove();
+                    // Create reasoning element if it doesn't exist
+                    if (!messageBubbleEl.reasoningElement) {
+                      const reasoningContainer = document.createElement('details');
+                      reasoningContainer.open = true;
+                      reasoningContainer.classList.add(...['mb-1', 'cursor-pointer', 'list-none', 'rounded-xl', 'bg-white', 'border', 'pl-3', 'py-2']);
+                      reasoningContainer.innerHTML = `
+                          <summary class="font-semibold">Thinking...</summary>
+                      `;
+
+                      const reasoningContent = document.createElement('div');
+                      reasoningContent.classList.add(...['text-sm', 'text-gray-700', 'pl-4']);
+                      reasoningContainer.appendChild(reasoningContent);
+                      messageBubbleEl.reasoningElement = reasoningContent;
+
+                      // Insert the reasoning container at the beginning of message content
+                      const messageContent = messageBubbleEl.querySelector('.flex-col.gap-1.w-full.overflow-auto');
+                      if (messageContent) {
+                        // Insert at the beginning of message content (before other elements)
+                        if (messageContent.firstChild) {
+                          messageContent.insertBefore(reasoningContainer, messageContent.firstChild);
+                        } else {
+                          messageContent.appendChild(reasoningContainer);
+                        }
+                      } else {
+                        // If message content doesn't exist yet, append to the bubble
+                        messageBubbleEl.appendChild(reasoningContainer);
+                      }
+                    }
+                    // Update reasoning content
+                    messageBubbleEl.reasoningElement.textContent += reasoning;
+                  }
                 } catch (e) {
                   console.error('Error parsing JSON:', e);
                 }

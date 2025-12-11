@@ -2,6 +2,32 @@
 
 WIP personal indexer service.
 
+## Frontend Web Components
+
+The frontend has been refactored to use modern web components for better reusability and maintainability:
+
+### Message Bubble Component
+
+The chat interface now uses a custom `message-bubble` web component that handles:
+- User messages (blue background)
+- Assistant messages (gray background)
+- Loading indicators with animated dog images
+- Markdown rendering with syntax highlighting
+- Reasoning sections (thinking bubbles) that appear during AI processing
+
+### Component Files
+
+- `web-ui/src/chat/message-bubble.js` - The custom web component implementation
+- `web-ui/src/chat/index.js` - Updated chat logic that uses the web component
+- `web-ui/src/chat/index.html` - HTML file with updated script references
+
+### Benefits of Web Components Approach
+
+1. **Encapsulation**: Styling and behavior are self-contained within the component
+2. **Reusability**: The message bubble can be reused in other parts of the application
+3. **Maintainability**: All message rendering logic is centralized in one component
+4. **Separation of concerns**: Main chat logic is cleaner and focused on chat flow rather than UI rendering
+
 ## Running it
 
 Initialize index:

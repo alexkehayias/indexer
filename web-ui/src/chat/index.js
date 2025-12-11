@@ -1,3 +1,5 @@
+import MessageBubble from './message-bubble.js';
+
 document.addEventListener('DOMContentLoaded', () => {
   // Preload dog images to avoid fetching them each time
   const dogImages = [];
@@ -36,8 +38,26 @@ document.addEventListener('DOMContentLoaded', () => {
           const isSystem = message.role === 'system';
           const isToolCall = (message.role === 'tool') || (isAssistant && !message.content);
 
-          if (!isSystem) {
-            renderMessageBubble(message.content, isUser, isToolCall);
+          if (!isToolCall && (isUser || isAssistant)) {
+            const bubble = new MessageBubble();
+            bubble.setAttribute('message', message.content);
+            bubble.setAttribute('is-user-message', isUser.toString());
+            bubble.setAttribute('is-tool-call', isToolCall.toString());
+            document.getElementById('chat-display').prepend(bubble);
+          }
+          if (isAssistant && isToolCall) {
+            const bubble = new MessageBubble();
+
+            let toolCallMessages = [];
+            for (const t of message.tool_calls) {
+              const toolFn = t.function;
+              toolCallMessages.push(`**Tool call**: \`${toolFn.name}\`\n**Args**:\n\n\`\`\`\n${toolFn.arguments}\n\`\`\``);
+            }
+
+            bubble.setAttribute('message', toolCallMessages.join('\n\n'));
+            bubble.setAttribute('is-user-message', 'false');
+            bubble.setAttribute('is-tool-call', 'true');
+            document.getElementById('chat-display').prepend(bubble);
           }
         });
       }
@@ -61,85 +81,24 @@ document.addEventListener('DOMContentLoaded', () => {
     };
   });
 
-  const renderMessageBubble = (message, isUserMessage, isToolCall, isLoading = false) => {
-    // Empty messages mean this was a tool call or a response to a //
-    // tool call so skip this for now. Maybe later will render some debug
-    // info for inspecting tool calls.
-    if (isToolCall) {
-      return
-    };
-
-    const messageElement = document.createElement('div');
-    messageElement.className = isLoading ? 'flex justify-center my-4' : 'flex items-start gap-2.5 mb-4';
-
-    if (isLoading) {
-      for (let i = 0; i < 3; i++) {
-        const img = document.createElement('img');
-        img.src = `./img/dog${i+1}.png`;  // Placeholder - update with actual dog image paths
-        img.className = `w-8 h-8 animate-bounce-dog${i+1}`;
-        img.alt = 'Loading Dog';
-        messageElement.appendChild(img);
-      }
-    } else {
-      const imgElement = document.createElement('img');
-      imgElement.className = 'hidden w-8 h-8 rounded-full md:block';
-      imgElement.src = isUserMessage ? './img/me.jpeg' : './img/bot.jpeg';
-      imgElement.alt = isUserMessage ? 'User image' : 'Bot image';
-
-      const messageContent = document.createElement('div');
-      messageContent.className = 'flex flex-col gap-1 w-full overflow-auto';
-
-      const messageBody = document.createElement('div');
-      messageBody.className = isUserMessage
-        ? 'flex flex-col leading-1.5 p-4 bg-blue-100 rounded-e-xl rounded-es-xl'
-        : 'flex flex-col leading-1.5 p-4 border-gray-200 bg-gray-100 rounded-e-xl rounded-es-xl';
-
-      const messageHTML = marked.parse(message, { breaks: true });
-
-      // Add syntax highlighting to code blocks
-      const tempDiv = document.createElement('div');
-      tempDiv.innerHTML = messageHTML;
-      tempDiv.querySelectorAll('pre code').forEach((block) => {
-        hljs.highlightElement(block);
-      });
-      const highlightedHTML = tempDiv.innerHTML;
-
-      const messageText = document.createElement('div');
-      messageText.className = 'markdown overflow-auto text-sm lg:text-base font-normal';
-      messageText.innerHTML = highlightedHTML;
-      messageBody.appendChild(messageText);
-      messageContent.appendChild(messageBody);
-      messageElement.appendChild(imgElement);
-      messageElement.appendChild(messageContent);
-
-      // Add methods for streaming updates to the content.
-      messageElement.updateContent = function(txt) {
-        const updatedHTML = marked.parse(txt, { breaks: true });
-
-        // Add syntax highlighting to code blocks
-        const tempDiv = document.createElement('div');
-        tempDiv.innerHTML = updatedHTML;
-        tempDiv.querySelectorAll('pre code').forEach((block) => {
-          hljs.highlightElement(block);
-        });
-        messageText.innerHTML = tempDiv.innerHTML;
-      }
-    }
-
-    chatDisplay.prepend(messageElement);
-    chatContainer.scrollTop = chatContainer.scrollHeight;
-
-    return messageElement;
-  };
-
   const sendMessage = () => {
     const message = chatInput.value.trim();
     if (message === '') return;
 
-    renderMessageBubble(message, true);
+    // Create user message bubble
+    const userBubble = new MessageBubble();
+    userBubble.setAttribute('message', message);
+    userBubble.setAttribute('is-user-message', 'true');
+    userBubble.setAttribute('is-tool-call', 'false');
+    userBubble.setAttribute('is-loading', 'false');
+    document.getElementById('chat-display').prepend(userBubble);
 
     // Show loading indicator below user's message
-    const loadingElement = renderMessageBubble('', false, false, true);
+    const loadingBubble = new MessageBubble();
+    loadingBubble.setAttribute('is-user-message', 'false');
+    loadingBubble.setAttribute('is-tool-call', 'false');
+    loadingBubble.setAttribute('is-loading', 'true');
+    document.getElementById('chat-display').prepend(loadingBubble);
 
     const chatRequest = {
       session_id: sessionId,
@@ -158,7 +117,13 @@ document.addEventListener('DOMContentLoaded', () => {
         const decoder = new TextDecoder();
         let buffer = '';
 
-        let messageBubbleEl = renderMessageBubble('', false, false, false);
+        // Create assistant message bubble
+        const assistantBubble = new MessageBubble();
+        assistantBubble.setAttribute('is-user-message', 'false');
+        assistantBubble.setAttribute('is-tool-call', 'false');
+        assistantBubble.setAttribute('is-loading', 'false');
+        document.getElementById('chat-display').prepend(assistantBubble);
+
         let contentAccum = '';
 
         function read() {
@@ -190,44 +155,15 @@ document.addEventListener('DOMContentLoaded', () => {
 
                   // Handle content delta
                   if (content) {
-                    loadingElement.remove();
+                    loadingBubble.remove();
                     contentAccum += content;
-                    messageBubbleEl.updateContent(contentAccum);
+                    assistantBubble.updateContent(contentAccum);
                   }
 
                   // Handle reasoning delta
                   if (reasoning) {
-                    loadingElement.remove();
-                    // Create reasoning element if it doesn't exist
-                    if (!messageBubbleEl.reasoningElement) {
-                      const reasoningContainer = document.createElement('details');
-                      reasoningContainer.open = true;
-                      reasoningContainer.classList.add(...['mb-1', 'cursor-pointer', 'list-none', 'rounded-xl', 'bg-white', 'border', 'pl-3', 'py-2']);
-                      reasoningContainer.innerHTML = `
-                          <summary class="font-semibold">Thinking...</summary>
-                      `;
-
-                      const reasoningContent = document.createElement('div');
-                      reasoningContent.classList.add(...['text-sm', 'text-gray-700', 'pl-4']);
-                      reasoningContainer.appendChild(reasoningContent);
-                      messageBubbleEl.reasoningElement = reasoningContent;
-
-                      // Insert the reasoning container at the beginning of message content
-                      const messageContent = messageBubbleEl.querySelector('.flex-col.gap-1.w-full.overflow-auto');
-                      if (messageContent) {
-                        // Insert at the beginning of message content (before other elements)
-                        if (messageContent.firstChild) {
-                          messageContent.insertBefore(reasoningContainer, messageContent.firstChild);
-                        } else {
-                          messageContent.appendChild(reasoningContainer);
-                        }
-                      } else {
-                        // If message content doesn't exist yet, append to the bubble
-                        messageBubbleEl.appendChild(reasoningContainer);
-                      }
-                    }
-                    // Update reasoning content
-                    messageBubbleEl.reasoningElement.textContent += reasoning;
+                    loadingBubble.remove();
+                    assistantBubble.addReasoning(reasoning);
                   }
                 } catch (e) {
                   console.error('Error parsing JSON:', e);
@@ -238,7 +174,7 @@ document.addEventListener('DOMContentLoaded', () => {
             read();
           }).catch(error => {
             console.error('Read error:', error);
-            loadingElement.remove(); // Ensure loading indicator is removed on error
+            loadingBubble.remove(); // Ensure loading indicator is removed on error
           });
         }
 

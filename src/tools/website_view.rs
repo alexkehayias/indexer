@@ -56,33 +56,10 @@ impl ToolCall for WebsiteViewTool {
         let response = reqwest::Client::new()
             .get(&clean_url)
             .send()
-            .await?
-            .error_for_status();
+            .await;
 
+        // Handle request errors like timeouts
         let content = match response {
-            Err(e) => {
-                // If the request failed, provide a default answer so we
-                // don't crash the whole chat. For example: "Fetching the link
-                // failed and due to a 500 status code"
-                if let Some(status) = e.status() {
-                    match status {
-                        StatusCode::BAD_REQUEST => {
-                            tracing::warn!("Website view failed due to bad request.");
-                            String::from("Website view failed due to bad request.")
-                        }
-                        StatusCode::NOT_FOUND => {
-                            tracing::warn!("Website view failed because the page was not found.");
-                            String::from("Website view failed because the page was not found.")
-                        }
-                        _ => format!("Website view failed with HTTP status code {}", status),
-                    }
-                } else {
-                    // Not sure how we could end up here with an error
-                    // that doesn't have a status code, but need to
-                    // make the compiler happy
-                    anyhow::bail!("Website view failed: {}", e)
-                }
-            }
             Ok(resp) => {
                 // Convert HTML to markdown
                 let html_content = resp.text().await?;
@@ -90,6 +67,45 @@ impl ToolCall for WebsiteViewTool {
                     .skip_tags(vec!["script", "style", "footer", "img", "svg"])
                     .build();
                 converter.convert(&html_content)?
+            }
+            Err(e) => {
+                // If the request failed, provide a default answer so we
+                // don't crash the whole chat. For example: "Fetching the link
+                // failed and due to a 500 status code"
+                match e {
+                    i if i.is_timeout() => {
+                        tracing::warn!("Website view failed due to timeout.");
+                        String::from("Request timed out.")
+                    },
+                    i if i.is_request() => {
+                        tracing::warn!("Website view failed due to request sending error.");
+                        String::from("Request was not able to be sent. Do not retry.")
+                    }
+                    i if i.is_status() => {
+                        if let Some(status) = i.status() {
+                            match status {
+                                StatusCode::BAD_REQUEST => {
+                                    tracing::warn!("Website view failed due to bad request.");
+                                    String::from("Website view failed due to bad request.")
+                                }
+                                StatusCode::NOT_FOUND => {
+                                    tracing::warn!("Website view failed because the page was not found.");
+                                    String::from("Website view failed because the page was not found.")
+                                }
+                                _ => {
+                                    tracing::warn!("Website view failed with HTTP status code {}.", status);
+                                    format!("Website view failed with HTTP status code {}", status)
+                                }
+                            }
+                        } else {
+                            // Not sure how we could end up here with an error
+                            // that doesn't have a status code, but need to
+                            // make the compiler happy
+                            anyhow::bail!("Website view failed: {}", i)
+                        }
+                    },
+                    _ => anyhow::bail!("Website view failed: {}", e)
+                }
             }
         };
 

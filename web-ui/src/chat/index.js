@@ -145,6 +145,10 @@ document.addEventListener('DOMContentLoaded', () => {
                   const parsed = JSON.parse(data);
                   const content = parsed.choices[0].delta.content;
                   const reasoning = parsed.choices[0].delta.reasoning;
+                  const toolCalls = parsed.choices[0].delta.tool_calls;
+                  const toolCallsFinished = parsed.choices[0].finish_reason === 'tool_calls';
+
+                  // TODO: Handle rendering tool calls
 
                   // Handle content delta
                   if (content) {
@@ -155,7 +159,14 @@ document.addEventListener('DOMContentLoaded', () => {
 
                   // Handle reasoning delta
                   if (reasoning) {
+                    // Tool call deltas are interleaved with reasoning
+                    // deltas as the model thinks through the tools to
+                    // use and retrieves the results so we wait until
+                    // it's dont to render the message bubble.
                     assistantBubble.setAttribute('is-loading', 'false');
+                    // FIX: There is no div to add this to because it
+                    // might still be in the loading state.
+                    // Need to refactor reasoning to appear in a message bubble
                     assistantBubble.addReasoning(reasoning);
                   }
                 } catch (e) {

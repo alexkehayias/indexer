@@ -48,15 +48,16 @@ class MessageBubble extends HTMLElement {
     } else {
       const imgSrc = this.isUserMessage ? './img/me.jpeg' : './img/bot.jpeg';
       const messageBodyClass = this.isUserMessage
-        ? 'flex flex-col leading-1.5 p-4 bg-blue-100 rounded-xl'
-        : 'flex flex-col leading-1.5 p-4 border-gray-200 bg-gray-100 rounded-xl';
+        ? 'flex flex-col leading-1.5 py-2 px-4 bg-blue-100 rounded-xl'
+        : 'flex flex-col leading-1.5 py-2 px-4 border-gray-200 bg-gray-100 rounded-xl';
 
       this.innerHTML = `
         <div class="flex items-start gap-2.5 mb-4">
           <img src="${imgSrc}" class="hidden w-8 h-8 rounded-full md:block" alt="${this.isUserMessage ? 'User image' : 'Bot image'}">
           <div class="flex flex-col gap-1 w-full overflow-auto">
             <div class="${messageBodyClass}">
-              <div class="markdown overflow-auto text-sm lg:text-base font-normal"></div>
+              <div class="reasoning"></div>
+              <div class="markdown overflow-auto text-sm lg:text-base font-normal py-2 empty:p-0"></div>
             </div>
           </div>
         </div>
@@ -98,35 +99,33 @@ class MessageBubble extends HTMLElement {
 
   // Method to add reasoning section
   addReasoning(reasoningContent) {
-    if (this.isLoading || this.isToolCall) return;
+    if (this.isLoading) return;
 
     // Create reasoning container if it doesn't exist
-    let reasoningContainer = this.querySelector('details');
+    const reasoningEl = this.querySelector('.reasoning');
 
-    if (!reasoningContainer) {
-      reasoningContainer = document.createElement('details');
-      reasoningContainer.className = 'mb-1 cursor-pointer list-none rounded-xl bg-white border pl-3 py-2';
-      reasoningContainer.innerHTML = `
+    if (reasoningEl) {
+      let reasoningContainer = this.querySelector('details');
+
+      if (!reasoningContainer) {
+        reasoningContainer = document.createElement('details');
+        reasoningContainer.className = 'cursor-pointer list-none py-2';
+        reasoningContainer.innerHTML = `
           <summary class="font-semibold">Thinking...</summary>
-      `;
+        `;
 
-      const reasoningContentElement = document.createElement('div');
-      reasoningContentElement.className = 'text-sm text-gray-700 pl-4';
-      reasoningContainer.appendChild(reasoningContentElement);
+        const reasoningContentElement = document.createElement('div');
+        reasoningContentElement.className = 'text-sm text-gray-700 pl-4';
+        reasoningContainer.appendChild(reasoningContentElement);
 
-      // Insert at the beginning of message content (before other elements)
-      const messageContent = this.querySelector('.flex.flex-col.gap-1.w-full.overflow-auto');
-      if (messageContent && messageContent.firstChild) {
-        messageContent.insertBefore(reasoningContainer, messageContent.firstChild);
-      } else {
-        messageContent.appendChild(reasoningContainer);
+        reasoningEl.appendChild(reasoningContainer);
       }
-    }
 
-    // Update reasoning content
-    const contentElement = reasoningContainer.querySelector('.text-sm.text-gray-700.pl-4');
-    if (contentElement) {
-      contentElement.textContent += reasoningContent;
+      // Update reasoning content
+      const contentElement = reasoningContainer.querySelector('.text-sm.text-gray-700.pl-4');
+      if (contentElement) {
+        contentElement.textContent += reasoningContent;
+      }
     }
   }
 }

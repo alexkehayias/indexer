@@ -93,12 +93,12 @@ document.addEventListener('DOMContentLoaded', () => {
     userBubble.setAttribute('is-loading', 'false');
     document.getElementById('chat-display').prepend(userBubble);
 
-    // Show loading indicator below user's message
-    const loadingBubble = new MessageBubble();
-    loadingBubble.setAttribute('is-user-message', 'false');
-    loadingBubble.setAttribute('is-tool-call', 'false');
-    loadingBubble.setAttribute('is-loading', 'true');
-    document.getElementById('chat-display').prepend(loadingBubble);
+    // Create assistant message bubble
+    const assistantBubble = new MessageBubble();
+    assistantBubble.setAttribute('is-user-message', 'false');
+    assistantBubble.setAttribute('is-tool-call', 'false');
+    assistantBubble.setAttribute('is-loading', 'true');
+    document.getElementById('chat-display').prepend(assistantBubble);
 
     const chatRequest = {
       session_id: sessionId,
@@ -116,13 +116,6 @@ document.addEventListener('DOMContentLoaded', () => {
         const reader = response.body.getReader();
         const decoder = new TextDecoder();
         let buffer = '';
-
-        // Create assistant message bubble
-        const assistantBubble = new MessageBubble();
-        assistantBubble.setAttribute('is-user-message', 'false');
-        assistantBubble.setAttribute('is-tool-call', 'false');
-        assistantBubble.setAttribute('is-loading', 'false');
-        document.getElementById('chat-display').prepend(assistantBubble);
 
         let contentAccum = '';
 
@@ -155,14 +148,14 @@ document.addEventListener('DOMContentLoaded', () => {
 
                   // Handle content delta
                   if (content) {
-                    loadingBubble.remove();
                     contentAccum += content;
+                    assistantBubble.setAttribute('is-loading', 'false');
                     assistantBubble.updateContent(contentAccum);
                   }
 
                   // Handle reasoning delta
                   if (reasoning) {
-                    loadingBubble.remove();
+                    assistantBubble.setAttribute('is-loading', 'false');
                     assistantBubble.addReasoning(reasoning);
                   }
                 } catch (e) {

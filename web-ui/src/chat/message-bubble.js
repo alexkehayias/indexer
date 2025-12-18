@@ -40,9 +40,9 @@ class MessageBubble extends HTMLElement {
     if (this.isLoading) {
       this.innerHTML = `
         <div class="flex justify-center my-4">
-          <img src="./img/dog1.png" class="w-8 h-8 animate-bounce" alt="Loading Dog">
-          <img src="./img/dog2.png" class="w-8 h-8 animate-bounce" alt="Loading Dog">
-          <img src="./img/dog3.png" class="w-8 h-8 animate-bounce" alt="Loading Dog">
+          <img src="./img/dog1.png" class="w-8 h-8 animate-bounce-dog1" alt="Loading Dog">
+          <img src="./img/dog2.png" class="w-8 h-8 animate-bounce-dog2" alt="Loading Dog">
+          <img src="./img/dog3.png" class="w-8 h-8 animate-bounce-dog3" alt="Loading Dog">
         </div>
       `;
     } else {

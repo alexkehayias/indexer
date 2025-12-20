@@ -16,7 +16,7 @@ use indexer::indexing::index_all;
 use indexer::openai::{Message, Role, ToolCall};
 use indexer::search::search_notes;
 use indexer::server;
-use indexer::tools::{CalendarTool, EmailUnreadTool, NoteSearchTool, SearxSearchTool};
+use indexer::tools::{CalendarTool, EmailUnreadTool, NoteSearchTool, WebSearchTool};
 
 #[derive(ValueEnum, Clone)]
 enum ServiceKind {
@@ -303,8 +303,6 @@ async fn main() -> Result<()> {
 
             // Create tools
             let note_search_api_url = env::var("INDEXER_NOTE_SEARCH_API_URL");
-            let searxng_api_url = env::var("INDEXER_SEARXNG_API_URL");
-
             let note_search_tool = if let Ok(url) = &note_search_api_url {
                 NoteSearchTool::new(url)
             } else {
@@ -317,10 +315,10 @@ async fn main() -> Result<()> {
                 EmailUnreadTool::default()
             };
 
-            let searx_search_tool = if let Ok(url) = &searxng_api_url {
-                SearxSearchTool::new(url)
+            let web_search_tool = if let Ok(url) = &note_search_api_url {
+                WebSearchTool::new(url)
             } else {
-                SearxSearchTool::default()
+                WebSearchTool::default()
             };
 
             let calendar_tool = if let Ok(url) = &note_search_api_url {
@@ -331,7 +329,7 @@ async fn main() -> Result<()> {
 
             let tools: Option<Vec<Box<dyn ToolCall + Send + Sync + 'static>>> = Some(vec![
                 Box::new(note_search_tool),
-                Box::new(searx_search_tool),
+                Box::new(web_search_tool),
                 Box::new(email_unread_tool),
                 Box::new(calendar_tool),
             ]);

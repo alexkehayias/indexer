@@ -21,8 +21,7 @@ pub async fn search_google(
     cx_id: &str,
     num_results: Option<u8>,
 ) -> Result<Vec<SearchItem>, Error> {
-    // Desired total number of results (default 3). The API returns up to 10 per request.
-    let desired = num_results.unwrap_or(3) as usize;
+    let desired = num_results.unwrap_or(10) as usize;
     let mut collected: Vec<SearchItem> = Vec::new();
     let mut start_index: u32 = 1; // Google Custom Search uses 1‑based start index
     let client = reqwest::Client::new();

@@ -12,3 +12,6 @@ pub use email::EmailUnreadTool;
 
 pub mod website_view;
 pub use website_view::WebsiteViewTool;
+
+pub mod web_search;
+pub use web_search::WebSearchTool;

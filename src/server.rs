@@ -45,7 +45,7 @@ use crate::notification::find_all_notification_subscriptions;
 use crate::openai::{BoxedToolCall, Message, Role};
 use crate::public::{self};
 use crate::tools::{
-    CalendarTool, EmailUnreadTool, NoteSearchTool, SearxSearchTool, WebsiteViewTool,
+    CalendarTool, EmailUnreadTool, NoteSearchTool, WebSearchTool, WebsiteViewTool
 };
 use crate::utils::DetectDisconnect;
 
@@ -156,7 +156,7 @@ async fn chat_handler(
 
     let (
         note_search_tool,
-        searx_search_tool,
+        web_search_tool,
         email_unread_tool,
         calendar_tool,
         website_view_tool,
@@ -168,7 +168,6 @@ async fn chat_handler(
         let shared_state = state.read().expect("Unable to read share state");
         let AppConfig {
             note_search_api_url,
-            searxng_api_url,
             openai_api_hostname,
             openai_api_key,
             openai_model,
@@ -177,7 +176,7 @@ async fn chat_handler(
         } = &shared_state.config;
         (
             NoteSearchTool::new(note_search_api_url),
-            SearxSearchTool::new(searxng_api_url),
+            WebSearchTool::new(note_search_api_url),
             EmailUnreadTool::new(note_search_api_url),
             CalendarTool::new(note_search_api_url),
             WebsiteViewTool::new(),
@@ -190,7 +189,7 @@ async fn chat_handler(
 
     let tools: Option<Vec<BoxedToolCall>> = Some(vec![
         Box::new(note_search_tool),
-        Box::new(searx_search_tool),
+        Box::new(web_search_tool),
         Box::new(email_unread_tool),
         Box::new(calendar_tool),
         Box::new(website_view_tool),

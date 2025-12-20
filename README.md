@@ -65,6 +65,7 @@ docker run -p 2222:2222 -d indexer:latest
 - `INDEXER_NOTE_SEARCH_API_URL` for the note search AI tool
 - `INDEXER_SEARXNG_API_URL` for the web search AI tool
 - `INDEXER_GMAIL_CLIENT_ID` and `INDEXER_GMAIL_CLIENT_SECRET` for the gmail API
+- `INDEXER_GOOGLE_SEARCH_API_KEY` and `INDEXER_GOOGLE_SEARCH_CX_ID` for the Google search API
 - `INDEXER_LOCAL_LLM_HOST` for the OpenAI API hostname (defaults to "https://api.openai.com" if not set)
 - `INDEXER_CALENDAR_EMAIL` to us for meeting prep
 - `INDEXER_LOCAL_LLM_MODEL` for the OpenAI model to use (defaults to "gpt-4.1-mini" if not set)

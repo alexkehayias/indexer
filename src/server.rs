@@ -37,6 +37,7 @@ use crate::chat::{
     get_or_create_session, insert_chat_message,
 };
 use crate::config::AppConfig;
+use crate::google_search;
 use crate::gcal::list_events;
 use crate::indexing::index_all;
 use crate::jobs::{GenerateSessionTitles, ResearchMeetingAttendees, spawn_periodic_job};
@@ -357,7 +358,7 @@ async fn push_subscription(
     Ok(Json(json!({"success": true})))
 }
 
-async fn search(
+async fn note_search(
     State(state): State<SharedState>,
     Query(params): Query<public::SearchRequest>,
 ) -> Result<Json<public::SearchResponse>, public::ApiError> {
@@ -703,6 +704,37 @@ async fn sse_handler() -> impl IntoResponse {
         .into_response()
 }
 
+async fn web_search(
+    State(_state): State<SharedState>,
+    Query(params): Query<public::WebSearchParams>,
+) -> Result<Json<public::WebSearchResponse>, public::ApiError> {
+    let api_key = std::env::var("INDEXER_GOOGLE_SEARCH_API_KEY")?;
+    let cx_id = std::env::var("INDEXER_GOOGLE_SEARCH_CX_ID")?;
+
+    let items = google_search::search_google(
+        &params.query,
+        &api_key,
+        &cx_id,
+        Some(params.limit),
+    )
+    .await?;
+
+    let results: Vec<public::WebSearchResult> = items
+        .into_iter()
+        .map(|item| public::WebSearchResult {
+            title: item.title,
+            link: item.link,
+            snippet: item.snippet,
+        })
+        .collect();
+
+    let resp = public::WebSearchResponse {
+        query: params.query.clone(),
+        results,
+    };
+    Ok(Json(resp))
+}
+
 async fn set_static_cache_control(request: Request, next: middleware::Next) -> Response {
     let mut response = next.run(request).await;
     response
@@ -716,7 +748,7 @@ pub fn app(shared_state: Arc<RwLock<AppState>>) -> Router {
 
     Router::new()
         // Search API endpoint
-        .route("/notes/search", get(search))
+        .route("/notes/search", get(note_search))
         // Storage for selected search hits
         .route("/notes/search/latest", get(kv_get).post(kv_set))
         // Index content endpoint
@@ -738,6 +770,7 @@ pub fn app(shared_state: Arc<RwLock<AppState>>) -> Router {
         .route("/calendar", get(calendar_handler))
         // Server sent events (SSE) example
         .route("/sse", get(sse_handler))
+        .route("/web/search", get(web_search))
         // Static server of assets in ./web-ui
         .fallback_service(
             ServiceBuilder::new()

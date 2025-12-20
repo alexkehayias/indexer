@@ -201,6 +201,29 @@ pub struct CalendarResponse {
     pub attendees: Option<Vec<CalendarAttendee>>,
 }
 
+// Web search request/response structures
+#[derive(Deserialize)]
+pub struct WebSearchParams {
+    pub query: String,
+    #[serde(default = "default_web_limit")]
+    pub limit: u8,
+}
+
+fn default_web_limit() -> u8 { 3 }
+
+#[derive(Serialize, Deserialize)]
+pub struct WebSearchResult {
+    pub title: String,
+    pub link: String,
+    pub snippet: String,
+}
+
+#[derive(Serialize, Deserialize)]
+pub struct WebSearchResponse {
+    pub query: String,
+    pub results: Vec<WebSearchResult>,
+}
+
 #[derive(Serialize, Clone)]
 pub struct ChatSession {
     pub id: String,

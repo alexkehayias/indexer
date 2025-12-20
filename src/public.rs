@@ -106,6 +106,8 @@ pub struct ChatSessionsQuery {
     pub limit: Option<usize>,
     // Use HTML form syntax "?tags=t1&tags=t2"
     pub tags: Option<Vec<String>>,
+    // Exclude sessions containing any of these tags
+    pub exclude_tags: Option<Vec<String>>,
 }
 
 #[derive(Serialize)]
@@ -199,7 +201,7 @@ pub struct CalendarResponse {
     pub attendees: Option<Vec<CalendarAttendee>>,
 }
 
-#[derive(Serialize)]
+#[derive(Serialize, Clone)]
 pub struct ChatSession {
     pub id: String,
     pub title: Option<String>,

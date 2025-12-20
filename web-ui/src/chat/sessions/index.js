@@ -6,7 +6,7 @@ window.loadSessions = async function(page = 1) {
 
   try {
     // Fetch chat sessions from the backend with pagination
-    const response = await fetch(`/notes/chat/sessions?page=${page}&limit=${limit}`, {
+    const response = await fetch(`/notes/chat/sessions?exclude_tags=background&page=${page}&limit=${limit}`, {
       method: 'GET',
       headers: {
         'Content-Type': 'application/json'

@@ -95,17 +95,16 @@ pub fn aql_to_index_query(expr: &Expr, schema: &Schema) -> Option<Box<dyn Query>
             value,
             negated,
         } => {
-            let field_name = field;
+            let field = schema.get_field(field).unwrap();
             let value = parse_date_to_timestamp(value);
             let (lower_bound, upper_bound) = match op {
-                RangeOp::Lt => (Bound::Unbounded, Bound::Excluded(value)),
-                RangeOp::Lte => (Bound::Unbounded, Bound::Included(value)),
-                RangeOp::Gt => (Bound::Excluded(value), Bound::Unbounded),
-                RangeOp::Gte => (Bound::Included(value), Bound::Unbounded),
+                RangeOp::Lt => (Bound::Unbounded, Bound::Excluded(Term::from_field_u64(field, value))),
+                RangeOp::Lte => (Bound::Unbounded, Bound::Included(Term::from_field_u64(field, value))),
+                RangeOp::Gt => (Bound::Excluded(Term::from_field_u64(field, value)), Bound::Unbounded),
+                RangeOp::Gte => (Bound::Included(Term::from_field_u64(field, value)), Bound::Unbounded),
             };
 
-            let range_query = tantivy::query::RangeQuery::new_u64_bounds(
-                field_name.to_string(),
+            let range_query = tantivy::query::RangeQuery::new(
                 lower_bound,
                 upper_bound,
             );

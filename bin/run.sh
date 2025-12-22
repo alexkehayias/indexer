@@ -1,7 +1,7 @@
 #!/usr/bin/env zsh
 set -euo pipefail
 
-cd ./web-ui && npx tailwindcss -i ./src/input.css -o ./src/output.css -m && cd ..
+cd ./web-ui && ../bin/tailwindcss -i ./src/input.css -o ./src/output.css -m && cd ..
 # cargo test
 
 # Start server in background

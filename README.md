@@ -31,7 +31,14 @@ cargo run -- serve --port 2222
 Search notes using the server:
 
 ```
-http://localhost:2222/notes/search?query=test&include_similarity=true
+curl http://localhost:2222/notes/search?query=test&include_similarity=true
+```
+
+Run a dev server that reloads on file change:
+
+```
+cargo install --locked watchexec-cli
+./bin/watch.sh
 ```
 
 ## Docker

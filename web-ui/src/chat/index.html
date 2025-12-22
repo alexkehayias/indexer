@@ -7,14 +7,19 @@
   <title>Notes Chat</title>
 </head>
 <body>
-  <div style="height: 100dvh;" class="bg-white mx-auto flex flex-col items-center">
+<script>
+if (window.matchMedia('(prefers-color-scheme: dark)').matches) {
+  document.documentElement.classList.add('dark');
+}
+</script>
+  <div style="height: 100dvh;" class="bg-white dark:bg-gray-800 mx-auto flex flex-col items-center">
     <div id="chat-container" class="grow overflow-y-auto w-full flex flex-col items-center scrollbar-none">
       <div id="chat-display" class="p-4 grow flex flex-col-reverse w-full lg:max-w-2xl"></div>
     </div>
     <div class="relative bg-transparent w-full px-4 pb-4 lg:max-w-2xl" style="margin-top: -2px;">
       <textarea id="chat-input"
                 type="text"
-                class="block w-full p-4 pr-10 bg-white border border-gray-300 rounded highlight-none"
+                class="block w-full p-4 pr-10 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded highlight-none text-gray-900 dark:text-gray-100"
                 placeholder="Type a message..."
                 rows="1"
                 autofocus></textarea>

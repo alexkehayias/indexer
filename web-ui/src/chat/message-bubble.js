@@ -48,8 +48,8 @@ class MessageBubble extends HTMLElement {
     } else {
       const imgSrc = this.isUserMessage ? './img/me.jpeg' : './img/bot.jpeg';
       const messageBodyClass = this.isUserMessage
-        ? 'flex flex-col leading-1.5 py-2 px-4 bg-blue-100 rounded-xl'
-        : 'flex flex-col leading-1.5 py-2 px-4 border-gray-200 bg-gray-100 rounded-xl';
+        ? 'flex flex-col leading-1.5 py-2 px-4 bg-blue-100 dark:bg-blue-600 rounded-xl'
+        : 'flex flex-col leading-1.5 py-2 px-4 border-gray-200 dark:border-gray-600 bg-gray-100 dark:bg-gray-800 rounded-xl';
 
       this.innerHTML = `
         <div class="flex items-start gap-2.5 mb-4">
@@ -111,11 +111,11 @@ class MessageBubble extends HTMLElement {
         reasoningContainer = document.createElement('details');
         reasoningContainer.className = 'cursor-pointer list-none py-2';
         reasoningContainer.innerHTML = `
-          <summary class="font-semibold">Thinking...</summary>
+          <summary class="font-semibold text-gray-900 dark:text-gray-100">Thinking...</summary>
         `;
 
         const reasoningContentElement = document.createElement('div');
-        reasoningContentElement.className = 'text-sm text-gray-700 pl-4';
+        reasoningContentElement.className = 'text-sm text-gray-700 dark:text-gray-100 pl-4';
         reasoningContainer.appendChild(reasoningContentElement);
 
         reasoningEl.appendChild(reasoningContainer);

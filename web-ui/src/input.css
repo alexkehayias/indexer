@@ -3,139 +3,123 @@
 @tailwind utilities;
 
 .markdown {
-  > * + * {
-    @apply mt-6;
+  > * + * { @apply mt-6; }
+
+  hr {
+    @apply my-10 border-b border-gray-300 dark:border-gray-600;
   }
-  > hr {
-    @apply my-10 border-b;
+  h1 {
+    @apply text-4xl font-bold leading-tight text-gray-900 dark:text-gray-100;
   }
-  > h1 {
-    @apply text-4xl font-bold leading-tight;
+  h2 {
+    @apply text-2xl font-bold leading-tight text-gray-800 dark:text-gray-100;
   }
-  > h2 {
-    @apply text-2xl font-bold leading-tight;
+  h3,
+  h4 {
+    @apply mt-10 font-semibold leading-tight text-gray-700 dark:text-gray-200;
   }
-  > h3 {
-    @apply mt-10 text-xl font-semibold leading-tight;
+  h3 { @apply text-xl; }
+  h4 { @apply text-lg; }
+  h3 code,
+  h4 code {
+    @apply bg-gray-200 dark:bg-gray-800 text-base font-bold tracking-tighter text-gray-700 dark:text-gray-300 rounded;
   }
-  > h4 {
-    @apply mt-10 text-lg font-semibold leading-tight;
+  p {
+    @apply text-gray-700 dark:text-gray-300 leading-relaxed;
   }
-  > h3 code {
-    @apply bg-gray-200 text-lg text-gray-700 font-bold tracking-tighter;
+  p a {
+    @apply text-gray-900 dark:text-gray-100 underline;
   }
-  > p {
-    @apply text-gray-700 leading-relaxed;
-  }
-  > p a {
-    @apply text-gray-900 underline;
-  }
-  > p code {
-    @apply text-sm font-semibold text-red-700 bg-gray-200 text-wrap;
-  }
-  > ul code {
-    @apply text-sm font-bold text-gray-700 bg-gray-200;
+  p code,
+  ul code,
+  ol code {
+    @apply text-sm font-semibold rounded px-1 py-[2px] text-red-700 dark:text-red-200 bg-gray-200 dark:bg-gray-800 text-wrap;
   }
   pre {
-    @apply overflow-auto text-xs bg-gray-200 rounded-lg;
+    @apply overflow-auto text-xs bg-gray-200 dark:bg-gray-800 dark:border rounded-lg p-4;
   }
   pre code {
-    @apply text-sm font-bold text-gray-700;
+    @apply text-sm font-bold text-gray-700 dark:text-gray-300;
   }
-  /* Highlight JS code syntax highlighting theme */
-  pre code.hljs{
-    display:block;
-    overflow-x:auto;
-    padding:1em
+  pre code.hljs,
+  .hljs {
+    display: block;
+    overflow-x: auto;
+    padding: 1em;
+    color: #c9d1d9;
+    background-color: transparent;
   }
-  code.hljs{
-    padding:3px 5px
+  code.hljs { padding: 3px 5px; }
+  .hljs { color: #444; }
+  .dark .hljs { color: #c9d1d9; }
+  .hljs-comment { color:#697070; }
+  .hljs-punctuation,
+  .hljs-tag { color:#444a; }
+  .hljs-tag .hljs-attr,
+  .hljs-tag .hljs-name { color:#444; }
+  .hljs-attribute,.hljs-doctag,.hljs-keyword,.hljs-meta .hljs-keyword,
+  .hljs-name,.hljs-selector-tag {
+    font-weight:700;
   }
-  .hljs{
-    color:#444
+  .hljs-deletion,.hljs-number,.hljs-quote,.hljs-selector-class,
+  .hljs-selector-id,.hljs-string,.hljs-template-tag,.hljs-type {
+    color:#ff7b72;
   }
-  .hljs-comment{
-    color:#697070
+  .dark .hljs-deletion,
+  .dark .hljs-number,
+  .dark .hljs-quote,
+  .dark .hljs-selector-class,
+  .dark .hljs-selector-id,
+  .dark .hljs-string,
+  .dark .hljs-template-tag,
+  .dark .hljs-tag,
+  .dark .hljs-name,
+  .dark .hljs-attr,
+  .dark .hljs-type {
+    color:#ff7b72;
   }
-  .hljs-punctuation,.hljs-tag{
-    color:#444a
+  .hljs-section,.hljs-title { color:#ff7b72; font-weight:700; }
+  .hljs-link,.hljs-operator,.hljs-regexp,.hljs-selector-attr,
+  .hljs-selector-pseudo,.hljs-symbol,.hljs-template-variable,.hljs-variable {
+    color:#ffab70;
   }
-  .hljs-tag .hljs-attr,.hljs-tag .hljs-name{
-    color:#444
+  .hljs-literal { color:#79c0ff; }
+  .hljs-addition,.hljs-built_in,.hljs-bullet,.hljs-code { color:#7ee787; }
+  .hljs-meta { color:#58a6ff; }
+  .hljs-meta .hljs-string { color:#8bcdff; }
+  .hljs-emphasis { font-style:italic; }
+  .hljs-strong { font-weight:700; }
+  ul li {
+    @apply list-disc list-outside ml-4 pl-1 mt-2 text-gray-700 dark:text-gray-300;
   }
-  .hljs-attribute,.hljs-doctag,.hljs-keyword,.hljs-meta .hljs-keyword,.hljs-name,.hljs-selector-tag{
-    font-weight:700
+  ol li {
+    @apply list-decimal list-outside ml-4 pl-1 mt-2 text-gray-700 dark:text-gray-300;
   }
-  .hljs-deletion,.hljs-number,.hljs-quote,.hljs-selector-class,.hljs-selector-id,.hljs-string,.hljs-template-tag,.hljs-type{
-    color:#800
+  table {
+    @apply w-full border-collapse overflow-x-auto block rounded-lg bg-white dark:bg-gray-900;
   }
-  .hljs-section,.hljs-title{
-    color:#800;
-    font-weight:700
+  table thead {
+    @apply bg-gray-800 text-white dark:bg-gray-700;
   }
-  .hljs-link,.hljs-operator,.hljs-regexp,.hljs-selector-attr,.hljs-selector-pseudo,.hljs-symbol,.hljs-template-variable,.hljs-variable{
-    color:#ab5656
+  table th {
+    @apply px-4 py-2 text-left font-semibold text-sm text-white;
   }
-  .hljs-literal{
-    color:#695
+  table tbody tr:nth-child(even) {
+    @apply bg-gray-50 dark:bg-gray-800;
   }
-  .hljs-addition,.hljs-built_in,.hljs-bullet,.hljs-code{
-    color:#397300
+  table td {
+    @apply px-4 py-2 border-t border-gray-200 dark:border-gray-700 text-sm text-gray-800 dark:text-gray-200 align-top;
   }
-  .hljs-meta{
-    color:#1f7199
-  }
-  .hljs-meta .hljs-string{
-    color:#38a
-  }
-  .hljs-emphasis{
-    font-style:italic
-  }
-  .hljs-strong{
-    font-weight:700
-  }
-
-  > ul li {
-    @apply list-disc list-outside ml-4 pl-1 mt-2;
-  }
-  > ol li {
-    @apply list-decimal list-outside ml-4 pl-1 mt-2;
-  }
-  > table {
-    @apply w-full border-collapse overflow-x-auto block rounded-lg bg-white;
-  }
-  > table thead {
-    @apply bg-gray-800 text-white;
-  }
-  > table th {
-    @apply px-4 py-2 text-left font-semibold text-sm;
-  }
-  > table tbody tr:nth-child(even) {
-    @apply bg-gray-50;
-  }
-  > table td {
-    @apply px-4 py-2 border-t border-gray-200 text-sm text-gray-800 align-top;
-  }
-  > table caption {
-    @apply mt-2 text-sm text-gray-500;
+  table caption {
+    @apply mt-2 text-sm text-gray-500 dark:text-gray-400;
   }
 }
 
-/* Styles for loading indicator */
-.animate-bounce-dog1 {
-  animation: bounce 1s infinite 0.2s;
-}
-.animate-bounce-dog2 {
-  animation: bounce 1s infinite 0.4s;
-}
-.animate-bounce-dog3 {
-  animation: bounce 1s infinite 0.6s;
-}
+.animate-bounce-dog1 { animation: bounce 1s infinite 0.2s; }
+.animate-bounce-dog2 { animation: bounce 1s infinite 0.4s; }
+.animate-bounce-dog3 { animation: bounce 1s infinite 0.6s; }
+
 @keyframes bounce {
-  0%, 100% {
-    transform: translateY(0);
-  }
-  50% {
-    transform: translateY(-10px);
-  }
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-10px); }
 }

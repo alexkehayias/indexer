@@ -3,16 +3,19 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="theme-color"
+        media="(prefers-color-scheme: light)"
+        content="#FFFFFF">
+  <meta name="theme-color"
+        media="(prefers-color-scheme: dark)"
+        content="#000000">
+  <meta name="apple-mobile-web-app-capable" content="yes">
   <link href="/output.css" rel="stylesheet">
-  <title>Notes Chat</title>
+  <title>Chat</title>
 </head>
 <body>
-<script>
-if (window.matchMedia('(prefers-color-scheme: dark)').matches) {
-  document.documentElement.classList.add('dark');
-}
-</script>
-  <div style="height: 100dvh;" class="bg-white dark:bg-gray-800 mx-auto flex flex-col items-center">
+  <div style="height: 100dvh;" class="bg-white dark:bg-black mx-auto flex flex-col items-center">
     <div id="chat-container" class="grow overflow-y-auto w-full flex flex-col items-center scrollbar-none">
       <div id="chat-display" class="p-4 grow flex flex-col-reverse w-full lg:max-w-2xl"></div>
     </div>

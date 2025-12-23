@@ -61,6 +61,7 @@ document.addEventListener('DOMContentLoaded', () => {
           }
         });
       }
+      scrollToBottom();
     })
     .catch(error => console.error('Error:', error));
   } else {
@@ -72,6 +73,11 @@ document.addEventListener('DOMContentLoaded', () => {
   const chatDisplay = document.getElementById('chat-display');
   const chatInput = document.getElementById('chat-input');
   const sendButton = document.getElementById('send-button');
+
+  // Scroll to bottom (top for flex-col-reverse) of chat
+  const scrollToBottom = () => {
+    chatContainer.scrollTop = 0;
+  };
 
   sendButton.addEventListener('click', () => sendMessage());
   chatInput.addEventListener('keypress', (e) => {
@@ -99,6 +105,8 @@ document.addEventListener('DOMContentLoaded', () => {
     assistantBubble.setAttribute('is-tool-call', 'false');
     assistantBubble.setAttribute('is-loading', 'true');
     document.getElementById('chat-display').prepend(assistantBubble);
+
+    scrollToBottom();
 
     const chatRequest = {
       session_id: sessionId,

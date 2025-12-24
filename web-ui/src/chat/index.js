@@ -70,13 +70,11 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   const chatContainer = document.getElementById('chat-container');
-  const chatDisplay = document.getElementById('chat-display');
   const chatInput = document.getElementById('chat-input');
   const sendButton = document.getElementById('send-button');
 
-  // Scroll to bottom (top for flex-col-reverse) of chat
   const scrollToBottom = () => {
-    chatContainer.scrollTop = 0;
+    chatContainer.scrollTop = chatContainer.scrollHeight;
   };
 
   sendButton.addEventListener('click', () => sendMessage());

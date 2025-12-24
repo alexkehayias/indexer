@@ -68,14 +68,6 @@ class MessageBubble extends HTMLElement {
         this.updateContent(this.message);
       }
     }
-
-    // Scroll to bottom when message is added
-    this.scrollToBottom();
-  }
-
-  scrollToBottom() {
-    // This method will be called when the component is added to DOM
-    // We can't directly access parent here, so we'll rely on the parent logic
   }
 
   updateContent(message) {

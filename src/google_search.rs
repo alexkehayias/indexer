@@ -5,7 +5,9 @@ use serde::Deserialize;
 
 #[derive(Deserialize)]
 struct GoogleSearchResponse {
-    items: Vec<SearchItem>,
+    // When there are no results, Google responds without the
+    // `items` key
+    items: Option<Vec<SearchItem>>,
 }
 
 #[derive(Deserialize)]
@@ -41,7 +43,7 @@ pub async fn search_google(
 
         let resp = client.get(url).send().await?.error_for_status()?;
         let body: GoogleSearchResponse = resp.json().await?;
-        let items = body.items;
+        let items = body.items.unwrap_or_default();
         let count = items.len();
 
         collected.extend(items);

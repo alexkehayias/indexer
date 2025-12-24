@@ -1,0 +1,3498 @@
+{
+  "context": {
+    "title": "indexer"
+  },
+  "items": [
+    {
+      "displayLink": "slashdot.org",
+      "formattedUrl": "https://slashdot.org/software/p/Rows/alternatives",
+      "htmlFormattedUrl": "https://slashdot.org/software/p/Rows/alternatives",
+      "htmlSnippet": "Enhance your productivity in <b>spreadsheets</b> with our <b>AI</b> assistant tailored for <b>Excel</b> and Google <b>Sheets</b>, designed to create and decipher formulas effortlessly.",
+      "htmlTitle": "Top Rows Alternatives in 2025",
+      "kind": "customsearch#result",
+      "link": "https://slashdot.org/software/p/Rows/alternatives",
+      "pagemap": {
+        "listitem": [
+          {
+            "item": "Software",
+            "name": "Software",
+            "position": "2"
+          },
+          {
+            "item": "Rows",
+            "name": "Rows",
+            "position": "3"
+          },
+          {
+            "name": "Alternatives",
+            "position": "4"
+          },
+          {
+            "position": "1",
+            "url": "/software/p/Datablist/"
+          },
+          {
+            "position": "2",
+            "url": "/software/p/EASA/"
+          },
+          {
+            "position": "3",
+            "url": "/software/p/Quadratic/"
+          },
+          {
+            "position": "4",
+            "url": "/software/p/Excel/"
+          },
+          {
+            "position": "5",
+            "url": "/software/p/Row-Zero/"
+          },
+          {
+            "position": "6",
+            "url": "/software/p/Google-Sheets/"
+          },
+          {
+            "position": "7",
+            "url": "/software/p/Grist/"
+          },
+          {
+            "position": "8",
+            "url": "/software/p/Zoho-Sheet/"
+          },
+          {
+            "position": "9",
+            "url": "/software/p/Numbers/"
+          },
+          {
+            "position": "10",
+            "url": "/software/p/Modern-CSV/"
+          },
+          {
+            "position": "11",
+            "url": "/software/p/Gigasheet/"
+          },
+          {
+            "position": "12",
+            "url": "/software/p/Lumelixr.ai/"
+          },
+          {
+            "position": "13",
+            "url": "/software/p/Ajelix/"
+          },
+          {
+            "position": "14",
+            "url": "/software/p/GRID.is/"
+          },
+          {
+            "position": "15",
+            "url": "/software/p/Spreadsheets-Hub/"
+          },
+          {
+            "position": "16",
+            "url": "/software/p/Sheet-Plus/"
+          },
+          {
+            "position": "17",
+            "url": "/software/p/Sourcetable/"
+          },
+          {
+            "position": "18",
+            "url": "/software/p/SSuite-Accel-Spreadsheet/"
+          },
+          {
+            "position": "19",
+            "url": "/software/p/TreeGrid-SpreadSheet/"
+          },
+          {
+            "position": "20",
+            "url": "/software/p/PromptLoop/"
+          },
+          {
+            "position": "21",
+            "url": "/software/p/Excel-like-Tables-for-Confluence/"
+          },
+          {
+            "position": "22",
+            "url": "/software/p/Causal/"
+          },
+          {
+            "position": "23",
+            "url": "/software/p/Sum-Buddy/"
+          },
+          {
+            "position": "24",
+            "url": "/software/p/Clever-CSV/"
+          },
+          {
+            "position": "25",
+            "url": "/software/p/Excel-Analyzer/"
+          },
+          {
+            "position": "26",
+            "url": "/software/p/GPT-Excel/"
+          },
+          {
+            "position": "27",
+            "url": "/software/p/Schematiq/"
+          },
+          {
+            "position": "28",
+            "url": "/software/p/Excel-Price-Feed/"
+          },
+          {
+            "position": "29",
+            "url": "/software/p/Jspreadsheet/"
+          },
+          {
+            "position": "30",
+            "url": "/software/p/Sheet.chat/"
+          },
+          {
+            "position": "31",
+            "url": "/software/p/Tomat-AI/"
+          },
+          {
+            "position": "32",
+            "url": "/software/p/SpreadJS/"
+          },
+          {
+            "position": "33",
+            "url": "/software/p/Rons-Data-Edit/"
+          },
+          {
+            "position": "34",
+            "url": "/software/p/CoEFFICIENT/"
+          },
+          {
+            "position": "35",
+            "url": "/software/p/Trunao/"
+          },
+          {
+            "position": "36",
+            "url": "/software/p/Arcwise-AI/"
+          },
+          {
+            "position": "37",
+            "url": "/software/p/AlphaSheet/"
+          },
+          {
+            "position": "38",
+            "url": "/software/p/Spread.NET/"
+          },
+          {
+            "position": "39",
+            "url": "/software/p/LivePlan/"
+          },
+          {
+            "position": "40",
+            "url": "/software/p/SSuite-Axcel-Professional/"
+          },
+          {
+            "position": "41",
+            "url": "/software/p/EqualTo/"
+          },
+          {
+            "position": "42",
+            "url": "/software/p/editCSVonline/"
+          },
+          {
+            "position": "43",
+            "url": "/software/p/DnD-Forms/"
+          },
+          {
+            "position": "44",
+            "url": "/software/p/CSV-Editor-Pro/"
+          },
+          {
+            "position": "45",
+            "url": "/software/p/Spreadsite/"
+          }
+        ],
+        "metatags": [
+          {
+            "viewport": "width=device-width, initial-scale=1.0, user-scalable=no"
+          }
+        ],
+        "offer": [
+          {
+            "price": "59",
+            "pricecurrency": "USD"
+          }
+        ],
+        "softwareapplication": [
+          {
+            "applicationcategory": "BusinessApplication",
+            "image": "https://a.fsdn.com/allura/s/rows/icon?96d80e972831b517550110c86faa943baa37e50d099347a0cc16650256ce3df3?&w=148",
+            "name": "Rows",
+            "operatingsystem": "Cloud"
+          }
+        ]
+      },
+      "snippet": "Enhance your productivity in spreadsheets with our AI assistant tailored for Excel and Google Sheets, designed to create and decipher formulas effortlessly.",
+      "title": "Top Rows Alternatives in 2025"
+    },
+    {
+      "displayLink": "app.biopharmiq.com",
+      "formattedUrl": "https://app.biopharmiq.com/.../list-of-biotech-pharmaceutical-life-sciences-c...",
+      "htmlFormattedUrl": "https://app.biopharmiq.com/.../list-of-biotech-pharmaceutical-life-sciences-c...",
+      "htmlSnippet": "The company&#39;s flagship PrecisionOne system is the first fully <b>automated</b> ... We help entrepreneurs form new teams and build <b>AI</b>-<b>first startups</b>. Apply on&nbsp;...",
+      "htmlTitle": "List of Biotech, Pharmaceutical &amp; Life Sciences companies in United ...",
+      "kind": "customsearch#result",
+      "link": "https://app.biopharmiq.com/company-lists-all/list-of-biotech-pharmaceutical-life-sciences-companies-in-united-states",
+      "pagemap": {
+        "cse_image": [
+          {
+            "src": "https://static.wixstatic.com/media/5e4d3d_f85d331b296c4a58b152b9df480decf6~mv2.png/v1/fill/w_1551,h_740,al_c,q_90,usm_0.66_1.00_0.01,enc_auto/071024_BiopharmIQ_com%20home%20page%20upgrades_platform.png"
+          }
+        ],
+        "cse_thumbnail": [
+          {
+            "height": "155",
+            "src": "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcS_Vd0UM_R5nEkk94UOB-bhtEuol3EZd_48CWEGDQWa240frQUR-rjbNn4&s",
+            "width": "325"
+          }
+        ],
+        "metatags": [
+          {
+            "next-head-count": "13",
+            "og:description": "Unlock powerful biopharma insights and find your ideal leads effortlessly with BiopharmIQ.",
+            "og:image": "https://static.wixstatic.com/media/5e4d3d_f85d331b296c4a58b152b9df480decf6~mv2.png/v1/fill/w_1551,h_740,al_c,q_90,usm_0.66_1.00_0.01,enc_auto/071024_BiopharmIQ_com%20home%20page%20upgrades_platform.png",
+            "og:title": "BiopharmIQ Sales Intelligence Tool",
+            "og:type": "website",
+            "og:url": "https://app.biopharmiq.com/companies-free/",
+            "twitter:card": "summary_large_image",
+            "twitter:description": "Unlock powerful biopharma insights and find your ideal leads effortlessly with BiopharmIQ.",
+            "twitter:image": "https://static.wixstatic.com/media/5e4d3d_f85d331b296c4a58b152b9df480decf6~mv2.png/v1/fill/w_1551,h_740,al_c,q_90,usm_0.66_1.00_0.01,enc_auto/071024_BiopharmIQ_com%20home%20page%20upgrades_platform.png",
+            "twitter:title": "BiopharmIQ",
+            "viewport": "width=device-width"
+          }
+        ]
+      },
+      "snippet": "The company's flagship PrecisionOne system is the first fully automated ... We help entrepreneurs form new teams and build AI-first startups. Apply on ...",
+      "title": "List of Biotech, Pharmaceutical & Life Sciences companies in United ..."
+    },
+    {
+      "displayLink": "slashdot.org",
+      "formattedUrl": "https://slashdot.org/software/p/jamovi/alternatives",
+      "htmlFormattedUrl": "https://slashdot.org/software/p/jamovi/alternatives",
+      "htmlSnippet": "Create free <b>spreadsheets</b> that promote seamless collaboration among your teams. With an <b>automated</b> data processor, <b>AI</b>-powered data analysis, and over 1000&nbsp;...",
+      "htmlTitle": "Top jamovi Alternatives in 2025",
+      "kind": "customsearch#result",
+      "link": "https://slashdot.org/software/p/jamovi/alternatives",
+      "pagemap": {
+        "listitem": [
+          {
+            "item": "Software",
+            "name": "Software",
+            "position": "2"
+          },
+          {
+            "item": "jamovi",
+            "name": "jamovi",
+            "position": "3"
+          },
+          {
+            "name": "Alternatives",
+            "position": "4"
+          },
+          {
+            "position": "1",
+            "url": "/software/p/EASA/"
+          },
+          {
+            "position": "2",
+            "url": "/software/p/Smartsheet/"
+          },
+          {
+            "position": "3",
+            "url": "/software/p/Conversionomics/"
+          },
+          {
+            "position": "4",
+            "url": "/software/p/monday.com/"
+          },
+          {
+            "position": "5",
+            "url": "/software/p/SmartstatXL/"
+          },
+          {
+            "position": "6",
+            "url": "/software/p/SSuite-Accel-Spreadsheet/"
+          },
+          {
+            "position": "7",
+            "url": "/software/p/Spreadsite/"
+          },
+          {
+            "position": "8",
+            "url": "/software/p/SSuite-Axcel-Professional/"
+          },
+          {
+            "position": "9",
+            "url": "/software/p/Statwing/"
+          },
+          {
+            "position": "10",
+            "url": "/software/p/CoEFFICIENT/"
+          },
+          {
+            "position": "11",
+            "url": "/software/p/AlphaSheet/"
+          },
+          {
+            "position": "12",
+            "url": "/software/p/Equals/"
+          },
+          {
+            "position": "13",
+            "url": "/software/p/statistiXL/"
+          },
+          {
+            "position": "14",
+            "url": "/software/p/IntellectusStatistics/"
+          },
+          {
+            "position": "15",
+            "url": "/software/p/Sourcetable/"
+          },
+          {
+            "position": "16",
+            "url": "/software/p/Trunao/"
+          },
+          {
+            "position": "17",
+            "url": "/software/p/Oriana/"
+          },
+          {
+            "position": "18",
+            "url": "/software/p/GPT-Excel/"
+          },
+          {
+            "position": "19",
+            "url": "/software/p/Analyse-it/"
+          },
+          {
+            "position": "20",
+            "url": "/software/p/ChemStat/"
+          },
+          {
+            "position": "21",
+            "url": "/software/p/Zoho-Sheet/"
+          },
+          {
+            "position": "22",
+            "url": "/software/p/GraphPad-InStat/"
+          },
+          {
+            "position": "23",
+            "url": "/software/p/Velixo/"
+          },
+          {
+            "position": "24",
+            "url": "/software/p/Jspreadsheet/"
+          },
+          {
+            "position": "25",
+            "url": "/software/p/Excel-like-Tables-for-Confluence/"
+          },
+          {
+            "position": "26",
+            "url": "/software/p/ASReml/"
+          },
+          {
+            "position": "27",
+            "url": "/software/p/Sheet.chat/"
+          },
+          {
+            "position": "28",
+            "url": "/software/p/Layer/"
+          },
+          {
+            "position": "29",
+            "url": "/software/p/SpreadJS/"
+          },
+          {
+            "position": "30",
+            "url": "/software/p/Markitsoft-Sales-Controller/"
+          },
+          {
+            "position": "31",
+            "url": "/software/p/Spreadsheets-Hub/"
+          },
+          {
+            "position": "32",
+            "url": "/software/p/ISNetworld/"
+          },
+          {
+            "position": "33",
+            "url": "/software/p/Rows/"
+          },
+          {
+            "position": "34",
+            "url": "/software/p/Causal/"
+          },
+          {
+            "position": "35",
+            "url": "/software/p/Spread.NET/"
+          },
+          {
+            "position": "36",
+            "url": "/software/p/Row-Zero/"
+          },
+          {
+            "position": "37",
+            "url": "/software/p/GRID.is/"
+          },
+          {
+            "position": "38",
+            "url": "/software/p/EqualTo/"
+          },
+          {
+            "position": "39",
+            "url": "/software/p/Google-Sheets/"
+          },
+          {
+            "position": "40",
+            "url": "/software/p/StatPlus/"
+          },
+          {
+            "position": "41",
+            "url": "/software/p/Stackby/"
+          },
+          {
+            "position": "42",
+            "url": "/software/p/SUDAAN/"
+          },
+          {
+            "position": "43",
+            "url": "/software/p/Ajelix/"
+          },
+          {
+            "position": "44",
+            "url": "/software/p/Intellimas/"
+          },
+          {
+            "position": "45",
+            "url": "/software/p/Quadratic/"
+          }
+        ],
+        "metatags": [
+          {
+            "viewport": "width=device-width, initial-scale=1.0, user-scalable=no"
+          }
+        ],
+        "offer": [
+          {
+            "price": "0.00",
+            "pricecurrency": "USD"
+          }
+        ],
+        "softwareapplication": [
+          {
+            "applicationcategory": "BusinessApplication",
+            "image": "https://a.fsdn.com/allura/s/jamovi/icon?89e94828947ad68b4c4e1702f6becd306b80c646a6975c24c93b5cb11e601055?&w=148",
+            "name": "jamovi",
+            "operatingsystem": "Cloud"
+          }
+        ]
+      },
+      "snippet": "Create free spreadsheets that promote seamless collaboration among your teams. With an automated data processor, AI-powered data analysis, and over 1000 ...",
+      "title": "Top jamovi Alternatives in 2025"
+    },
+    {
+      "displayLink": "app.biopharmiq.com",
+      "formattedUrl": "https://app.biopharmiq.com/.../list-of-therapeutic-companies-in-united-state...",
+      "htmlFormattedUrl": "https://app.biopharmiq.com/.../list-of-therapeutic-companies-in-united-state...",
+      "htmlSnippet": "Atomwise is a preclinical pharma company revolutionizing how <b>drugs</b> are discovered with <b>AI</b>. ... Basking is developing the <b>first</b> in class <b>agent</b> (BB-031) targeting&nbsp;...",
+      "htmlTitle": "List of Therapeutic Companies in United States",
+      "kind": "customsearch#result",
+      "link": "https://app.biopharmiq.com/company-lists-all/list-of-therapeutic-companies-in-united-states",
+      "pagemap": {
+        "cse_image": [
+          {
+            "src": "https://static.wixstatic.com/media/5e4d3d_f85d331b296c4a58b152b9df480decf6~mv2.png/v1/fill/w_1551,h_740,al_c,q_90,usm_0.66_1.00_0.01,enc_auto/071024_BiopharmIQ_com%20home%20page%20upgrades_platform.png"
+          }
+        ],
+        "cse_thumbnail": [
+          {
+            "height": "155",
+            "src": "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcS_Vd0UM_R5nEkk94UOB-bhtEuol3EZd_48CWEGDQWa240frQUR-rjbNn4&s",
+            "width": "325"
+          }
+        ],
+        "metatags": [
+          {
+            "next-head-count": "13",
+            "og:description": "Unlock powerful biopharma insights and find your ideal leads effortlessly with BiopharmIQ.",
+            "og:image": "https://static.wixstatic.com/media/5e4d3d_f85d331b296c4a58b152b9df480decf6~mv2.png/v1/fill/w_1551,h_740,al_c,q_90,usm_0.66_1.00_0.01,enc_auto/071024_BiopharmIQ_com%20home%20page%20upgrades_platform.png",
+            "og:title": "BiopharmIQ Sales Intelligence Tool",
+            "og:type": "website",
+            "og:url": "https://app.biopharmiq.com/companies-free/",
+            "twitter:card": "summary_large_image",
+            "twitter:description": "Unlock powerful biopharma insights and find your ideal leads effortlessly with BiopharmIQ.",
+            "twitter:image": "https://static.wixstatic.com/media/5e4d3d_f85d331b296c4a58b152b9df480decf6~mv2.png/v1/fill/w_1551,h_740,al_c,q_90,usm_0.66_1.00_0.01,enc_auto/071024_BiopharmIQ_com%20home%20page%20upgrades_platform.png",
+            "twitter:title": "BiopharmIQ",
+            "viewport": "width=device-width"
+          }
+        ]
+      },
+      "snippet": "Atomwise is a preclinical pharma company revolutionizing how drugs are discovered with AI. ... Basking is developing the first in class agent (BB-031) targeting ...",
+      "title": "List of Therapeutic Companies in United States"
+    },
+    {
+      "displayLink": "sourceforge.net",
+      "formattedUrl": "https://sourceforge.net/software/product/jamovi/alternatives",
+      "htmlFormattedUrl": "https://sourceforge.net/software/product/jamovi/alternatives",
+      "htmlSnippet": "Boost your <b>spreadsheet</b> productivity with our <b>Excel</b> and Google <b>Sheets AI</b> assistant to generate and understand formulas. Create and <b>automate</b> complex&nbsp;...",
+      "htmlTitle": "Best jamovi Alternatives &amp; Competitors",
+      "kind": "customsearch#result",
+      "link": "https://sourceforge.net/software/product/jamovi/alternatives",
+      "pagemap": {
+        "listitem": [
+          {
+            "item": "Home",
+            "name": "Home",
+            "position": "1"
+          },
+          {
+            "item": "Compare Business Software",
+            "name": "Compare Business Software",
+            "position": "2"
+          },
+          {
+            "item": "jamovi",
+            "name": "jamovi",
+            "position": "3"
+          },
+          {
+            "name": "Alternatives",
+            "position": "4"
+          },
+          {
+            "position": "1",
+            "url": "/software/product/Smartsheet/"
+          },
+          {
+            "position": "2",
+            "url": "/software/product/EASA/"
+          },
+          {
+            "position": "3",
+            "url": "/software/product/monday.com/"
+          },
+          {
+            "position": "4",
+            "url": "/software/product/Conversionomics/"
+          },
+          {
+            "position": "5",
+            "url": "/software/product/SSuite-Accel-Spreadsheet/"
+          },
+          {
+            "position": "6",
+            "url": "/software/product/SmartstatXL/"
+          },
+          {
+            "position": "7",
+            "url": "/software/product/SSuite-Axcel-Professional/"
+          },
+          {
+            "position": "8",
+            "url": "/software/product/Spreadsite/"
+          },
+          {
+            "position": "9",
+            "url": "/software/product/CoEFFICIENT/"
+          },
+          {
+            "position": "10",
+            "url": "/software/product/Statwing/"
+          },
+          {
+            "position": "11",
+            "url": "/software/product/Equals/"
+          },
+          {
+            "position": "12",
+            "url": "/software/product/AlphaSheet/"
+          },
+          {
+            "position": "13",
+            "url": "/software/product/IntellectusStatistics/"
+          },
+          {
+            "position": "14",
+            "url": "/software/product/statistiXL/"
+          },
+          {
+            "position": "15",
+            "url": "/software/product/Trunao/"
+          },
+          {
+            "position": "16",
+            "url": "/software/product/Sourcetable/"
+          },
+          {
+            "position": "17",
+            "url": "/software/product/GPT-Excel/"
+          },
+          {
+            "position": "18",
+            "url": "/software/product/Oriana/"
+          },
+          {
+            "position": "19",
+            "url": "/software/product/ChemStat/"
+          },
+          {
+            "position": "20",
+            "url": "/software/product/Analyse-it/"
+          },
+          {
+            "position": "21",
+            "url": "/software/product/GraphPad-InStat/"
+          },
+          {
+            "position": "22",
+            "url": "/software/product/Zoho-Sheet/"
+          },
+          {
+            "position": "23",
+            "url": "/software/product/Jspreadsheet/"
+          },
+          {
+            "position": "24",
+            "url": "/software/product/Velixo/"
+          },
+          {
+            "position": "25",
+            "url": "/software/product/Excel-like-Tables-for-Confluence/"
+          },
+          {
+            "position": "26",
+            "url": "/software/product/ASReml/"
+          },
+          {
+            "position": "27",
+            "url": "/software/product/Layer/"
+          },
+          {
+            "position": "28",
+            "url": "/software/product/Sheet.chat/"
+          },
+          {
+            "position": "29",
+            "url": "/software/product/SpreadJS/"
+          },
+          {
+            "position": "30",
+            "url": "/software/product/Markitsoft-Sales-Controller/"
+          },
+          {
+            "position": "31",
+            "url": "/software/product/ISNetworld/"
+          },
+          {
+            "position": "32",
+            "url": "/software/product/Spreadsheets-Hub/"
+          },
+          {
+            "position": "33",
+            "url": "/software/product/Causal/"
+          },
+          {
+            "position": "34",
+            "url": "/software/product/Rows/"
+          },
+          {
+            "position": "35",
+            "url": "/software/product/Row-Zero/"
+          },
+          {
+            "position": "36",
+            "url": "/software/product/Spread.NET/"
+          },
+          {
+            "position": "37",
+            "url": "/software/product/EqualTo/"
+          },
+          {
+            "position": "38",
+            "url": "/software/product/GRID.is/"
+          },
+          {
+            "position": "39",
+            "url": "/software/product/StatPlus/"
+          },
+          {
+            "position": "40",
+            "url": "/software/product/Google-Sheets/"
+          },
+          {
+            "position": "41",
+            "url": "/software/product/Intellimas/"
+          },
+          {
+            "position": "42",
+            "url": "/software/product/SUDAAN/"
+          },
+          {
+            "position": "43",
+            "url": "/software/product/Stackby/"
+          },
+          {
+            "position": "44",
+            "url": "/software/product/Ajelix/"
+          },
+          {
+            "position": "45",
+            "url": "/software/product/Spreadsheet.com/"
+          },
+          {
+            "position": "46",
+            "url": "/software/product/Quadratic/"
+          },
+          {
+            "position": "47",
+            "url": "/software/product/DnD-Forms/"
+          },
+          {
+            "position": "48",
+            "url": "/software/product/TreeGrid-SpreadSheet/"
+          },
+          {
+            "position": "49",
+            "url": "/software/product/Schematiq/"
+          },
+          {
+            "position": "50",
+            "url": "/software/product/ClearFactr/"
+          }
+        ],
+        "metatags": [
+          {
+            "viewport": "width=device-width, initial-scale=1.0, user-scalable=no"
+          }
+        ],
+        "offer": [
+          {
+            "price": "0.00",
+            "pricecurrency": "USD"
+          }
+        ],
+        "softwareapplication": [
+          {
+            "applicationcategory": "BusinessApplication",
+            "image": "https://a.fsdn.com/allura/s/jamovi/icon?89e94828947ad68b4c4e1702f6becd306b80c646a6975c24c93b5cb11e601055?&w=90",
+            "name": "jamovi",
+            "operatingsystem": "Cloud"
+          }
+        ],
+        "xfn": [
+          {}
+        ]
+      },
+      "snippet": "Boost your spreadsheet productivity with our Excel and Google Sheets AI assistant to generate and understand formulas. Create and automate complex ...",
+      "title": "Best jamovi Alternatives & Competitors"
+    },
+    {
+      "displayLink": "www.techjockey.com",
+      "formattedUrl": "https://www.techjockey.com/brands",
+      "htmlFormattedUrl": "https://www.techjockey.com/brands",
+      "htmlSnippet": "... <b>Alphasheet</b> &middot; AlphaTheta &middot; Alphaware Next ... Ltd. RE Vision Effects &middot; Reach &middot; Reach Business <b>Automation</b> Software &middot; Reachassuree &middot; ReachifyMe &middot; Reactev &middot; Read <b>AI</b>&nbsp;...",
+      "htmlTitle": "List of Top Software Brands and Best Software Solution Providers ...",
+      "kind": "customsearch#result",
+      "link": "https://www.techjockey.com/brands",
+      "pagemap": {
+        "cse_image": [
+          {
+            "src": "https://www.techjockey.com/assets/images/techjockey-image.png"
+          }
+        ],
+        "cse_thumbnail": [
+          {
+            "height": "163",
+            "src": "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcQGkZaB90k2zG127iLMSgB5mjvz8vZS1dDn_x6z6xFg9k8uZyN15Go-UNhv&s",
+            "width": "310"
+          }
+        ],
+        "metatags": [
+          {
+            "ahrefs-site-verification": "af8c747d1795e16f990a1405a165a4bb2d1a380fdd6e7004f80040e78d4c97d3",
+            "dmca-site-verification": "YzRtcFMycUpJZFBmL0EvNk4rRGhRN2FSc082cjJWb1Nuak14Q21BbVNnRT01",
+            "facebook-domain-verification": "ig81ervuf71d1nx3302p0hxlx1o3cw",
+            "fb:app_id": "1779377402295970",
+            "og:description": "The list of best software brands, software solution companies in India with their products features, services and other insights",
+            "og:image": "https://www.techjockey.com/assets/images/techjockey-image.png",
+            "og:image:secure_url": "https://www.techjockey.com/assets/images/techjockey-image.png",
+            "og:image:type": "image/png",
+            "og:image:url": "https://www.techjockey.com/assets/images/techjockey-image.png",
+            "og:site": "www.techjockey.com",
+            "og:site_name": "Techjockey",
+            "og:title": "List of Top Software Brands and Best Software Solution Providers - India",
+            "og:type": "website",
+            "og:url": "https://www.techjockey.com/brands",
+            "p:domain_verify": "add1d14133189a3fc631e532910249f0",
+            "theme-color": "#402fa1",
+            "twitter:card": "summary_large_image",
+            "twitter:description": "The list of best software brands, software solution companies in India with their products features, services and other insights",
+            "twitter:image": "https://www.techjockey.com/techjockey-twitter-image.png",
+            "twitter:site": "@Techjockey",
+            "twitter:title": "List of Top Software Brands and Best Software Solution Providers - India",
+            "viewport": "width=device-width, initial-scale=1, maximum-scale=1.0, user-scalable=0",
+            "yandex-verification": "a73638de02b13e65"
+          }
+        ]
+      },
+      "snippet": "... Alphasheet · AlphaTheta · Alphaware Next ... Ltd. RE Vision Effects · Reach · Reach Business Automation Software · Reachassuree · ReachifyMe · Reactev · Read AI ...",
+      "title": "List of Top Software Brands and Best Software Solution Providers ..."
+    },
+    {
+      "displayLink": "sourceforge.net",
+      "formattedUrl": "https://sourceforge.net/software/product/xlCompare/alternatives/1000",
+      "htmlFormattedUrl": "https://sourceforge.net/software/product/xlCompare/alternatives/1000",
+      "htmlSnippet": "Boost your <b>spreadsheet</b> productivity with our <b>Excel</b> and Google <b>Sheets AI</b> assistant to generate and understand formulas. Create and <b>automate</b> complex&nbsp;...",
+      "htmlTitle": "Best xlCompare Alternatives &amp; Competitors",
+      "kind": "customsearch#result",
+      "link": "https://sourceforge.net/software/product/xlCompare/alternatives/1000",
+      "pagemap": {
+        "listitem": [
+          {
+            "item": "Home",
+            "name": "Home",
+            "position": "1"
+          },
+          {
+            "item": "Compare Business Software",
+            "name": "Compare Business Software",
+            "position": "2"
+          },
+          {
+            "item": "xlCompare",
+            "name": "xlCompare",
+            "position": "3"
+          },
+          {
+            "name": "Alternatives",
+            "position": "4"
+          },
+          {
+            "position": "1",
+            "url": "/software/product/GoAnywhere-MFT/"
+          },
+          {
+            "position": "2",
+            "url": "/software/product/MobiPDF/"
+          },
+          {
+            "position": "3",
+            "url": "/software/product/Label-LIVE/"
+          },
+          {
+            "position": "4",
+            "url": "/software/product/MASV/"
+          },
+          {
+            "position": "5",
+            "url": "/software/product/PBRS/"
+          },
+          {
+            "position": "6",
+            "url": "/software/product/FileInvite/"
+          },
+          {
+            "position": "7",
+            "url": "/software/product/CompareCoops/"
+          },
+          {
+            "position": "8",
+            "url": "/software/product/Macabacus/"
+          },
+          {
+            "position": "9",
+            "url": "/software/product/Maestro-Payment/"
+          },
+          {
+            "position": "10",
+            "url": "/software/product/DocuGenerate/"
+          },
+          {
+            "position": "11",
+            "url": "/software/product/pdfRest/"
+          },
+          {
+            "position": "12",
+            "url": "/software/product/Store-Locator-Widgets/"
+          },
+          {
+            "position": "13",
+            "url": "/software/product/Conholdate.Total/"
+          },
+          {
+            "position": "14",
+            "url": "/software/product/EASA/"
+          },
+          {
+            "position": "15",
+            "url": "/software/product/CatBase/"
+          },
+          {
+            "position": "16",
+            "url": "/software/product/Code3-Strategist/"
+          },
+          {
+            "position": "17",
+            "url": "/software/product/Microsoft-365/"
+          },
+          {
+            "position": "18",
+            "url": "/software/product/IBM-Rational-ClearCase/"
+          },
+          {
+            "position": "19",
+            "url": "/software/product/monday.com/"
+          },
+          {
+            "position": "20",
+            "url": "/software/product/RedTeam/"
+          },
+          {
+            "position": "21",
+            "url": "/software/product/Sitejet/"
+          },
+          {
+            "position": "22",
+            "url": "/software/product/Sheetmatcher/"
+          },
+          {
+            "position": "23",
+            "url": "/software/product/Active-File-Compare/"
+          },
+          {
+            "position": "24",
+            "url": "/software/product/Code-Compare/"
+          },
+          {
+            "position": "25",
+            "url": "/software/product/TextCompare/"
+          },
+          {
+            "position": "26",
+            "url": "/software/product/Kompare/"
+          },
+          {
+            "position": "27",
+            "url": "/software/product/Beyond-Compare/"
+          },
+          {
+            "position": "28",
+            "url": "/software/product/Compare-and-Merge/"
+          },
+          {
+            "position": "29",
+            "url": "/software/product/Compare-It/"
+          },
+          {
+            "position": "30",
+            "url": "/software/product/WinMerge/"
+          },
+          {
+            "position": "31",
+            "url": "/software/product/Diff-Doc/"
+          },
+          {
+            "position": "32",
+            "url": "/software/product/Aspose.Total-Comparison/"
+          },
+          {
+            "position": "33",
+            "url": "/software/product/UltraCompare/"
+          },
+          {
+            "position": "34",
+            "url": "/software/product/SmartSynchronize/"
+          },
+          {
+            "position": "35",
+            "url": "/software/product/DiffMerge/"
+          },
+          {
+            "position": "36",
+            "url": "/software/product/ExamDiff/"
+          },
+          {
+            "position": "37",
+            "url": "/software/product/Text-Compare/"
+          },
+          {
+            "position": "38",
+            "url": "/software/product/Altova-DiffDog/"
+          },
+          {
+            "position": "39",
+            "url": "/software/product/Araxis-Merge/"
+          },
+          {
+            "position": "40",
+            "url": "/software/product/Draftable/"
+          },
+          {
+            "position": "41",
+            "url": "/software/product/Compare-PDF/"
+          },
+          {
+            "position": "42",
+            "url": "/software/product/GroupDocs/"
+          },
+          {
+            "position": "43",
+            "url": "/software/product/Compare-Suite/"
+          },
+          {
+            "position": "44",
+            "url": "/software/product/GlobalVision-Text-Inspection/"
+          },
+          {
+            "position": "45",
+            "url": "/software/product/dbForge-Schema-Compare-for-Oracle/"
+          },
+          {
+            "position": "46",
+            "url": "/software/product/Juxtappose/"
+          },
+          {
+            "position": "47",
+            "url": "/software/product/PlanMaker/"
+          },
+          {
+            "position": "48",
+            "url": "/software/product/Excel-Password-Recovery/"
+          },
+          {
+            "position": "49",
+            "url": "/software/product/Pretty-Diff/"
+          },
+          {
+            "position": "50",
+            "url": "/software/product/Kaleidoscope/"
+          },
+          {
+            "position": "51",
+            "url": "/software/product/EasyXLS-Excel-Library/"
+          },
+          {
+            "position": "52",
+            "url": "/software/product/Excel-Analyzer/"
+          },
+          {
+            "position": "53",
+            "url": "/software/product/Dose-for-Excel/"
+          },
+          {
+            "position": "54",
+            "url": "/software/product/Directory-Report/"
+          },
+          {
+            "position": "55",
+            "url": "/software/product/Automatic-Grapher/"
+          },
+          {
+            "position": "56",
+            "url": "/software/product/Trunao/"
+          },
+          {
+            "position": "57",
+            "url": "/software/product/CompareData/"
+          },
+          {
+            "position": "58",
+            "url": "/software/product/xlrd/"
+          },
+          {
+            "position": "59",
+            "url": "/software/product/Able2Extract-Professional-14/"
+          },
+          {
+            "position": "60",
+            "url": "/software/product/openpyxl/"
+          },
+          {
+            "position": "61",
+            "url": "/software/product/Stellar-Repair-for-Excel/"
+          },
+          {
+            "position": "62",
+            "url": "/software/product/ViceVersa-PRO/"
+          },
+          {
+            "position": "63",
+            "url": "/software/product/Excel-like-Tables-for-Confluence/"
+          },
+          {
+            "position": "64",
+            "url": "/software/product/Excel-like-Tables-for-Jira/"
+          },
+          {
+            "position": "65",
+            "url": "/software/product/VerifyTool/"
+          },
+          {
+            "position": "66",
+            "url": "/software/product/DupInOut-Duplicate-Finder/"
+          },
+          {
+            "position": "67",
+            "url": "/software/product/Rate-My-Excel/"
+          },
+          {
+            "position": "68",
+            "url": "/software/product/DeltaCompare/"
+          },
+          {
+            "position": "69",
+            "url": "/software/product/NOVO-Compare/"
+          },
+          {
+            "position": "70",
+            "url": "/software/product/Rons-Data-Edit/"
+          },
+          {
+            "position": "71",
+            "url": "/software/product/BidScreen-XL/"
+          },
+          {
+            "position": "72",
+            "url": "/software/product/Draftable-Legal/"
+          },
+          {
+            "position": "73",
+            "url": "/software/product/Stellar-Toolkit-for-File-Repair/"
+          },
+          {
+            "position": "74",
+            "url": "/software/product/Litera-Compare/"
+          },
+          {
+            "position": "75",
+            "url": "/software/product/dbForge-Schema-Compare-for-MySQL/"
+          },
+          {
+            "position": "76",
+            "url": "/software/product/followerwonk/"
+          },
+          {
+            "position": "77",
+            "url": "/software/product/Truly-Office/"
+          },
+          {
+            "position": "78",
+            "url": "/software/product/Cubicost-TBQ/"
+          },
+          {
+            "position": "79",
+            "url": "/software/product/QI-Macros-SPC-Software-Excel/"
+          },
+          {
+            "position": "80",
+            "url": "/software/product/Ajelix/"
+          },
+          {
+            "position": "81",
+            "url": "/software/product/FormulaGenerator/"
+          },
+          {
+            "position": "82",
+            "url": "/software/product/Clever-CSV/"
+          },
+          {
+            "position": "83",
+            "url": "/software/product/DirDiff/"
+          },
+          {
+            "position": "84",
+            "url": "/software/product/IRI-CellShield/"
+          },
+          {
+            "position": "85",
+            "url": "/software/product/TortoiseMerge/"
+          },
+          {
+            "position": "86",
+            "url": "/software/product/dbForge-Schema-Compare-for-PostgreSQL/"
+          },
+          {
+            "position": "87",
+            "url": "/software/product/VT-Final-Accounts/"
+          },
+          {
+            "position": "88",
+            "url": "/software/product/Datavore/"
+          },
+          {
+            "position": "89",
+            "url": "/software/product/CRAX-Commander/"
+          },
+          {
+            "position": "90",
+            "url": "/software/product/Txture-Cloud-Transformation/"
+          },
+          {
+            "position": "91",
+            "url": "/software/product/Layer/"
+          },
+          {
+            "position": "92",
+            "url": "/software/product/MindGems-Fast-Duplicate-File-Finder/"
+          },
+          {
+            "position": "93",
+            "url": "/software/product/dbForge-Data-Compare-for-Oracle/"
+          },
+          {
+            "position": "94",
+            "url": "/software/product/esProc/"
+          },
+          {
+            "position": "95",
+            "url": "/software/product/WildBit-Viewer/"
+          },
+          {
+            "position": "96",
+            "url": "/software/product/ExcelMaster.ai/"
+          },
+          {
+            "position": "97",
+            "url": "/software/product/Changes/"
+          },
+          {
+            "position": "98",
+            "url": "/software/product/Duplicate-Video-Search/"
+          },
+          {
+            "position": "99",
+            "url": "/software/product/WPS-Office/"
+          },
+          {
+            "position": "100",
+            "url": "/software/product/Tomat-AI/"
+          },
+          {
+            "position": "101",
+            "url": "/software/product/DocuClipper/"
+          },
+          {
+            "position": "102",
+            "url": "/software/product/thisorthis.ai/"
+          },
+          {
+            "position": "103",
+            "url": "/software/product/CopyFolder/"
+          },
+          {
+            "position": "104",
+            "url": "/software/product/FollowersAnalysis/"
+          },
+          {
+            "position": "105",
+            "url": "/software/product/OpenAI-o3-pro/"
+          },
+          {
+            "position": "106",
+            "url": "/software/product/Elecard-StreamEye-Studio/"
+          },
+          {
+            "position": "107",
+            "url": "/software/product/SheetGod/"
+          },
+          {
+            "position": "108",
+            "url": "/software/product/Datanamic-DataDiff/"
+          },
+          {
+            "position": "109",
+            "url": "/software/product/Drivetrain/"
+          },
+          {
+            "position": "110",
+            "url": "/software/product/QuickDiff/"
+          },
+          {
+            "position": "111",
+            "url": "/software/product/ChronoSync/"
+          },
+          {
+            "position": "112",
+            "url": "/software/product/ActiveData/"
+          },
+          {
+            "position": "113",
+            "url": "/software/product/HTTPCS-Cyber-Vigilance/"
+          },
+          {
+            "position": "114",
+            "url": "/software/product/SQLyog/"
+          },
+          {
+            "position": "115",
+            "url": "/software/product/Finpilot/"
+          },
+          {
+            "position": "116",
+            "url": "/software/product/Iceberg/"
+          },
+          {
+            "position": "117",
+            "url": "/software/product/dp4-Font-Viewer/"
+          },
+          {
+            "position": "118",
+            "url": "/software/product/ToolQuote/"
+          },
+          {
+            "position": "119",
+            "url": "/software/product/dbForge-Data-Compare-for-MySQL/"
+          },
+          {
+            "position": "120",
+            "url": "/software/product/Macro/"
+          },
+          {
+            "position": "121",
+            "url": "/software/product/SiteWorx-OS/"
+          },
+          {
+            "position": "122",
+            "url": "/software/product/SQL-Workbench/"
+          },
+          {
+            "position": "123",
+            "url": "/software/product/ShinePDF/"
+          },
+          {
+            "position": "124",
+            "url": "/software/product/XiMpLe/"
+          },
+          {
+            "position": "125",
+            "url": "/software/product/Melder/"
+          },
+          {
+            "position": "126",
+            "url": "/software/product/dbForge-Data-Compare-for-PostgreSQL/"
+          },
+          {
+            "position": "127",
+            "url": "/software/product/DnD-Forms/"
+          },
+          {
+            "position": "128",
+            "url": "/software/product/Causal/"
+          },
+          {
+            "position": "129",
+            "url": "/software/product/Excel/"
+          },
+          {
+            "position": "130",
+            "url": "/software/product/OfficeFIX/"
+          },
+          {
+            "position": "131",
+            "url": "/software/product/Accountfy/"
+          },
+          {
+            "position": "132",
+            "url": "/software/product/DARTS-AirFleet-Managers/"
+          },
+          {
+            "position": "133",
+            "url": "/software/product/FP-Scanner/"
+          },
+          {
+            "position": "134",
+            "url": "/software/product/Mistral-Medium-3/"
+          },
+          {
+            "position": "135",
+            "url": "/software/product/DQ-for-Excel/"
+          },
+          {
+            "position": "136",
+            "url": "/software/product/MyForecast/"
+          },
+          {
+            "position": "137",
+            "url": "/software/product/Excel-Price-Feed/"
+          },
+          {
+            "position": "138",
+            "url": "/software/product/File-Manager-Pro/"
+          },
+          {
+            "position": "139",
+            "url": "/software/product/SoftMaker-Office/"
+          },
+          {
+            "position": "140",
+            "url": "/software/product/jOfficeConvert/"
+          },
+          {
+            "position": "141",
+            "url": "/software/product/Aspose.Total/"
+          },
+          {
+            "position": "142",
+            "url": "/software/product/DBA-xPress/"
+          },
+          {
+            "position": "143",
+            "url": "/software/product/Log2Stats/"
+          },
+          {
+            "position": "144",
+            "url": "/software/product/AskExcel/"
+          },
+          {
+            "position": "145",
+            "url": "/software/product/Pulsar-Editor/"
+          },
+          {
+            "position": "146",
+            "url": "/software/product/GroupMail/"
+          },
+          {
+            "position": "147",
+            "url": "/software/product/WidsMob-PDFEdit/"
+          },
+          {
+            "position": "148",
+            "url": "/software/product/WorkinTool-PDF-Converter/"
+          },
+          {
+            "position": "149",
+            "url": "/software/product/GPT-Excel/"
+          },
+          {
+            "position": "150",
+            "url": "/software/product/Total-Commander/"
+          },
+          {
+            "position": "151",
+            "url": "/software/product/McCabe-CM/"
+          },
+          {
+            "position": "152",
+            "url": "/software/product/Tricentis-LiveCompare/"
+          },
+          {
+            "position": "153",
+            "url": "/software/product/Assessor-Series-HR-Software/"
+          },
+          {
+            "position": "154",
+            "url": "/software/product/TalkHelper-PDF-Converter/"
+          },
+          {
+            "position": "155",
+            "url": "/software/product/ShipperGuide/"
+          },
+          {
+            "position": "156",
+            "url": "/software/product/Sourcetable/"
+          },
+          {
+            "position": "157",
+            "url": "/software/product/Puran-Duplicate-File-Finder/"
+          },
+          {
+            "position": "158",
+            "url": "/software/product/ComPDFKit/"
+          },
+          {
+            "position": "159",
+            "url": "/software/product/Lua/"
+          },
+          {
+            "position": "160",
+            "url": "/software/product/AIO-PMS/"
+          },
+          {
+            "position": "161",
+            "url": "/software/product/PDF-Junction/"
+          },
+          {
+            "position": "162",
+            "url": "/software/product/Cash-Flow-Mapper/"
+          },
+          {
+            "position": "163",
+            "url": "/software/product/GlobalVision/"
+          },
+          {
+            "position": "164",
+            "url": "/software/product/FastConverter-.FP3/"
+          },
+          {
+            "position": "165",
+            "url": "/software/product/Apeaksoft-PDF-Converter-Ultimate/"
+          },
+          {
+            "position": "166",
+            "url": "/software/product/Open-Hub/"
+          },
+          {
+            "position": "167",
+            "url": "/software/product/QuickCel/"
+          },
+          {
+            "position": "168",
+            "url": "/software/product/GitHub-Desktop/"
+          },
+          {
+            "position": "169",
+            "url": "/software/product/ClaySys-AppForms/"
+          },
+          {
+            "position": "170",
+            "url": "/software/product/VisionCivil-Pro/"
+          },
+          {
+            "position": "171",
+            "url": "/software/product/Discovery-Reply/"
+          },
+          {
+            "position": "172",
+            "url": "/software/product/UEStudio/"
+          },
+          {
+            "position": "173",
+            "url": "/software/product/dbForge-Data-Compare-for-SQL-Server/"
+          },
+          {
+            "position": "174",
+            "url": "/software/product/VRIN-3D/"
+          },
+          {
+            "position": "175",
+            "url": "/software/product/ExcelDent/"
+          },
+          {
+            "position": "176",
+            "url": "/software/product/EOD-Historical-Data/"
+          },
+          {
+            "position": "177",
+            "url": "/software/product/Octa-GST/"
+          },
+          {
+            "position": "178",
+            "url": "/software/product/trivago/"
+          },
+          {
+            "position": "179",
+            "url": "/software/product/Easy-Ribbon-Builder/"
+          },
+          {
+            "position": "180",
+            "url": "/software/product/Textalytic/"
+          },
+          {
+            "position": "181",
+            "url": "/software/product/VeryPDF/"
+          },
+          {
+            "position": "182",
+            "url": "/software/product/SpreadsheetWEB/"
+          },
+          {
+            "position": "183",
+            "url": "/software/product/SanPDF-Converter/"
+          },
+          {
+            "position": "184",
+            "url": "/software/product/QueryStorm/"
+          },
+          {
+            "position": "185",
+            "url": "/software/product/CostX/"
+          },
+          {
+            "position": "186",
+            "url": "/software/product/Android-Studio/"
+          },
+          {
+            "position": "187",
+            "url": "/software/product/EzPaste/"
+          },
+          {
+            "position": "188",
+            "url": "/software/product/Sheet-Plus/"
+          },
+          {
+            "position": "189",
+            "url": "/software/product/NAPPS/"
+          },
+          {
+            "position": "190",
+            "url": "/software/product/Diffchecker/"
+          },
+          {
+            "position": "191",
+            "url": "/software/product/OnLearned/"
+          },
+          {
+            "position": "192",
+            "url": "/software/product/pytest-cov/"
+          },
+          {
+            "position": "193",
+            "url": "/software/product/SustainLab/"
+          },
+          {
+            "position": "194",
+            "url": "/software/product/VentureLine/"
+          },
+          {
+            "position": "195",
+            "url": "/software/product/PloComp/"
+          },
+          {
+            "position": "196",
+            "url": "/software/product/Visicon/"
+          },
+          {
+            "position": "197",
+            "url": "/software/product/Buddha-Backup/"
+          },
+          {
+            "position": "198",
+            "url": "/software/product/Typograf/"
+          },
+          {
+            "position": "199",
+            "url": "/software/product/GoCD/"
+          },
+          {
+            "position": "200",
+            "url": "/software/product/Duplicate-Same-Files-Searcher/"
+          },
+          {
+            "position": "201",
+            "url": "/software/product/Logical-Office/"
+          },
+          {
+            "position": "202",
+            "url": "/software/product/Pattern-Design-Software/"
+          },
+          {
+            "position": "203",
+            "url": "/software/product/Gigasheet/"
+          },
+          {
+            "position": "204",
+            "url": "/software/product/Talkface/"
+          },
+          {
+            "position": "205",
+            "url": "/software/product/ISG-Executive-Insights/"
+          },
+          {
+            "position": "206",
+            "url": "/software/product/Advance-File-Data-Extractor/"
+          },
+          {
+            "position": "207",
+            "url": "/software/product/PDF-Tables/"
+          },
+          {
+            "position": "208",
+            "url": "/software/product/Tosmana/"
+          },
+          {
+            "position": "209",
+            "url": "/software/product/RcloneView/"
+          },
+          {
+            "position": "210",
+            "url": "/software/product/Apowersoft-PDF-Converter/"
+          },
+          {
+            "position": "211",
+            "url": "/software/product/Fork/"
+          },
+          {
+            "position": "212",
+            "url": "/software/product/Meera-Simulation/"
+          },
+          {
+            "position": "213",
+            "url": "/software/product/Schematiq/"
+          },
+          {
+            "position": "214",
+            "url": "/software/product/Search10K/"
+          },
+          {
+            "position": "215",
+            "url": "/software/product/ACH-Universal/"
+          },
+          {
+            "position": "216",
+            "url": "/software/product/PDFBEAR/"
+          },
+          {
+            "position": "217",
+            "url": "/software/product/Geekersoft-PDF-Editor/"
+          },
+          {
+            "position": "218",
+            "url": "/software/product/PloView/"
+          },
+          {
+            "position": "219",
+            "url": "/software/product/ByteScout-PDF-Extractor-SDK/"
+          },
+          {
+            "position": "220",
+            "url": "/software/product/File-Label-Express/"
+          },
+          {
+            "position": "221",
+            "url": "/software/product/Diffractor/"
+          },
+          {
+            "position": "222",
+            "url": "/software/product/What-if-Analysis-Manager/"
+          },
+          {
+            "position": "223",
+            "url": "/software/product/FileTransfer.io/"
+          },
+          {
+            "position": "224",
+            "url": "/software/product/Premier-Crop/"
+          },
+          {
+            "position": "225",
+            "url": "/software/product/fLex-Solutions/"
+          },
+          {
+            "position": "226",
+            "url": "/software/product/Gemini-Diffusion/"
+          },
+          {
+            "position": "227",
+            "url": "/software/product/Kingshiper-Duplicate-Remover/"
+          },
+          {
+            "position": "228",
+            "url": "/software/product/White-Rabbit/"
+          },
+          {
+            "position": "229",
+            "url": "/software/product/Lumelixr.ai/"
+          },
+          {
+            "position": "230",
+            "url": "/software/product/Risk-Wizard/"
+          },
+          {
+            "position": "231",
+            "url": "/software/product/K-Display-Convert/"
+          },
+          {
+            "position": "232",
+            "url": "/software/product/Velixo/"
+          },
+          {
+            "position": "233",
+            "url": "/software/product/ManyExcel/"
+          },
+          {
+            "position": "234",
+            "url": "/software/product/4DDiG-Duplicate-File-Deleter/"
+          },
+          {
+            "position": "235",
+            "url": "/software/product/PatternMaker/"
+          },
+          {
+            "position": "236",
+            "url": "/software/product/Selekcija.hr/"
+          },
+          {
+            "position": "237",
+            "url": "/software/product/Azquo/"
+          },
+          {
+            "position": "238",
+            "url": "/software/product/ASSET-Rx/"
+          },
+          {
+            "position": "239",
+            "url": "/software/product/BI4Cloud/"
+          },
+          {
+            "position": "240",
+            "url": "/software/product/RiceDrive/"
+          },
+          {
+            "position": "241",
+            "url": "/software/product/Zoxel/"
+          },
+          {
+            "position": "242",
+            "url": "/software/product/HSMXpress/"
+          },
+          {
+            "position": "243",
+            "url": "/software/product/zSecure-Admin/"
+          },
+          {
+            "position": "244",
+            "url": "/software/product/Themis/"
+          },
+          {
+            "position": "245",
+            "url": "/software/product/CxPlanner/"
+          },
+          {
+            "position": "246",
+            "url": "/software/product/dbForge-Schema-Compare-for-SQL-Server/"
+          },
+          {
+            "position": "247",
+            "url": "/software/product/Cisdem-Data-Recovery/"
+          },
+          {
+            "position": "248",
+            "url": "/software/product/Milestones/"
+          },
+          {
+            "position": "249",
+            "url": "/software/product/NodeXL/"
+          },
+          {
+            "position": "250",
+            "url": "/software/product/X-File-Explorer-Xfe/"
+          },
+          {
+            "position": "251",
+            "url": "/software/product/Compuware-File-AID/"
+          },
+          {
+            "position": "252",
+            "url": "/software/product/FormatPDF/"
+          },
+          {
+            "position": "253",
+            "url": "/software/product/LSEG-Lipper/"
+          },
+          {
+            "position": "254",
+            "url": "/software/product/Prism-Developer-Metrics/"
+          },
+          {
+            "position": "255",
+            "url": "/software/product/Spreadsheet.com/"
+          },
+          {
+            "position": "256",
+            "url": "/software/product/TackleBox/"
+          },
+          {
+            "position": "257",
+            "url": "/software/product/PSPad/"
+          },
+          {
+            "position": "258",
+            "url": "/software/product/TPcbc/"
+          },
+          {
+            "position": "259",
+            "url": "/software/product/Plandex/"
+          },
+          {
+            "position": "260",
+            "url": "/software/product/YouWinLaw/"
+          },
+          {
+            "position": "261",
+            "url": "/software/product/Glovius-CAD-Viewer/"
+          },
+          {
+            "position": "262",
+            "url": "/software/product/TigerEYES/"
+          },
+          {
+            "position": "263",
+            "url": "/software/product/DMDE/"
+          },
+          {
+            "position": "264",
+            "url": "/software/product/Spreadsheet-Server/"
+          },
+          {
+            "position": "265",
+            "url": "/software/product/Spread.NET/"
+          },
+          {
+            "position": "266",
+            "url": "/software/product/SpreadJS/"
+          },
+          {
+            "position": "267",
+            "url": "/software/product/HealthPriceCompare/"
+          },
+          {
+            "position": "268",
+            "url": "/software/product/Paxton-AI/"
+          },
+          {
+            "position": "269",
+            "url": "/software/product/Advanced-PDF-Manager/"
+          },
+          {
+            "position": "270",
+            "url": "/software/product/Deskera-CRM/"
+          },
+          {
+            "position": "271",
+            "url": "/software/product/ApowerCompress/"
+          },
+          {
+            "position": "272",
+            "url": "/software/product/Koho-Consulting/"
+          },
+          {
+            "position": "273",
+            "url": "/software/product/JSON-Viewer/"
+          },
+          {
+            "position": "274",
+            "url": "/software/product/24ORM/"
+          },
+          {
+            "position": "275",
+            "url": "/software/product/Jspreadsheet/"
+          },
+          {
+            "position": "276",
+            "url": "/software/product/DocBridge-Delta/"
+          },
+          {
+            "position": "277",
+            "url": "/software/product/MiniMax-M2/"
+          },
+          {
+            "position": "278",
+            "url": "/software/product/Swift-Finance/"
+          },
+          {
+            "position": "279",
+            "url": "/software/product/eXpert-PDF/"
+          },
+          {
+            "position": "280",
+            "url": "/software/product/CryptoCompare/"
+          },
+          {
+            "position": "281",
+            "url": "/software/product/SolVision/"
+          },
+          {
+            "position": "282",
+            "url": "/software/product/Quick-View-Plus/"
+          },
+          {
+            "position": "283",
+            "url": "/software/product/Fleekform/"
+          },
+          {
+            "position": "284",
+            "url": "/software/product/Cubicost-TME/"
+          },
+          {
+            "position": "285",
+            "url": "/software/product/Load/"
+          },
+          {
+            "position": "286",
+            "url": "/software/product/QX-QuickReco/"
+          },
+          {
+            "position": "287",
+            "url": "/software/product/Atomic-Email-Studio/"
+          },
+          {
+            "position": "288",
+            "url": "/software/product/LogBook-Discovery/"
+          },
+          {
+            "position": "289",
+            "url": "/software/product/Office-Server-Document-Converter/"
+          },
+          {
+            "position": "290",
+            "url": "/software/product/ProperConvert/"
+          },
+          {
+            "position": "291",
+            "url": "/software/product/Llama-3.3/"
+          },
+          {
+            "position": "292",
+            "url": "/software/product/DriveMaker/"
+          },
+          {
+            "position": "293",
+            "url": "/software/product/Resmapp/"
+          },
+          {
+            "position": "294",
+            "url": "/software/product/PDF4All/"
+          },
+          {
+            "position": "295",
+            "url": "/software/product/Row-Zero/"
+          },
+          {
+            "position": "296",
+            "url": "/software/product/LiteX/"
+          },
+          {
+            "position": "297",
+            "url": "/software/product/Conklin-de-Decker-Report/"
+          },
+          {
+            "position": "298",
+            "url": "/software/product/TeraCopy/"
+          },
+          {
+            "position": "299",
+            "url": "/software/product/Gitbox/"
+          },
+          {
+            "position": "300",
+            "url": "/software/product/Plagium/"
+          },
+          {
+            "position": "301",
+            "url": "/software/product/Modern-CSV/"
+          },
+          {
+            "position": "302",
+            "url": "/software/product/QBasic/"
+          },
+          {
+            "position": "303",
+            "url": "/software/product/CSV-Buddy/"
+          },
+          {
+            "position": "304",
+            "url": "/software/product/FileVoyager/"
+          },
+          {
+            "position": "305",
+            "url": "/software/product/wiseDATAman/"
+          },
+          {
+            "position": "306",
+            "url": "/software/product/GRID.is/"
+          },
+          {
+            "position": "307",
+            "url": "/software/product/Slideshow/"
+          },
+          {
+            "position": "308",
+            "url": "/software/product/Taxbona/"
+          },
+          {
+            "position": "309",
+            "url": "/software/product/SimTek-Learning/"
+          },
+          {
+            "position": "310",
+            "url": "/software/product/Business-Importer/"
+          },
+          {
+            "position": "311",
+            "url": "/software/product/CyberBrox/"
+          },
+          {
+            "position": "312",
+            "url": "/software/product/Drive-SnapShot/"
+          },
+          {
+            "position": "313",
+            "url": "/software/product/Webscale-Stratus/"
+          },
+          {
+            "position": "314",
+            "url": "/software/product/AgriXP/"
+          },
+          {
+            "position": "315",
+            "url": "/software/product/Finch-3D/"
+          },
+          {
+            "position": "316",
+            "url": "/software/product/MaxLoad-Pro/"
+          },
+          {
+            "position": "317",
+            "url": "/software/product/MarketerHire/"
+          },
+          {
+            "position": "318",
+            "url": "/software/product/SyncBackPro/"
+          },
+          {
+            "position": "319",
+            "url": "/software/product/Phi-4/"
+          },
+          {
+            "position": "320",
+            "url": "/software/product/Alibaba-Cloud-ECS-Bare-Metal-Instance/"
+          },
+          {
+            "position": "321",
+            "url": "/software/product/ATL-Systems/"
+          },
+          {
+            "position": "322",
+            "url": "/software/product/MAI-Image-1/"
+          },
+          {
+            "position": "323",
+            "url": "/software/product/Nia/"
+          },
+          {
+            "position": "324",
+            "url": "/software/product/SeekLMS/"
+          },
+          {
+            "position": "325",
+            "url": "/software/product/File-Manager-Browser/"
+          },
+          {
+            "position": "326",
+            "url": "/software/product/CellBIM/"
+          },
+          {
+            "position": "327",
+            "url": "/software/product/Financial-Advisor-for-Excel/"
+          },
+          {
+            "position": "328",
+            "url": "/software/product/UltraFTP/"
+          },
+          {
+            "position": "329",
+            "url": "/software/product/Radix-AI/"
+          },
+          {
+            "position": "330",
+            "url": "/software/product/FileBoss/"
+          },
+          {
+            "position": "331",
+            "url": "/software/product/MapleSoft-Giving/"
+          },
+          {
+            "position": "332",
+            "url": "/software/product/DRPU-Student-ID-Cards-Maker/"
+          },
+          {
+            "position": "333",
+            "url": "/software/product/LastMile-AI/"
+          },
+          {
+            "position": "334",
+            "url": "/software/product/DataPreparator/"
+          },
+          {
+            "position": "335",
+            "url": "/software/product/DocTranslator/"
+          },
+          {
+            "position": "336",
+            "url": "/software/product/All-PDF-Converter/"
+          },
+          {
+            "position": "337",
+            "url": "/software/product/Ninja-AI/"
+          },
+          {
+            "position": "338",
+            "url": "/software/product/SimplyWise/"
+          },
+          {
+            "position": "339",
+            "url": "/software/product/Pine-AI/"
+          },
+          {
+            "position": "340",
+            "url": "/software/product/BMC-Compuware-Topaz-for-Enterprise-Data/"
+          },
+          {
+            "position": "341",
+            "url": "/software/product/Phi-4-mini-flash-reasoning/"
+          },
+          {
+            "position": "342",
+            "url": "/software/product/PDF7/"
+          },
+          {
+            "position": "343",
+            "url": "/software/product/OptiCash/"
+          },
+          {
+            "position": "344",
+            "url": "/software/product/MRI-ProCalc/"
+          },
+          {
+            "position": "345",
+            "url": "/software/product/Shortcut-AI/"
+          },
+          {
+            "position": "346",
+            "url": "/software/product/XL-Connector/"
+          },
+          {
+            "position": "347",
+            "url": "/software/product/OfficeWork/"
+          },
+          {
+            "position": "348",
+            "url": "/software/product/Wondershare-PDF-Converter-Pro/"
+          },
+          {
+            "position": "349",
+            "url": "/software/product/Cisdem-PDF-Converter-OCR/"
+          },
+          {
+            "position": "350",
+            "url": "/software/product/Optimizilla/"
+          },
+          {
+            "position": "351",
+            "url": "/software/product/Office-Pragmatics/"
+          },
+          {
+            "position": "352",
+            "url": "/software/product/Syhunt-Hybrid/"
+          },
+          {
+            "position": "353",
+            "url": "/software/product/Express-GST/"
+          },
+          {
+            "position": "354",
+            "url": "/software/product/Sole/"
+          },
+          {
+            "position": "355",
+            "url": "/software/product/Conholdate.Total-for-Java/"
+          },
+          {
+            "position": "356",
+            "url": "/software/product/Alif-Cloud/"
+          },
+          {
+            "position": "357",
+            "url": "/software/product/Green-Doors/"
+          },
+          {
+            "position": "358",
+            "url": "/software/product/Office-Docs/"
+          },
+          {
+            "position": "359",
+            "url": "/software/product/Renee-PDF-Aide/"
+          },
+          {
+            "position": "360",
+            "url": "/software/product/PDFsail/"
+          },
+          {
+            "position": "361",
+            "url": "/software/product/GeoHECHMS/"
+          },
+          {
+            "position": "362",
+            "url": "/software/product/Stackreaction/"
+          },
+          {
+            "position": "363",
+            "url": "/software/product/Saasant-Transactions-Online/"
+          },
+          {
+            "position": "364",
+            "url": "/software/product/Excelformulabot/"
+          },
+          {
+            "position": "365",
+            "url": "/software/product/Yodot-MOV-Repair/"
+          },
+          {
+            "position": "366",
+            "url": "/software/product/ForkLift/"
+          },
+          {
+            "position": "367",
+            "url": "/software/product/Threagile/"
+          },
+          {
+            "position": "368",
+            "url": "/software/product/Risk-Radar-MITRE/"
+          },
+          {
+            "position": "369",
+            "url": "/software/product/Storly.io/"
+          },
+          {
+            "position": "370",
+            "url": "/software/product/ConsoleX/"
+          },
+          {
+            "position": "371",
+            "url": "/software/product/GeoMetrx/"
+          },
+          {
+            "position": "372",
+            "url": "/software/product/K2-Think/"
+          },
+          {
+            "position": "373",
+            "url": "/software/product/Excel-to-Word-Document-Automation/"
+          },
+          {
+            "position": "374",
+            "url": "/software/product/Audit360/"
+          },
+          {
+            "position": "375",
+            "url": "/software/product/QX-ProAP/"
+          },
+          {
+            "position": "376",
+            "url": "/software/product/Mistral-Small-3.1/"
+          },
+          {
+            "position": "377",
+            "url": "/software/product/BreezeBrowser-Pro/"
+          },
+          {
+            "position": "378",
+            "url": "/software/product/ProcurePro/"
+          },
+          {
+            "position": "379",
+            "url": "/software/product/Solidity-Fuzzing-Boilerplate/"
+          },
+          {
+            "position": "380",
+            "url": "/software/product/Change-Detection/"
+          },
+          {
+            "position": "381",
+            "url": "/software/product/PDFsam-Enhanced/"
+          },
+          {
+            "position": "382",
+            "url": "/software/product/Arcane-Sheets/"
+          },
+          {
+            "position": "383",
+            "url": "/software/product/Thread-Legal/"
+          },
+          {
+            "position": "384",
+            "url": "/software/product/Wide-Angle-PDF-Converter/"
+          },
+          {
+            "position": "385",
+            "url": "/software/product/MacroView-DMF/"
+          },
+          {
+            "position": "386",
+            "url": "/software/product/DataOps-Dataflow/"
+          },
+          {
+            "position": "387",
+            "url": "/software/product/CoolSpools/"
+          },
+          {
+            "position": "388",
+            "url": "/software/product/Multi-DNC-Software/"
+          },
+          {
+            "position": "389",
+            "url": "/software/product/ReMasterMedia/"
+          },
+          {
+            "position": "390",
+            "url": "/software/product/PDF.live/"
+          },
+          {
+            "position": "391",
+            "url": "/software/product/PDF-Converter-Elite/"
+          },
+          {
+            "position": "392",
+            "url": "/software/product/SkypeTime/"
+          },
+          {
+            "position": "393",
+            "url": "/software/product/G2/"
+          },
+          {
+            "position": "394",
+            "url": "/software/product/Cloudockit/"
+          },
+          {
+            "position": "395",
+            "url": "/software/product/QuicklyPDF/"
+          },
+          {
+            "position": "396",
+            "url": "/software/product/EPriceAnalysis/"
+          },
+          {
+            "position": "397",
+            "url": "/software/product/Algory/"
+          },
+          {
+            "position": "398",
+            "url": "/software/product/SILworX/"
+          },
+          {
+            "position": "399",
+            "url": "/software/product/Beanstalk/"
+          },
+          {
+            "position": "400",
+            "url": "/software/product/american-fuzzy-lop/"
+          },
+          {
+            "position": "401",
+            "url": "/software/product/Golden-Record/"
+          },
+          {
+            "position": "402",
+            "url": "/software/product/DPR/"
+          },
+          {
+            "position": "403",
+            "url": "/software/product/DRUV/"
+          },
+          {
+            "position": "404",
+            "url": "/software/product/eSupplier/"
+          },
+          {
+            "position": "405",
+            "url": "/software/product/Multifarm/"
+          },
+          {
+            "position": "406",
+            "url": "/software/product/Online-OCR/"
+          },
+          {
+            "position": "407",
+            "url": "/software/product/Phase-Change/"
+          },
+          {
+            "position": "408",
+            "url": "/software/product/SeekFast/"
+          },
+          {
+            "position": "409",
+            "url": "/software/product/Runway-Financial/"
+          },
+          {
+            "position": "410",
+            "url": "/software/product/WorldMerge/"
+          },
+          {
+            "position": "411",
+            "url": "/software/product/Endex/"
+          },
+          {
+            "position": "412",
+            "url": "/software/product/AlphaSheet/"
+          },
+          {
+            "position": "413",
+            "url": "/software/product/Columns/"
+          },
+          {
+            "position": "414",
+            "url": "/software/product/FileTiger-1.32/"
+          },
+          {
+            "position": "415",
+            "url": "/software/product/HQ-Data-Profiler/"
+          },
+          {
+            "position": "416",
+            "url": "/software/product/PDNob-PDF-Editor/"
+          },
+          {
+            "position": "417",
+            "url": "/software/product/Zypper/"
+          },
+          {
+            "position": "418",
+            "url": "/software/product/MedCXO-Fraud-Detection-Software/"
+          },
+          {
+            "position": "419",
+            "url": "/software/product/Open-Door-Logistics-Studio/"
+          },
+          {
+            "position": "420",
+            "url": "/software/product/RapidMiner/"
+          },
+          {
+            "position": "421",
+            "url": "/software/product/StoreHub/"
+          },
+          {
+            "position": "422",
+            "url": "/software/product/Syn/"
+          },
+          {
+            "position": "423",
+            "url": "/software/product/goRoster/"
+          },
+          {
+            "position": "424",
+            "url": "/software/product/Censia/"
+          },
+          {
+            "position": "425",
+            "url": "/software/product/Eos-Cortex/"
+          },
+          {
+            "position": "426",
+            "url": "/software/product/Exim/"
+          },
+          {
+            "position": "427",
+            "url": "/software/product/FineDine/"
+          },
+          {
+            "position": "428",
+            "url": "/software/product/DraftWise/"
+          },
+          {
+            "position": "429",
+            "url": "/software/product/Kingshiper-PDF-File-Compressor/"
+          },
+          {
+            "position": "430",
+            "url": "/software/product/TourTeller/"
+          },
+          {
+            "position": "431",
+            "url": "/software/product/Aireforge-Studio/"
+          },
+          {
+            "position": "432",
+            "url": "/software/product/ClearEdge3D-Verity/"
+          },
+          {
+            "position": "433",
+            "url": "/software/product/Advacheck/"
+          },
+          {
+            "position": "434",
+            "url": "/software/product/Super-Monitoring/"
+          },
+          {
+            "position": "435",
+            "url": "/software/product/JStock/"
+          },
+          {
+            "position": "436",
+            "url": "/software/product/WixPie/"
+          },
+          {
+            "position": "437",
+            "url": "/software/product/Spreadsheets-Hub/"
+          },
+          {
+            "position": "438",
+            "url": "/software/product/XnView/"
+          },
+          {
+            "position": "439",
+            "url": "/software/product/MiniTool-PDF-Editor/"
+          },
+          {
+            "position": "440",
+            "url": "/software/product/Powrbot/"
+          },
+          {
+            "position": "441",
+            "url": "/software/product/Genebra/"
+          },
+          {
+            "position": "442",
+            "url": "/software/product/Qwen-Code/"
+          },
+          {
+            "position": "443",
+            "url": "/software/product/Qwen3-Coder/"
+          },
+          {
+            "position": "444",
+            "url": "/software/product/efile4Biz/"
+          },
+          {
+            "position": "445",
+            "url": "/software/product/Forte-HCM/"
+          },
+          {
+            "position": "446",
+            "url": "/software/product/CADMATIC-eBrowser/"
+          },
+          {
+            "position": "447",
+            "url": "/software/product/Relative-Insight/"
+          },
+          {
+            "position": "448",
+            "url": "/software/product/DocFly/"
+          },
+          {
+            "position": "449",
+            "url": "/software/product/Frigate3/"
+          },
+          {
+            "position": "450",
+            "url": "/software/product/Chartlog/"
+          },
+          {
+            "position": "451",
+            "url": "/software/product/AdTargeting/"
+          },
+          {
+            "position": "452",
+            "url": "/software/product/PromptLoop/"
+          },
+          {
+            "position": "453",
+            "url": "/software/product/AnyTXT-Searcher/"
+          },
+          {
+            "position": "454",
+            "url": "/software/product/Orion-Data-Validation-Tool/"
+          },
+          {
+            "position": "455",
+            "url": "/software/product/AnyParser/"
+          },
+          {
+            "position": "456",
+            "url": "/software/product/Coolmuster-Android-Eraser/"
+          },
+          {
+            "position": "457",
+            "url": "/software/product/Inno-Setup/"
+          },
+          {
+            "position": "458",
+            "url": "/software/product/Kepicker/"
+          },
+          {
+            "position": "459",
+            "url": "/software/product/Master-Zhuan-Zhuan/"
+          },
+          {
+            "position": "460",
+            "url": "/software/product/MasoLabel/"
+          },
+          {
+            "position": "461",
+            "url": "/software/product/Power-Clock/"
+          },
+          {
+            "position": "462",
+            "url": "/software/product/CheckMaker/"
+          },
+          {
+            "position": "463",
+            "url": "/software/product/TheOnlineConverter.com/"
+          },
+          {
+            "position": "464",
+            "url": "/software/product/LeaseMatrix/"
+          },
+          {
+            "position": "465",
+            "url": "/software/product/GIRDAC-PDF-Converter-Pro/"
+          },
+          {
+            "position": "466",
+            "url": "/software/product/FinCompare/"
+          },
+          {
+            "position": "467",
+            "url": "/software/product/1001-TVs/"
+          },
+          {
+            "position": "468",
+            "url": "/software/product/Cloudflare-Speed-Test/"
+          },
+          {
+            "position": "469",
+            "url": "/software/product/Endole-Insight/"
+          },
+          {
+            "position": "470",
+            "url": "/software/product/Transcript.LOL/"
+          },
+          {
+            "position": "471",
+            "url": "/software/product/dbForge-Studio-for-SQL-Server/"
+          },
+          {
+            "position": "472",
+            "url": "/software/product/Zoliday/"
+          },
+          {
+            "position": "473",
+            "url": "/software/product/Figaf-DevOps-Tool/"
+          },
+          {
+            "position": "474",
+            "url": "/software/product/Doculator/"
+          },
+          {
+            "position": "475",
+            "url": "/software/product/rarity.studio/"
+          },
+          {
+            "position": "476",
+            "url": "/software/product/BarCodeWiz-OnLabel/"
+          },
+          {
+            "position": "477",
+            "url": "/software/product/Lido-App/"
+          },
+          {
+            "position": "478",
+            "url": "/software/product/Premicesoft-Point-of-Sale/"
+          },
+          {
+            "position": "479",
+            "url": "/software/product/Rechain/"
+          },
+          {
+            "position": "480",
+            "url": "/software/product/Hosted-FTP/"
+          },
+          {
+            "position": "481",
+            "url": "/software/product/Excelkits/"
+          },
+          {
+            "position": "482",
+            "url": "/software/product/PDF4/"
+          },
+          {
+            "position": "483",
+            "url": "/software/product/novaPDF/"
+          },
+          {
+            "position": "484",
+            "url": "/software/product/Aspose.Total-Merger/"
+          },
+          {
+            "position": "485",
+            "url": "/software/product/Perfect-PDF/"
+          },
+          {
+            "position": "486",
+            "url": "/software/product/Syndeia/"
+          },
+          {
+            "position": "487",
+            "url": "/software/product/Metazoa-Monarch/"
+          },
+          {
+            "position": "488",
+            "url": "/software/product/Open-as-App/"
+          },
+          {
+            "position": "489",
+            "url": "/software/product/VIO-ISO-Editor/"
+          },
+          {
+            "position": "490",
+            "url": "/software/product/esProc-Desktop/"
+          },
+          {
+            "position": "491",
+            "url": "/software/product/Codecov/"
+          },
+          {
+            "position": "492",
+            "url": "/software/product/Plagramme/"
+          },
+          {
+            "position": "493",
+            "url": "/software/product/Solar-Pro-2/"
+          },
+          {
+            "position": "494",
+            "url": "/software/product/Diligen/"
+          },
+          {
+            "position": "495",
+            "url": "/software/product/IntellCRE/"
+          },
+          {
+            "position": "496",
+            "url": "/software/product/Capitally/"
+          },
+          {
+            "position": "497",
+            "url": "/software/product/FontAgent/"
+          },
+          {
+            "position": "498",
+            "url": "/software/product/GMTech/"
+          },
+          {
+            "position": "499",
+            "url": "/software/product/PDF-Agile/"
+          },
+          {
+            "position": "500",
+            "url": "/software/product/Polaris-Office/"
+          },
+          {
+            "position": "501",
+            "url": "/software/product/ATOmate/"
+          },
+          {
+            "position": "502",
+            "url": "/software/product/MediaLab-Personnel-Documentation/"
+          },
+          {
+            "position": "503",
+            "url": "/software/product/Version-Story/"
+          },
+          {
+            "position": "504",
+            "url": "/software/product/aSISt/"
+          },
+          {
+            "position": "505",
+            "url": "/software/product/DOQMIND/"
+          },
+          {
+            "position": "506",
+            "url": "/software/product/ShopSavvy/"
+          },
+          {
+            "position": "507",
+            "url": "/software/product/AudienceReport/"
+          },
+          {
+            "position": "508",
+            "url": "/software/product/Elastic-Copilot/"
+          },
+          {
+            "position": "509",
+            "url": "/software/product/KS-DB-Merge-Tools/"
+          },
+          {
+            "position": "510",
+            "url": "/software/product/MLeads/"
+          },
+          {
+            "position": "511",
+            "url": "/software/product/Plastic-SCM/"
+          },
+          {
+            "position": "512",
+            "url": "/software/product/Invantive-Data-Hub/"
+          },
+          {
+            "position": "513",
+            "url": "/software/product/TechTrack/"
+          },
+          {
+            "position": "514",
+            "url": "/software/product/Light4/"
+          },
+          {
+            "position": "515",
+            "url": "/software/product/DODO/"
+          },
+          {
+            "position": "516",
+            "url": "/software/product/OpenFaceTracker/"
+          },
+          {
+            "position": "517",
+            "url": "/software/product/TruLens/"
+          },
+          {
+            "position": "518",
+            "url": "/software/product/Advanced-Query-Tool-AQT/"
+          },
+          {
+            "position": "519",
+            "url": "/software/product/Kaffeine/"
+          },
+          {
+            "position": "520",
+            "url": "/software/product/UltraSearch/"
+          },
+          {
+            "position": "521",
+            "url": "/software/product/Extract-Any-Mail-Ultimate/"
+          },
+          {
+            "position": "522",
+            "url": "/software/product/GrapeCity-Documents/"
+          },
+          {
+            "position": "523",
+            "url": "/software/product/SEO-Effect/"
+          },
+          {
+            "position": "524",
+            "url": "/software/product/Labfolder/"
+          },
+          {
+            "position": "525",
+            "url": "/software/product/Toki/"
+          },
+          {
+            "position": "526",
+            "url": "/software/product/GorillaPDF/"
+          },
+          {
+            "position": "527",
+            "url": "/software/product/PL-Rating-Vertafore/"
+          },
+          {
+            "position": "528",
+            "url": "/software/product/Stackby/"
+          },
+          {
+            "position": "529",
+            "url": "/software/product/Time-Xplorer/"
+          },
+          {
+            "position": "530",
+            "url": "/software/product/Claude-Opus-4.1/"
+          },
+          {
+            "position": "531",
+            "url": "/software/product/ProModel/"
+          },
+          {
+            "position": "532",
+            "url": "/software/product/ProModel-Optimization-Suite/"
+          },
+          {
+            "position": "533",
+            "url": "/software/product/BillX/"
+          },
+          {
+            "position": "534",
+            "url": "/software/product/Mango-Viewer/"
+          },
+          {
+            "position": "535",
+            "url": "/software/product/Web-Robots-Scraping/"
+          },
+          {
+            "position": "536",
+            "url": "/software/product/eTimesheets/"
+          },
+          {
+            "position": "537",
+            "url": "/software/product/Ravel-Law/"
+          },
+          {
+            "position": "538",
+            "url": "/software/product/Equisoft-illustrate/"
+          },
+          {
+            "position": "539",
+            "url": "/software/product/Gridwise/"
+          },
+          {
+            "position": "540",
+            "url": "/software/product/Systweak-PDF-Editor/"
+          },
+          {
+            "position": "541",
+            "url": "/software/product/C2MS/"
+          },
+          {
+            "position": "542",
+            "url": "/software/product/kununu/"
+          },
+          {
+            "position": "543",
+            "url": "/software/product/Zendocs/"
+          },
+          {
+            "position": "544",
+            "url": "/software/product/The-Derek/"
+          },
+          {
+            "position": "545",
+            "url": "/software/product/TextSpeech-Pro/"
+          },
+          {
+            "position": "546",
+            "url": "/software/product/Creatorland/"
+          },
+          {
+            "position": "547",
+            "url": "/software/product/SMERGERS/"
+          },
+          {
+            "position": "548",
+            "url": "/software/product/Comparative-Agility/"
+          },
+          {
+            "position": "549",
+            "url": "/software/product/CloudCompare/"
+          },
+          {
+            "position": "550",
+            "url": "/software/product/Knight/"
+          },
+          {
+            "position": "551",
+            "url": "/software/product/CyberSense/"
+          },
+          {
+            "position": "552",
+            "url": "/software/product/WMaster-ZipKing/"
+          },
+          {
+            "position": "553",
+            "url": "/software/product/DbSchema/"
+          },
+          {
+            "position": "554",
+            "url": "/software/product/Doxel/"
+          },
+          {
+            "position": "555",
+            "url": "/software/product/AiRecover-Data-Recovery/"
+          },
+          {
+            "position": "556",
+            "url": "/software/product/Hubbion/"
+          },
+          {
+            "position": "557",
+            "url": "/software/product/Plain-Clipboard-Manager/"
+          },
+          {
+            "position": "558",
+            "url": "/software/product/Robot-Space/"
+          },
+          {
+            "position": "559",
+            "url": "/software/product/SysVita-OST-to-PST-Converter/"
+          },
+          {
+            "position": "560",
+            "url": "/software/product/MarketShare-Vision/"
+          },
+          {
+            "position": "561",
+            "url": "/software/product/Ministral-8B/"
+          },
+          {
+            "position": "562",
+            "url": "/software/product/MozBar/"
+          },
+          {
+            "position": "563",
+            "url": "/software/product/Quantify-Ninja/"
+          },
+          {
+            "position": "564",
+            "url": "/software/product/EnSuite-Lite/"
+          },
+          {
+            "position": "565",
+            "url": "/software/product/Wondershare-MirrorGo/"
+          },
+          {
+            "position": "566",
+            "url": "/software/product/Zenmap/"
+          },
+          {
+            "position": "567",
+            "url": "/software/product/Xspiral/"
+          },
+          {
+            "position": "568",
+            "url": "/software/product/Apache-Zeppelin/"
+          },
+          {
+            "position": "569",
+            "url": "/software/product/ALCAD/"
+          },
+          {
+            "position": "570",
+            "url": "/software/product/AimStack/"
+          },
+          {
+            "position": "571",
+            "url": "/software/product/Meteor-Wallet/"
+          },
+          {
+            "position": "572",
+            "url": "/software/product/VerifactAI/"
+          },
+          {
+            "position": "573",
+            "url": "/software/product/IRI-Data-Protector-Suite/"
+          },
+          {
+            "position": "574",
+            "url": "/software/product/StatTrac-Software/"
+          },
+          {
+            "position": "575",
+            "url": "/software/product/Skaffolder/"
+          },
+          {
+            "position": "576",
+            "url": "/software/product/CoverWallet-for-Agents/"
+          },
+          {
+            "position": "577",
+            "url": "/software/product/Datarade/"
+          },
+          {
+            "position": "578",
+            "url": "/software/product/WA-Contact-Saver/"
+          },
+          {
+            "position": "579",
+            "url": "/software/product/eFile.com/"
+          },
+          {
+            "position": "580",
+            "url": "/software/product/WizSame/"
+          },
+          {
+            "position": "581",
+            "url": "/software/product/Mojo-Skip-Tracer/"
+          },
+          {
+            "position": "582",
+            "url": "/software/product/Novus/"
+          },
+          {
+            "position": "583",
+            "url": "/software/product/Orevo/"
+          },
+          {
+            "position": "584",
+            "url": "/software/product/Plagius/"
+          },
+          {
+            "position": "585",
+            "url": "/software/product/DataGroomr/"
+          },
+          {
+            "position": "586",
+            "url": "/software/product/mytraffic/"
+          },
+          {
+            "position": "587",
+            "url": "/software/product/Excelmatic/"
+          },
+          {
+            "position": "588",
+            "url": "/software/product/Simulation-Master/"
+          },
+          {
+            "position": "589",
+            "url": "/software/product/S-Q-Capital-IQ-Pro/"
+          },
+          {
+            "position": "590",
+            "url": "/software/product/Qxchange/"
+          },
+          {
+            "position": "591",
+            "url": "/software/product/PivotXL/"
+          },
+          {
+            "position": "592",
+            "url": "/software/product/Emdash/"
+          },
+          {
+            "position": "593",
+            "url": "/software/product/Moterra/"
+          },
+          {
+            "position": "594",
+            "url": "/software/product/Trakr/"
+          },
+          {
+            "position": "595",
+            "url": "/software/product/Property-Flip-or-Hold/"
+          },
+          {
+            "position": "596",
+            "url": "/software/product/Collabora-Online/"
+          },
+          {
+            "position": "597",
+            "url": "/software/product/Tipard-PDF-Converter-Platinum/"
+          },
+          {
+            "position": "598",
+            "url": "/software/product/actiondesk/"
+          },
+          {
+            "position": "599",
+            "url": "/software/product/Admidio/"
+          },
+          {
+            "position": "600",
+            "url": "/software/product/Direct-Take/"
+          },
+          {
+            "position": "601",
+            "url": "/software/product/Rpv-Reports/"
+          },
+          {
+            "position": "602",
+            "url": "/software/product/hAP-ax2/"
+          },
+          {
+            "position": "603",
+            "url": "/software/product/Sniffnet/"
+          },
+          {
+            "position": "604",
+            "url": "/software/product/Worker/"
+          },
+          {
+            "position": "605",
+            "url": "/software/product/Parallels-Secure-Workspace/"
+          },
+          {
+            "position": "606",
+            "url": "/software/product/Videezy/"
+          },
+          {
+            "position": "607",
+            "url": "/software/product/Routing-Analysis/"
+          },
+          {
+            "position": "608",
+            "url": "/software/product/exorbyte/"
+          },
+          {
+            "position": "609",
+            "url": "/software/product/Royalty-Advocate/"
+          },
+          {
+            "position": "610",
+            "url": "/software/product/ThunderSoft-PDF-Converter/"
+          },
+          {
+            "position": "611",
+            "url": "/software/product/Haystack-NLP/"
+          },
+          {
+            "position": "612",
+            "url": "/software/product/VacayHub/"
+          },
+          {
+            "position": "613",
+            "url": "/software/product/BeST/"
+          },
+          {
+            "position": "614",
+            "url": "/software/product/PDF-Mail-Merger/"
+          },
+          {
+            "position": "615",
+            "url": "/software/product/WorkWeave/"
+          },
+          {
+            "position": "616",
+            "url": "/software/product/Cloudstorm-rpa/"
+          },
+          {
+            "position": "617",
+            "url": "/software/product/Quartzite-AI/"
+          },
+          {
+            "position": "618",
+            "url": "/software/product/iZotope-Total-Balance-Control/"
+          },
+          {
+            "position": "619",
+            "url": "/software/product/Review-Tool/"
+          },
+          {
+            "position": "620",
+            "url": "/software/product/ProfExam/"
+          },
+          {
+            "position": "621",
+            "url": "/software/product/Thomson-Reuters-Planner-CS/"
+          },
+          {
+            "position": "622",
+            "url": "/software/product/eMastered/"
+          },
+          {
+            "position": "623",
+            "url": "/software/product/Boilsoft-Video-Cutter/"
+          },
+          {
+            "position": "624",
+            "url": "/software/product/FileTime/"
+          },
+          {
+            "position": "625",
+            "url": "/software/product/Infor-F9/"
+          },
+          {
+            "position": "626",
+            "url": "/software/product/RSData/"
+          },
+          {
+            "position": "627",
+            "url": "/software/product/Luminal/"
+          },
+          {
+            "position": "628",
+            "url": "/software/product/Sellacious-eCommerce-Software/"
+          },
+          {
+            "position": "629",
+            "url": "/software/product/ManagePath/"
+          },
+          {
+            "position": "630",
+            "url": "/software/product/BackUp-Xplorer/"
+          },
+          {
+            "position": "631",
+            "url": "/software/product/EasePDF/"
+          },
+          {
+            "position": "632",
+            "url": "/software/product/CDXStreamer/"
+          },
+          {
+            "position": "633",
+            "url": "/software/product/OnePDF/"
+          },
+          {
+            "position": "634",
+            "url": "/software/product/AppMap/"
+          },
+          {
+            "position": "635",
+            "url": "/software/product/Infisical/"
+          },
+          {
+            "position": "636",
+            "url": "/software/product/Next3D.tech/"
+          },
+          {
+            "position": "637",
+            "url": "/software/product/Undelete/"
+          },
+          {
+            "position": "638",
+            "url": "/software/product/PTV-Visum/"
+          },
+          {
+            "position": "639",
+            "url": "/software/product/Stereotic/"
+          },
+          {
+            "position": "640",
+            "url": "/software/product/Agilum/"
+          },
+          {
+            "position": "641",
+            "url": "/software/product/QGit-viewer/"
+          },
+          {
+            "position": "642",
+            "url": "/software/product/Kingshiper-File-Compressor/"
+          }
+        ],
+        "metatags": [
+          {
+            "viewport": "width=device-width, initial-scale=1.0, user-scalable=no"
+          }
+        ],
+        "offer": [
+          {
+            "price": "49",
+            "pricecurrency": "USD"
+          }
+        ],
+        "softwareapplication": [
+          {
+            "applicationcategory": "BusinessApplication",
+            "image": "https://a.fsdn.com/allura/s/xlcompare/icon?1a18d55b68a1ad56e70e0c50e4d75e6e3df51e71b30ce624b4f0fc9447b1f20a?&w=90",
+            "name": "xlCompare",
+            "operatingsystem": "Windows"
+          }
+        ]
+      },
+      "snippet": "Boost your spreadsheet productivity with our Excel and Google Sheets AI assistant to generate and understand formulas. Create and automate complex ...",
+      "title": "Best xlCompare Alternatives & Competitors"
+    }
+  ],
+  "kind": "customsearch#search",
+  "queries": {
+    "request": [
+      {
+        "count": 7,
+        "cx": "test_cx",
+        "inputEncoding": "utf8",
+        "outputEncoding": "utf8",
+        "safe": "off",
+        "searchTerms": "AI-first spreadsheets",
+        "startIndex": 1,
+        "title": "Google Custom Search - AI-first spreadsheets",
+        "totalResults": "7"
+      }
+    ]
+  },
+  "searchInformation": {
+    "formattedSearchTime": "0.28",
+    "formattedTotalResults": "7",
+    "searchTime": 0.28215,
+    "totalResults": "7"
+  },
+  "url": {
+    "template": "https://www.googleapis.com/customsearch/v1?q={searchTerms}&num={count?}&start={startIndex?}&lr={language?}&safe={safe?}&cx={cx?}&sort={sort?}&filter={filter?}&gl={gl?}&cr={cr?}&googlehost={googleHost?}&c2coff={disableCnTwTranslation?}&hq={hq?}&hl={hl?}&siteSearch={siteSearch?}&siteSearchFilter={siteSearchFilter?}&exactTerms={exactTerms?}&excludeTerms={excludeTerms?}&linkSite={linkSite?}&orTerms={orTerms?}&dateRestrict={dateRestrict?}&lowRange={lowRange?}&highRange={highRange?}&searchType={searchType}&fileType={fileType?}&rights={rights?}&imgSize={imgSize?}&imgType={imgType?}&imgColorType={imgColorType?}&imgDominantColor={imgDominantColor?}&alt=json",
+    "type": "application/json"
+  }
+}

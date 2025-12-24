@@ -715,6 +715,7 @@ async fn web_search(
         &api_key,
         &cx_id,
         Some(params.limit),
+        None,
     )
     .await?;
 

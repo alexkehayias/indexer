@@ -184,7 +184,6 @@ document.addEventListener('DOMContentLoaded', () => {
             read();
           }).catch(error => {
             console.error('Read error:', error);
-            loadingBubble.remove(); // Ensure loading indicator is removed on error
           });
         }
 

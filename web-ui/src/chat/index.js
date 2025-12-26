@@ -77,9 +77,18 @@ document.addEventListener('DOMContentLoaded', () => {
     chatContainer.scrollTop = chatContainer.scrollHeight;
   };
 
+  // Auto-resize textarea up to 7 lines
+  const autoResize = () => {
+    chatInput.style.height = 'auto';
+    const newHeight = Math.min(chatInput.scrollHeight, 7 * 24); // Approximate line height
+    chatInput.style.height = newHeight + 'px';
+  };
+
+  chatInput.addEventListener('input', autoResize);
+
   sendButton.addEventListener('click', () => sendMessage());
-  chatInput.addEventListener('keypress', (e) => {
-    if (e.key === 'Enter') {
+  chatInput.addEventListener('keydown', (e) => {
+    if (e.metaKey && e.key === 'Enter') {
       e.preventDefault();
       sendMessage();
     };
@@ -191,5 +200,6 @@ document.addEventListener('DOMContentLoaded', () => {
       });
 
     chatInput.value = ''; // Clear input field
+    chatInput.style.height = 'auto'; // Reset height after sending
   };
 });

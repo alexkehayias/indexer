@@ -110,13 +110,8 @@ async fn chat_list(
     let page = params.page.unwrap_or(1);
     let limit = params.limit.unwrap_or(20);
     let offset = (page - 1) * limit;
-    // Inclusion tags
     let include_tags = params.tags.unwrap_or(vec![]);
-    // Exclusion tags (inverse filter)
     let exclude_tags = params.exclude_tags.unwrap_or(vec![]);
-    tracing::info!("Fetching chats with include tags {:?} and exclude tags {:?}", include_tags.clone(), exclude_tags.clone());
-
-    // Get count and list directly using the new filtering parameters
     let total_sessions = chat_session_count(&db, &include_tags, &exclude_tags).await?;
     let paged_sessions = chat_session_list(&db, &include_tags, &exclude_tags, limit, offset).await?;
     let total_pages = (total_sessions as f64 / limit as f64).ceil() as i64;

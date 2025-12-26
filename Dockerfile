@@ -27,7 +27,14 @@ COPY --from=builder /target/release/indexer /indexer
 # Copy over static files for the web UI, currently these are built and
 # checked into the repo but that might change later
 COPY ./web-ui/src/index.html ./web-ui/src/index.html
-COPY ./web-ui/src/index.js ./web-ui/src/index.js
+COPY ./web-ui/src/search/index.html ./web-ui/src/search/index.html
+COPY ./web-ui/src/search/index.js ./web-ui/src/search/index.js
+COPY ./web-ui/src/chat/index.html ./web-ui/src/chat/index.html
+COPY ./web-ui/src/chat/index.js ./web-ui/src/chat/index.js
+COPY ./web-ui/src/chat/message-bubble.js ./web-ui/src/chat/message-bubble.js
+COPY ./web-ui/src/chat/img/ ./web-ui/src/chat/img/
+COPY ./web-ui/src/chat/sessions/index.html ./web-ui/src/chat/sessions/index.html
+COPY ./web-ui/src/chat/sessions/index.js ./web-ui/src/chat/sessions/index.js
 COPY ./web-ui/src/output.css ./web-ui/src/output.css
 COPY ./web-ui/src/favicon.ico ./web-ui/src/favicon.ico
 COPY ./web-ui/src/icon512_maskable.png ./web-ui/src/icon512_maskable.png
@@ -35,12 +42,6 @@ COPY ./web-ui/src/manifest.json ./web-ui/src/manifest.json
 COPY ./web-ui/src/service-worker.js ./web-ui/src/service-worker.js
 COPY ./web-ui/src/vendor/marked.min.js ./web-ui/src/vendor/marked.min.js
 COPY ./web-ui/src/vendor/highlight.min.js ./web-ui/src/vendor/highlight.min.js
-COPY ./web-ui/src/chat/index.html ./web-ui/src/chat/index.html
-COPY ./web-ui/src/chat/index.js ./web-ui/src/chat/index.js
-COPY ./web-ui/src/chat/message-bubble.js ./web-ui/src/chat/message-bubble.js
-COPY ./web-ui/src/chat/img/ ./web-ui/src/chat/img/
-COPY ./web-ui/src/chat/sessions/index.html ./web-ui/src/chat/sessions/index.html
-COPY ./web-ui/src/chat/sessions/index.js ./web-ui/src/chat/sessions/index.js
 
 EXPOSE 2222
 

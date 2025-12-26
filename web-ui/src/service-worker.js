@@ -1,10 +1,11 @@
 // A generic service worker for a PWA
-const CACHE_NAME = 'my-pwa-cache-v1';
+const CACHE_NAME = 'my-pwa-cache-v2';
 const urlsToCache = [
   '/',
   '/index.html',
   '/output.css',
-  '/index.js',
+  '/search/index.html',
+  '/search/index.js',
   '/chat/index.html',
   '/chat/index.js',
   '/chat/sessions/index.html',

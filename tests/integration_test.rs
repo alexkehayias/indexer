@@ -29,7 +29,7 @@ mod tests {
     use serial_test::serial;
 
     async fn body_to_string(body: Body) -> String {
-        let bytes = axum::body::to_bytes(body, 4096usize).await.unwrap();
+        let bytes = axum::body::to_bytes(body, 8192usize).await.unwrap();
         String::from_utf8(bytes.to_vec()).unwrap()
     }
 
@@ -133,7 +133,7 @@ mod tests {
         assert_eq!(response.status(), StatusCode::OK);
 
         let body = body_to_string(response.into_body()).await;
-        assert!(body.contains("input id=\"search\""));
+        assert!(body.contains("Welcome Alex"));
     }
 
     #[tokio::test]

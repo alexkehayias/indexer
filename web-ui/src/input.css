@@ -1,11 +1,18 @@
+/* biome-ignore lint/suspicious: will fix with tailwind v4 */
 @tailwind base;
+/* biome-ignore lint/suspicious: will fix with tailwind v4 */
 @tailwind components;
+/* biome-ignore lint/suspicious: will fix with tailwind v4 */
 @tailwind utilities;
 
-:root { color-scheme: light dark; }
+:root {
+  color-scheme: light dark;
+}
 
 .markdown {
-  > * + * { @apply mt-6; }
+  > * + * {
+    @apply mt-6;
+  }
 
   hr {
     @apply my-10 border-b border-gray-300 dark:border-gray-600;
@@ -20,8 +27,12 @@
   h4 {
     @apply mt-10 font-semibold leading-tight text-gray-700 dark:text-gray-200;
   }
-  h3 { @apply text-xl; }
-  h4 { @apply text-lg; }
+  h3 {
+    @apply text-xl;
+  }
+  h4 {
+    @apply text-lg;
+  }
   h3 code,
   h4 code {
     @apply bg-gray-200 dark:bg-gray-800 text-base font-bold tracking-tighter text-gray-700 dark:text-gray-300 rounded;
@@ -69,56 +80,81 @@
   }
 
   /* Highlight JS code syntax highlighting theme */
-  pre code.hljs{
-    display:block;
-    overflow-x:auto;
-    padding:1em
+  pre code.hljs {
+    display: block;
+    overflow-x: auto;
+    padding: 1em;
   }
-  code.hljs{
-    padding:3px 5px
+  code.hljs {
+    padding: 3px 5px;
   }
-  .hljs{
-    color:#444
+  .hljs {
+    color: #444;
   }
-  .hljs-comment{
-    color:#697070
+  .hljs-comment {
+    color: #697070;
   }
-  .hljs-punctuation,.hljs-tag{
-    color:#444a
+  .hljs-punctuation,
+  .hljs-tag {
+    color: #444a;
   }
-  .hljs-tag .hljs-attr,.hljs-tag .hljs-name{
-    color:#444
+  .hljs-tag .hljs-attr,
+  .hljs-tag .hljs-name {
+    color: #444;
   }
-  .hljs-attribute,.hljs-doctag,.hljs-keyword,.hljs-meta .hljs-keyword,.hljs-name,.hljs-selector-tag{
-    font-weight:700
+  .hljs-attribute,
+  .hljs-doctag,
+  .hljs-keyword,
+  .hljs-meta .hljs-keyword,
+  .hljs-name,
+  .hljs-selector-tag {
+    font-weight: 700;
   }
-  .hljs-deletion,.hljs-number,.hljs-quote,.hljs-selector-class,.hljs-selector-id,.hljs-string,.hljs-template-tag,.hljs-type{
-    color:#800
+  .hljs-deletion,
+  .hljs-number,
+  .hljs-quote,
+  .hljs-selector-class,
+  .hljs-selector-id,
+  .hljs-string,
+  .hljs-template-tag,
+  .hljs-type {
+    color: #800;
   }
-  .hljs-section,.hljs-title{
-    color:#800;
-    font-weight:700
+  .hljs-section,
+  .hljs-title {
+    color: #800;
+    font-weight: 700;
   }
-  .hljs-link,.hljs-operator,.hljs-regexp,.hljs-selector-attr,.hljs-selector-pseudo,.hljs-symbol,.hljs-template-variable,.hljs-variable{
-    color:#ab5656
+  .hljs-link,
+  .hljs-operator,
+  .hljs-regexp,
+  .hljs-selector-attr,
+  .hljs-selector-pseudo,
+  .hljs-symbol,
+  .hljs-template-variable,
+  .hljs-variable {
+    color: #ab5656;
   }
-  .hljs-literal{
-    color:#695
+  .hljs-literal {
+    color: #695;
   }
-  .hljs-addition,.hljs-built_in,.hljs-bullet,.hljs-code{
-    color:#397300
+  .hljs-addition,
+  .hljs-built_in,
+  .hljs-bullet,
+  .hljs-code {
+    color: #397300;
   }
-  .hljs-meta{
-    color:#1f7199
+  .hljs-meta {
+    color: #1f7199;
   }
-  .hljs-meta .hljs-string{
-    color:#38a
+  .hljs-meta .hljs-string {
+    color: #38a;
   }
-  .hljs-emphasis{
-    font-style:italic
+  .hljs-emphasis {
+    font-style: italic;
   }
-  .hljs-strong{
-    font-weight:700
+  .hljs-strong {
+    font-weight: 700;
   }
   pre code.hljs,
   .hljs {
@@ -144,6 +180,11 @@
 }
 
 @keyframes bounce {
-  0%, 100% { transform: translateY(0); }
-  50% { transform: translateY(-10px); }
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-10px);
+  }
 }

@@ -1,19 +1,19 @@
-const plugin = require('tailwindcss/plugin')
+const plugin = require('tailwindcss/plugin');
 
 /** @type {import('tailwindcss').Config} */
 module.exports = {
-  content: ["./src/**/*.{html,js}"],
+  content: ['./src/**/*.{html,js}'],
   theme: {
     extend: {},
   },
   plugins: [
     require('@tailwindcss/forms'),
-    plugin(function ({ addUtilities }) {
+    plugin(({ addUtilities }) => {
       addUtilities({
         '.scrollbar-none': {
           'scrollbar-color': 'gray transparent',
-        }
-      })
-    })
+        },
+      });
+    }),
   ],
-}
+};

@@ -107,14 +107,17 @@ class MessageBubble extends HTMLElement {
         `;
 
         const reasoningContentElement = document.createElement('div');
-        reasoningContentElement.className = 'text-sm text-gray-700 dark:text-gray-100 pl-4';
+        reasoningContentElement.className =
+          'text-sm text-gray-700 dark:text-gray-100 pl-4';
         reasoningContainer.appendChild(reasoningContentElement);
 
         reasoningEl.appendChild(reasoningContainer);
       }
 
       // Update reasoning content
-      const contentElement = reasoningContainer.querySelector('.text-sm.text-gray-700.pl-4');
+      const contentElement = reasoningContainer.querySelector(
+        '.text-sm.text-gray-700.pl-4',
+      );
       if (contentElement) {
         contentElement.textContent += reasoningContent;
       }

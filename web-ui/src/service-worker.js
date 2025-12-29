@@ -14,24 +14,22 @@ const urlsToCache = [
 
 self.addEventListener('install', (event) => {
   event.waitUntil(
-    caches.open(CACHE_NAME)
-          .then((cache) => {
-            console.log('Opened cache');
-            return cache.addAll(urlsToCache);
-          })
+    caches.open(CACHE_NAME).then((cache) => {
+      console.log('Opened cache');
+      return cache.addAll(urlsToCache);
+    }),
   );
 });
 
 self.addEventListener('fetch', (event) => {
   event.respondWith(
-    caches.match(event.request)
-          .then((response) => {
-            // Cache hit - return response
-            if (response) {
-              return response;
-            }
-            return fetch(event.request);
-          })
+    caches.match(event.request).then((response) => {
+      // Cache hit - return response
+      if (response) {
+        return response;
+      }
+      return fetch(event.request);
+    }),
   );
 });
 
@@ -44,15 +42,17 @@ self.addEventListener('activate', (event) => {
         cacheNames.map((cacheName) => {
           if (cacheWhitelist.indexOf(cacheName) === -1) {
             return caches.delete(cacheName);
+          } else {
+            return null;
           }
-        })
+        }),
       );
-    })
+    }),
   );
 });
 
 // Listen for push events and show notifications
-self.addEventListener('push', function(event) {
+self.addEventListener('push', (event) => {
   if (!event.data) {
     console.warn('Empty push payload');
     return;
@@ -69,16 +69,16 @@ async function handlePushNotification(event) {
 
   try {
     payload = await event.data.json();
-    title = payload.title
+    title = payload.title;
     options = {
       body: payload.body,
       data: payload.data,
-    }
+    };
     isJson = true;
   } catch (_) {
     try {
       const text = await event.data.text();
-      let title = text;
+      const _title = text;
       options = {
         body: text,
         icon: 'icon.png',
@@ -95,25 +95,25 @@ async function handlePushNotification(event) {
 
 // Handle the user clicking a push notification on desktop and linking
 // to the URL specified by the notification payload
-self.addEventListener('notificationclick', event => {
+self.addEventListener('notificationclick', (event) => {
   // Keep the SW alive while we do async work.
   event.waitUntil(handleClick(event));
 });
 
 async function handleClick(event) {
-  const url = (event.notification.data && event.notification.data.url) || '/';
-  event.notification.close();               // hide UI
+  const url = event.notification.data?.url || '/';
+  event.notification.close(); // hide UI
 
   // 1️⃣ Try to focus an existing tab that already has the URL
   const allClients = await self.clients.matchAll({
     type: 'window',
-    includeUncontrolled: true   // also see pages not yet controlled by SW
+    includeUncontrolled: true, // also see pages not yet controlled by SW
   });
 
   for (const client of allClients) {
     const u = new URL(client.url);
     if (u.pathname + u.search + u.hash === url) {
-      return client.focus();               // bring it to front
+      return client.focus(); // bring it to front
     }
   }
 

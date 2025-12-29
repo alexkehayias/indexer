@@ -11,59 +11,62 @@ document.addEventListener('DOMContentLoaded', () => {
 
   const urlParams = new URLSearchParams(window.location.search);
   let sessionId;
-  const maybeSessionId = urlParams.get("session_id");
+  const maybeSessionId = urlParams.get('session_id');
   if (maybeSessionId) {
     sessionId = maybeSessionId;
     fetch(`/notes/chat/${sessionId}`, {
       method: 'GET',
       headers: {
-        'Content-Type': 'application/json'
+        'Content-Type': 'application/json',
       },
     })
-    .then(response => {
-      if (response.status === 404) {
-        console.log('Session not found, starting new conversation');
-        return Promise.resolve(null);
-      } else if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
-      }
-      return response.json();
-    })
-    .then(data => {
-      // Only process transcript if we have data
-      if (data && data.transcript) {
-        data.transcript.map(message => {
-          const isUser = message.role === 'user';
-          const isAssistant = message.role === 'assistant';
-          const isSystem = message.role === 'system';
-          const isToolCall = (message.role === 'tool') || (isAssistant && !message.content);
+      .then((response) => {
+        if (response.status === 404) {
+          console.log('Session not found, starting new conversation');
+          return Promise.resolve(null);
+        } else if (!response.ok) {
+          throw new Error(`HTTP error! status: ${response.status}`);
+        }
+        return response.json();
+      })
+      .then((data) => {
+        // Only process transcript if we have data
+        if (data?.transcript) {
+          data.transcript.forEach((message) => {
+            const isUser = message.role === 'user';
+            const isAssistant = message.role === 'assistant';
+            const _isSystem = message.role === 'system';
+            const isToolCall =
+              message.role === 'tool' || (isAssistant && !message.content);
 
-          if (!isToolCall && (isUser || isAssistant)) {
-            const bubble = new MessageBubble();
-            bubble.setAttribute('message', message.content);
-            bubble.setAttribute('is-user-message', isUser.toString());
-            bubble.setAttribute('is-tool-call', isToolCall.toString());
-            document.getElementById('chat-display').prepend(bubble);
-          }
-          if (isAssistant && isToolCall) {
-            const bubble = new MessageBubble();
-
-            let toolCallMessages = [];
-            for (const t of message.tool_calls) {
-              const toolFn = t.function;
-              toolCallMessages.push(`**Tool call**: \`${toolFn.name}\`\n**Args**:\n\n\`\`\`\n${toolFn.arguments}\n\`\`\``);
+            if (!isToolCall && (isUser || isAssistant)) {
+              const bubble = new MessageBubble();
+              bubble.setAttribute('message', message.content);
+              bubble.setAttribute('is-user-message', isUser.toString());
+              bubble.setAttribute('is-tool-call', isToolCall.toString());
+              document.getElementById('chat-display').prepend(bubble);
             }
+            if (isAssistant && isToolCall) {
+              const bubble = new MessageBubble();
 
-            bubble.setAttribute('message', toolCallMessages.join('\n\n'));
-            bubble.setAttribute('is-user-message', 'false');
-            bubble.setAttribute('is-tool-call', 'true');
-            document.getElementById('chat-display').prepend(bubble);
-          }
-        });
-      }
-      scrollToBottom();
-    })
-    .catch(error => console.error('Error:', error));
+              const toolCallMessages = [];
+              for (const t of message.tool_calls) {
+                const toolFn = t.function;
+                toolCallMessages.push(
+                  `**Tool call**: \`${toolFn.name}\`\n**Args**:\n\n\`\`\`\n${toolFn.arguments}\n\`\`\``,
+                );
+              }
+
+              bubble.setAttribute('message', toolCallMessages.join('\n\n'));
+              bubble.setAttribute('is-user-message', 'false');
+              bubble.setAttribute('is-tool-call', 'true');
+              document.getElementById('chat-display').prepend(bubble);
+            }
+          });
+        }
+        scrollToBottom();
+      })
+      .catch((error) => console.error('Error:', error));
   } else {
     sessionId = crypto.randomUUID();
     history.replaceState({}, '', `?session_id=${sessionId}`);
@@ -81,7 +84,7 @@ document.addEventListener('DOMContentLoaded', () => {
   const autoResize = () => {
     chatInput.style.height = 'auto';
     const newHeight = Math.min(chatInput.scrollHeight, 7 * 24); // Approximate line height
-    chatInput.style.height = newHeight + 'px';
+    chatInput.style.height = `${newHeight}px`;
   };
 
   chatInput.addEventListener('input', autoResize);
@@ -91,7 +94,7 @@ document.addEventListener('DOMContentLoaded', () => {
     if (e.metaKey && e.key === 'Enter') {
       e.preventDefault();
       sendMessage();
-    };
+    }
   });
 
   const sendMessage = () => {
@@ -117,39 +120,40 @@ document.addEventListener('DOMContentLoaded', () => {
 
     const chatRequest = {
       session_id: sessionId,
-      message: message
+      message: message,
     };
 
     fetch('/notes/chat', {
       method: 'POST',
       headers: {
-        'Content-Type': 'application/json'
+        'Content-Type': 'application/json',
       },
-      body: JSON.stringify(chatRequest)
-    })
-      .then(response => {
-        const reader = response.body.getReader();
-        const decoder = new TextDecoder();
-        let buffer = '';
+      body: JSON.stringify(chatRequest),
+    }).then((response) => {
+      const reader = response.body.getReader();
+      const decoder = new TextDecoder();
+      let buffer = '';
 
-        let contentAccum = '';
+      let contentAccum = '';
 
-        function read() {
-          reader.read().then(({done, value}) => {
+      function read() {
+        reader
+          .read()
+          .then(({ done, value }) => {
             if (done) {
               console.log('Stream complete');
               return;
             }
 
             // Convert Uint8Array to string
-            const chunk = decoder.decode(value, {stream: true});
+            const chunk = decoder.decode(value, { stream: true });
             buffer += chunk;
 
             // Process complete lines
             const lines = buffer.split('\n');
             buffer = lines.pop(); // Keep incomplete line in buffer
 
-            lines.forEach(line => {
+            lines.forEach((line) => {
               if (line.startsWith('data: ')) {
                 const data = line.slice(6).trim();
                 if (data === '[DONE]') {
@@ -160,8 +164,9 @@ document.addEventListener('DOMContentLoaded', () => {
                   const parsed = JSON.parse(data);
                   const content = parsed.choices[0].delta.content;
                   const reasoning = parsed.choices[0].delta.reasoning;
-                  const toolCalls = parsed.choices[0].delta.tool_calls;
-                  const toolCallsFinished = parsed.choices[0].finish_reason === 'tool_calls';
+                  const _toolCalls = parsed.choices[0].delta.tool_calls;
+                  const _toolCallsFinished =
+                    parsed.choices[0].finish_reason === 'tool_calls';
 
                   // TODO: Handle rendering tool calls
 
@@ -191,13 +196,14 @@ document.addEventListener('DOMContentLoaded', () => {
             });
 
             read();
-          }).catch(error => {
+          })
+          .catch((error) => {
             console.error('Read error:', error);
           });
-        }
+      }
 
-        read();
-      });
+      read();
+    });
 
     chatInput.value = ''; // Clear input field
     chatInput.style.height = 'auto'; // Reset height after sending

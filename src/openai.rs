@@ -264,6 +264,7 @@ pub async fn completion_stream(
         "model": model,
         "messages": messages,
         "stream": true,
+        "stream_options": {"include_usage": true}
     });
     if let Some(tools) = tools {
         payload["tools"] = json!(tools);

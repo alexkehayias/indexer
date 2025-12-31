@@ -730,6 +730,32 @@ async fn web_search(
     Ok(Json(resp))
 }
 
+/// Record a metric event
+async fn record_metric(
+    State(state): State<SharedState>,
+    Json(payload): Json<public::MetricRequest>,
+) -> Result<StatusCode, public::ApiError> {
+    let db = state.read().unwrap().db.clone();
+
+    // Use serde serialization to convert the enum back into a string
+    // to save to the database while still enforcing metric names can
+    // only be a `MetricName` variant
+    let name = json!(payload.name).to_string();
+    let value = payload.value;
+
+    // Insert the metric event into the database
+    db.call(move |conn| {
+        conn.execute(
+            "INSERT INTO metric_event (name, value) VALUES (?, ?)",
+            tokio_rusqlite::params![&name, &value],
+        )?;
+        Ok(())
+    })
+    .await?;
+
+    Ok(StatusCode::OK)
+}
+
 async fn set_static_cache_control(request: Request, next: middleware::Next) -> Response {
     let mut response = next.run(request).await;
     response
@@ -766,6 +792,8 @@ pub fn app(shared_state: Arc<RwLock<AppState>>) -> Router {
         // Server sent events (SSE) example
         .route("/sse", get(sse_handler))
         .route("/web/search", get(web_search))
+        // Timeseries metrics
+        .route("/metrics", post(record_metric))
         // Static server of assets in ./web-ui
         .fallback_service(
             ServiceBuilder::new()

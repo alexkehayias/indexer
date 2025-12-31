@@ -443,4 +443,29 @@ mod tests {
         assert!(body.contains("\"total_sessions\""));
         assert!(body.contains("\"total_pages\""));
     }
+
+    #[tokio::test]
+    async fn it_records_metric() {
+        let app = test_app().await;
+
+        let response = app
+            .oneshot(
+                Request::builder()
+                    .uri("/metrics")
+                    .method("POST")
+                    .header("content-type", "application/json")
+                    .body(Body::from(
+                        json!({
+                            "name": "token-count",
+                            "value": 20,
+                        })
+                        .to_string(),
+                    ))
+                    .unwrap(),
+            )
+            .await
+            .unwrap();
+
+        assert_eq!(response.status(), StatusCode::OK);
+    }
 }

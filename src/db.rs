@@ -160,6 +160,35 @@ embedding float[384]
         Err(e) => println!("Create session_tag table failed: {}", e),
     };
 
+    // Create table for storing timeseries metric events
+    let create_metric_event_table = db.execute(
+        "CREATE TABLE IF NOT EXISTS metric_event (
+    -- Metric name
+    name TEXT NOT NULL,
+    -- Timestamp when the event was received (ISO 8601 format)
+    timestamp TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now')),
+    -- Numeric value for the event (e.g., increment amount)
+    value INTEGER NOT NULL
+);",
+        [],
+    );
+
+    match create_metric_event_table {
+        Ok(_) => (),
+        Err(e) => println!("Create metric event table failed: {}", e),
+    };
+
+    // Create index on metric_event for efficient queries by id and timestamp
+    let create_metric_event_index = db.execute(
+        "CREATE INDEX IF NOT EXISTS metric_event_name_timestamp_idx ON metric_event(name, timestamp);",
+        [],
+    );
+
+    match create_metric_event_index {
+        Ok(_) => (),
+        Err(e) => println!("Create metric event index failed: {}", e),
+    };
+
     Ok(())
 }
 

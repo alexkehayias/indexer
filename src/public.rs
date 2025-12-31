@@ -231,3 +231,17 @@ pub struct ChatSession {
     pub summary: Option<String>,
     pub tags: Vec<String>,
 }
+
+// Metrics
+#[derive(Serialize, Deserialize)]
+pub enum MetricName {
+    #[serde(rename = "token-count")]
+    TokenCount
+}
+
+/// Request to record a metric event
+#[derive(Deserialize)]
+pub struct MetricRequest {
+    pub name: MetricName,
+    pub value: i64,
+}

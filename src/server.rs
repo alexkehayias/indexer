@@ -681,23 +681,6 @@ async fn calendar_handler(
     Ok(Json(resp))
 }
 
-async fn sse_handler() -> impl IntoResponse {
-    let (tx, rx) = mpsc::unbounded_channel::<String>();
-
-    let sse_stream = UnboundedReceiverStream::new(rx)
-        .map(|chunk| Ok::<Event, Infallible>(Event::default().data(chunk)));
-
-    tx.send(String::from("Testing")).unwrap();
-
-    Sse::new(sse_stream)
-        .keep_alive(
-            KeepAlive::default()
-                .text("keep-alive")
-                .interval(Duration::from_millis(100)),
-        )
-        .into_response()
-}
-
 async fn web_search(
     State(_state): State<SharedState>,
     Query(params): Query<public::WebSearchParams>,
@@ -789,8 +772,7 @@ pub fn app(shared_state: Arc<RwLock<AppState>>) -> Router {
         .route("/email/unread", get(email_unread_handler))
         // Get list of calender events
         .route("/calendar", get(calendar_handler))
-        // Server sent events (SSE) example
-        .route("/sse", get(sse_handler))
+        // Search Google
         .route("/web/search", get(web_search))
         // Timeseries metrics
         .route("/metrics", post(record_metric))

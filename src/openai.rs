@@ -289,15 +289,6 @@ pub async fn completion_stream(
         let chunk = chunk.expect("Invalid chunk");
         let chunk_str = std::str::from_utf8(&chunk)?.trim();
 
-        // The result is ignored here because we want to complete
-        // processing the response
-        let _ = tx.send(
-            chunk_str
-                .strip_prefix("data: ")
-                .expect("Failed to strip prefix")
-                .to_string(),
-        );
-
         // Parse SSE events
         if !chunk_str.starts_with("data: ") {
             continue;
@@ -313,6 +304,11 @@ pub async fn completion_stream(
             if data.is_empty() {
                 continue;
             }
+
+            // Forward the chunk to the receiver channel
+            // (The result is ignored here because we want to complete
+            // processing the response)
+            let _ = tx.send(data.to_string());
 
             // Handle the end of the stream
             if data == "[DONE]" {

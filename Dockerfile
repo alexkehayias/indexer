@@ -29,6 +29,8 @@ COPY --from=builder /target/release/indexer /indexer
 COPY ./web-ui/src/index.html ./web-ui/src/index.html
 COPY ./web-ui/src/search/index.html ./web-ui/src/search/index.html
 COPY ./web-ui/src/search/index.js ./web-ui/src/search/index.js
+COPY ./web-ui/src/metrics/index.html ./web-ui/src/metrics/index.html
+COPY ./web-ui/src/metrics/index.js ./web-ui/src/metrics/index.js
 COPY ./web-ui/src/chat/index.html ./web-ui/src/chat/index.html
 COPY ./web-ui/src/chat/index.js ./web-ui/src/chat/index.js
 COPY ./web-ui/src/chat/message-bubble.js ./web-ui/src/chat/message-bubble.js
@@ -42,6 +44,7 @@ COPY ./web-ui/src/manifest.json ./web-ui/src/manifest.json
 COPY ./web-ui/src/service-worker.js ./web-ui/src/service-worker.js
 COPY ./web-ui/src/vendor/marked.min.js ./web-ui/src/vendor/marked.min.js
 COPY ./web-ui/src/vendor/highlight.min.js ./web-ui/src/vendor/highlight.min.js
+COPY ./web-ui/src/vendor/echarts.simple.min.js ./web-ui/src/vendor/echarts.simple.min.js
 
 EXPOSE 2222
 

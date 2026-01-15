@@ -739,6 +739,49 @@ async fn record_metric(
     Ok(StatusCode::OK)
 }
 
+/// Get metric events for visualization
+async fn get_metrics(
+    State(state): State<SharedState>,
+    Query(params): Query<public::MetricsQuery>,
+) -> Result<Json<public::MetricsResponse>, public::ApiError> {
+    let db = state.read().unwrap().db.clone();
+
+    // Default to last 30 days if not specified
+    let limit_days = params.limit_days.unwrap_or(30);
+
+    // Build SQL query to fetch metrics with grouping by name and timestamp
+    let results = db.call(move |conn| {
+        let mut stmt = conn.prepare(
+            r#"
+            SELECT name, timestamp, value
+            FROM metric_event
+            WHERE timestamp >= datetime('now', '-' || ? || ' days')
+            ORDER BY name, timestamp
+            "#,
+        )?;
+
+        let rows = stmt.query_map([limit_days as i64], |row| {
+            Ok(public::MetricEvent {
+                name: row.get(0)?,
+                timestamp: row.get(1)?,
+                value: row.get(2)?,
+            })
+        })?;
+
+        let mut events = Vec::new();
+        for row in rows {
+            if let Ok(event) = row {
+                events.push(event);
+            }
+        }
+
+        Ok(events)
+    })
+    .await?;
+
+    Ok(Json(public::MetricsResponse { events: results }))
+}
+
 async fn set_static_cache_control(request: Request, next: middleware::Next) -> Response {
     let mut response = next.run(request).await;
     response
@@ -775,7 +818,7 @@ pub fn app(shared_state: Arc<RwLock<AppState>>) -> Router {
         // Search Google
         .route("/web/search", get(web_search))
         // Timeseries metrics
-        .route("/metrics", post(record_metric))
+        .route("/metrics", post(record_metric).get(get_metrics))
         // Static server of assets in ./web-ui
         .fallback_service(
             ServiceBuilder::new()

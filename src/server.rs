@@ -753,10 +753,13 @@ async fn get_metrics(
     let results = db.call(move |conn| {
         let mut stmt = conn.prepare(
             r#"
-            SELECT name, timestamp, value
+            SELECT name,
+            DATE(timestamp) AS day,
+            SUM(value) AS daily_total
             FROM metric_event
             WHERE timestamp >= datetime('now', '-' || ? || ' days')
-            ORDER BY name, timestamp
+            GROUP BY name, day
+            ORDER BY name, day DESC
             "#,
         )?;
 

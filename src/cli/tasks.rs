@@ -21,6 +21,11 @@ pub(crate) fn parse_tag_list(s: &str) -> Vec<String> {
         .collect()
 }
 
+/// Whether a file path points at an Org archive file (`*.org_archive`).
+fn is_archive_path(path: &std::path::Path) -> bool {
+    crate::core::orgmode::is_archive_file(&path.to_string_lossy())
+}
+
 /// Deterministic path a project file would use, so callers can lock it before
 /// creating. Creation must be serialized on the target path: when concurrent
 /// refiles target a brand-new project they can all miss the DB lookup and race
@@ -243,6 +248,9 @@ pub async fn run_refile(
     // Resolve which file holds the task (via the index) so we know which
     // file to lock before doing the read-modify-write.
     let source_path = orgmode::find_task(db, notes_path, id).await?.path;
+    if is_archive_path(&source_path) {
+        anyhow::bail!("Cannot refile a task out of an archive file");
+    }
 
     // Look up existing project in DB, or create a new project file. Creation is
     // serialized on the target file's lock: when several concurrent refiles
@@ -266,6 +274,10 @@ pub async fn run_refile(
             .await?
         }
     };
+
+    if is_archive_path(&target_path) {
+        anyhow::bail!("Cannot refile a task to an archive file");
+    }
 
     if source_path == target_path {
         anyhow::bail!("Task is already in project '{project}'");
@@ -1612,6 +1624,34 @@ Investigate the redirect
         assert!(security_content.contains(&task_id));
         assert!(security_content.contains("Fix login bug"));
         assert_eq!(headline_count(&security_path), 1);
+    }
+
+    /// Refiling a task out of an archive file must be blocked (archives are
+    /// read-only for refile purposes).
+    #[tokio::test]
+    async fn test_refile_from_archive_blocked() {
+        let (db, _dir, notes, index) = test_env().await;
+
+        let archive_path = format!("{}/projects/work.org_archive", notes);
+        std::fs::write(
+            &archive_path,
+            "Archived entries from file work.org\n\n* DONE Old archived task\n:PROPERTIES:\n:ARCHIVE_TIME: 2022-10-16 Sun 09:37\n:ID: archived-task\n:END:\n",
+        )
+        .unwrap();
+        db.call(|conn| {
+            insert_task(conn, "archived-task", "projects/work.org_archive", "Old archived task", "done");
+            Ok(())
+        })
+        .await
+        .unwrap();
+
+        let err = run_refile(&db, &notes, &index, "archived-task", "errands")
+            .await
+            .unwrap_err();
+        assert!(
+            err.to_string().contains("archive"),
+            "expected archive guard error, got: {err}"
+        );
     }
 
     #[tokio::test]

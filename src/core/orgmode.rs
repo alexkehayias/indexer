@@ -17,6 +17,14 @@ use tokio_rusqlite::Connection;
 
 use crate::org;
 
+/// Suffix Org mode uses for archive files (e.g. `work.org_archive`).
+pub const ORG_ARCHIVE_SUFFIX: &str = ".org_archive";
+
+/// Whether a file name/path points at an Org archive file.
+pub fn is_archive_file(file_name: &str) -> bool {
+    file_name.ends_with(ORG_ARCHIVE_SUFFIX)
+}
+
 /// Done-state keywords that count as "closed" for setting CLOSED:.
 ///
 /// SOMEDAY is intentionally excluded — only DONE and CANCELED mark a task as

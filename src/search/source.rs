@@ -18,8 +18,11 @@ async fn walk_org_files(roots: Vec<PathBuf>) -> Vec<PathBuf> {
             if meta.is_dir() {
                 pending.push(p);
             } else {
-                let ext = p.extension().unwrap_or_default();
-                if ext == "org" {
+                // `org_archive` files hold archived Org subtrees (Org mode's
+                // `org-archive-location` convention), so index them alongside
+                // plain `.org` notes.
+                let name = p.to_string_lossy();
+                if name.ends_with(".org") || crate::core::orgmode::is_archive_file(&name) {
                     result.push(p);
                 }
             }
@@ -72,6 +75,7 @@ mod tests {
         fs::write(root.join("notes/top.org"), "").unwrap();
         fs::write(root.join("notes/sub/nested.org"), "").unwrap();
         fs::write(root.join("projects/project.org"), "").unwrap();
+        fs::write(root.join("projects/work.org_archive"), "").unwrap();
         fs::write(root.join("ignored/root.org"), "").unwrap();
         fs::write(root.join("top_level.org"), "").unwrap();
 
@@ -82,6 +86,7 @@ mod tests {
             root.join("notes/sub/nested.org"),
             root.join("notes/top.org"),
             root.join("projects/project.org"),
+            root.join("projects/work.org_archive"),
         ];
         assert_eq!(found, expected);
     }

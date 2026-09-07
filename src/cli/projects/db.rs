@@ -64,7 +64,7 @@ pub async fn find_project_file(db: &Connection, notes_path: &str, project_ref: &
     let projects = db
         .call(|conn| {
             let mut stmt = conn.prepare(
-                "SELECT file_name, id, title FROM note_meta WHERE type = 'note' AND tags LIKE '%project%'",
+                "SELECT file_name, id, title FROM note_meta WHERE type = 'note' AND tags LIKE '%project%' AND file_name NOT LIKE '%_archive'",
             )?;
 
             let rows = stmt
@@ -124,7 +124,7 @@ pub async fn list_projects(db: &Connection) -> Result<Vec<ProjectRow>> {
                    CASE WHEN n.tags LIKE '%project_done%' THEN 1 ELSE 0 END as is_done
                  FROM note_meta n
                  LEFT JOIN note_meta t ON t.file_name = n.file_name AND t.type = 'task'
-                 WHERE n.type = 'note' AND n.tags LIKE '%project%'
+                 WHERE n.type = 'note' AND n.tags LIKE '%project%' AND n.file_name NOT LIKE '%_archive'
                  GROUP BY n.id
                  ORDER BY n.title",
             )?;

@@ -154,6 +154,36 @@ pub async fn run_summarize(
     Ok(())
 }
 
+/// List all chat sessions as a table of session ID and title (if set).
+pub async fn run_list(db: Connection) -> Result<()> {
+    let sessions: Vec<(String, Option<String>)> = db
+        .call(|conn| {
+            let mut stmt = conn.prepare(
+                "SELECT id, title FROM session ORDER BY created_at DESC",
+            )?;
+            let rows = stmt.query_map([], |row| {
+                Ok((row.get(0)?, row.get(1)?))
+            })?;
+            Ok(rows.collect::<rusqlite::Result<Vec<_>>>()?)
+        })
+        .await
+        .context("Failed to list chat sessions")?;
+
+    if sessions.is_empty() {
+        println!("No chat sessions found.");
+        return Ok(());
+    }
+
+    println!("{:<40} {}", "ID", "Title");
+    println!("{}", "-".repeat(80));
+    for (id, title) in sessions {
+        let title = title.unwrap_or_else(|| "—".to_string());
+        println!("{id:<40} {title}");
+    }
+
+    Ok(())
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -353,5 +383,40 @@ mod tests {
             err.contains("no messages"),
             "error should mention 'no messages', got: {err}"
         );
+    }
+
+    #[tokio::test]
+    async fn test_run_list_empty() {
+        let storage = setup_storage_dir();
+        let db_path = test_db(storage.path()).await;
+        let db = async_db(&db_path).await.unwrap();
+
+        let result = run_list(db).await;
+        assert!(result.is_ok(), "expected Ok, got {result:?}");
+    }
+
+    #[tokio::test]
+    async fn test_run_list_with_sessions() {
+        let storage = setup_storage_dir();
+        let db_path = test_db(storage.path()).await;
+        let db = async_db(&db_path).await.unwrap();
+
+        // One session with a title, one without
+        db.call(|conn| {
+            conn.execute(
+                "INSERT INTO session (id, title) VALUES (?1, ?2)",
+                rusqlite::params!["with-title", "My session"],
+            )?;
+            conn.execute(
+                "INSERT INTO session (id) VALUES (?1)",
+                rusqlite::params!["no-title"],
+            )?;
+            Ok(())
+        })
+        .await
+        .unwrap();
+
+        let result = run_list(db).await;
+        assert!(result.is_ok(), "expected Ok, got {result:?}");
     }
 }

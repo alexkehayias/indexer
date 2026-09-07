@@ -462,6 +462,55 @@ async fn list_tasks_from_files(
     Ok(result)
 }
 
+/// Show the full details of a single task, including its body.
+///
+/// By default the task is rendered as markdown. With `raw` set, the unparsed
+/// org-mode headline is returned verbatim — exactly as it appears in the file.
+pub async fn run_show(
+    db: &Connection,
+    notes_path: &str,
+    id: &str,
+    raw: bool,
+) -> Result<String> {
+    let location = orgmode::find_task(db, notes_path, id).await?;
+
+    if raw {
+        let mut headline = location.content[location.range.start..location.range.end].to_string();
+        if !headline.ends_with('\n') {
+            headline.push('\n');
+        }
+        return Ok(headline);
+    }
+
+    let file_name = location
+        .path
+        .strip_prefix(notes_path)
+        .unwrap_or_else(|_| location.path.as_path())
+        .to_str()
+        .unwrap_or_default();
+    let tags = if location.current_tags.is_empty() {
+        String::new()
+    } else {
+        format!(":{}", location.current_tags.join(":"))
+    };
+
+    let mut out = String::new();
+    out.push_str(&format!("# {} {}\n\n", location.current_status, location.current_title));
+    out.push_str(&format!("** ID**: `{id}`\n"));
+    out.push_str(&format!("** Status**: {}\n", location.current_status));
+    out.push_str(&format!("** File**: `{file_name}`\n"));
+    if !tags.is_empty() {
+        out.push_str(&format!("** Tags**: {tags}\n"));
+    }
+    if let Some(closed) = &location.current_closed {
+        out.push_str(&format!("** Closed**: {closed}\n"));
+    }
+    if !location.current_body.is_empty() {
+        out.push_str(&format!("\n{}\n", location.current_body));
+    }
+    Ok(out)
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -1337,6 +1386,54 @@ mod tests {
 
         let result = run_list(&db, &notes, Some("sprint-12"), Some("DONE")).await;
         assert!(result.is_ok());
+    }
+
+    // -----------------------------------------------------------------------
+    // run_show
+    // -----------------------------------------------------------------------
+
+    #[tokio::test]
+    async fn test_show_renders_markdown() {
+        let (db, _dir, notes, index) = test_env().await;
+        let (_path, id) = create_todo_task(&db, &notes, &index).await;
+        run_update(&db, &notes, &index, &id, None, Some("Investigate redirect"), None, None, &[], &[])
+            .await
+            .unwrap();
+
+        let output = run_show(&db, &notes, &id, false).await.unwrap();
+        assert!(output.contains("Test task"), "markdown output should contain title: {output}");
+        assert!(output.contains("Investigate redirect"), "markdown output should contain body: {output}");
+        assert!(output.contains("TODO"), "markdown output should contain status: {output}");
+        assert!(output.contains(&id), "markdown output should contain id: {output}");
+    }
+
+    #[tokio::test]
+    async fn test_show_raw_returns_headline_verbatim() {
+        let (db, _dir, notes, index) = test_env().await;
+
+        run_create(&db, &notes, &index, "Fix login", Some("Investigate redirect"), None, "TODO")
+            .await
+            .unwrap();
+        let (path, id) = create_todo_task(&db, &notes, &index).await;
+
+        let output = run_show(&db, &notes, &id, true).await.unwrap();
+
+        // Raw output should be the org headline exactly as stored in the file.
+        let content = fs::read_to_string(&path).unwrap();
+        assert!(
+            content.contains(output.trim()),
+            "raw output should match a substring of the file, got:\n{output}\n---file---\n{content}"
+        );
+        assert!(output.starts_with("* TODO Fix login"), "raw output should start with the headline: {output}");
+        assert!(output.contains("Investigate redirect"), "raw output should include body: {output}");
+    }
+
+    #[tokio::test]
+    async fn test_show_nonexistent_task() {
+        let (db, _dir, notes, _index) = test_env().await;
+
+        let result = run_show(&db, &notes, "nonexistent-uuid", false).await;
+        assert!(result.is_err());
     }
 
     // -----------------------------------------------------------------------

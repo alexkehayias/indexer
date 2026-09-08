@@ -499,27 +499,7 @@ pub async fn run_show(
     md.render(headline.syntax());
     let rendered = md.finish();
 
-    let file_name = location
-        .path
-        .strip_prefix(notes_path)
-        .unwrap_or_else(|_| location.path.as_path())
-        .to_str()
-        .unwrap_or_default();
-    let tags = if location.current_tags.is_empty() {
-        String::new()
-    } else {
-        format!(":{}", location.current_tags.join(":"))
-    };
-
-    let mut out = String::new();
-    out.push_str(&format!("** ID**: `{id}`\n"));
-    out.push_str(&format!("** Status**: {}\n", location.current_status));
-    out.push_str(&format!("** File**: `{file_name}`\n"));
-    if !tags.is_empty() {
-        out.push_str(&format!("** Tags**: {tags}\n"));
-    }
-    out.push('\n');
-    out.push_str(rendered.trim_end());
+    let mut out = rendered.trim_end().to_string();
     out.push('\n');
     Ok(out)
 }
@@ -1416,8 +1396,10 @@ mod tests {
         let output = run_show(&db, &notes, &id, false).await.unwrap();
         assert!(output.contains("Test task"), "markdown output should contain title: {output}");
         assert!(output.contains("Investigate redirect"), "markdown output should contain body: {output}");
-        assert!(output.contains("TODO"), "markdown output should contain status: {output}");
-        assert!(output.contains(&id), "markdown output should contain id: {output}");
+        assert!(
+            !output.contains("** ID**"),
+            "markdown output should be just the rendered task, not metadata: {output}"
+        );
     }
 
     #[tokio::test]

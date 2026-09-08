@@ -2,6 +2,7 @@ use std::path::PathBuf;
 
 use anyhow::{Context, Result};
 use chrono::Local;
+use orgize::rowan::ast::AstNode;
 use tokio::fs;
 use tokio_rusqlite::Connection;
 use uuid::Uuid;
@@ -9,7 +10,7 @@ use uuid::Uuid;
 use crate::cli::projects;
 use crate::core::orgmode;
 use crate::org;
-use crate::search::{index_single_file, remove_task_from_indexes};
+use crate::search::{MarkdownExport, index_single_file, remove_task_from_indexes};
 
 /// Parse a comma-separated list of tags (e.g. `"urgent, errands"`) into
 /// trimmed, non-empty tag strings. Empty entries (`a,,b`) and surrounding
@@ -464,8 +465,10 @@ async fn list_tasks_from_files(
 
 /// Show the full details of a single task, including its body.
 ///
-/// By default the task is rendered as markdown. With `raw` set, the unparsed
-/// org-mode headline is returned verbatim — exactly as it appears in the file.
+/// By default the task is rendered as markdown, using the same
+/// org-to-markdown converter the tasks API uses (`search::export::MarkdownExport`).
+/// With `raw` set, the unparsed org-mode headline is returned verbatim — exactly
+/// as it appears in the file.
 pub async fn run_show(
     db: &Connection,
     notes_path: &str,
@@ -482,6 +485,20 @@ pub async fn run_show(
         return Ok(headline);
     }
 
+    // Render the task's headline (title + body) with the same converter the
+    // tasks API uses, so CLI output matches what the API returns for a task.
+    let headline_content = &location.content[location.range.start..location.range.end];
+    let config = org::todo_keywords_config();
+    let org = config.parse(headline_content);
+    let headline = org
+        .document()
+        .headlines()
+        .next()
+        .ok_or_else(|| anyhow::anyhow!("Could not locate headline for task {id}"))?;
+    let mut md = MarkdownExport::default();
+    md.render(headline.syntax());
+    let rendered = md.finish();
+
     let file_name = location
         .path
         .strip_prefix(notes_path)
@@ -495,19 +512,15 @@ pub async fn run_show(
     };
 
     let mut out = String::new();
-    out.push_str(&format!("# {} {}\n\n", location.current_status, location.current_title));
     out.push_str(&format!("** ID**: `{id}`\n"));
     out.push_str(&format!("** Status**: {}\n", location.current_status));
     out.push_str(&format!("** File**: `{file_name}`\n"));
     if !tags.is_empty() {
         out.push_str(&format!("** Tags**: {tags}\n"));
     }
-    if let Some(closed) = &location.current_closed {
-        out.push_str(&format!("** Closed**: {closed}\n"));
-    }
-    if !location.current_body.is_empty() {
-        out.push_str(&format!("\n{}\n", location.current_body));
-    }
+    out.push('\n');
+    out.push_str(rendered.trim_end());
+    out.push('\n');
     Ok(out)
 }
 

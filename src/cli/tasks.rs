@@ -8,9 +8,10 @@ use tokio_rusqlite::Connection;
 use uuid::Uuid;
 
 use crate::cli::projects;
+use crate::core::markdown::MarkdownExport;
 use crate::core::orgmode;
 use crate::org;
-use crate::search::{MarkdownExport, index_single_file, remove_task_from_indexes};
+use crate::search::{index_single_file, remove_task_from_indexes};
 
 /// Parse a comma-separated list of tags (e.g. `"urgent, errands"`) into
 /// trimmed, non-empty tag strings. Empty entries (`a,,b`) and surrounding
@@ -466,7 +467,7 @@ async fn list_tasks_from_files(
 /// Show the full details of a single task, including its body.
 ///
 /// By default the task is rendered as markdown, using the same
-/// org-to-markdown converter the tasks API uses (`search::export::MarkdownExport`).
+/// org-to-markdown converter the tasks API uses (`core::markdown::MarkdownExport`).
 /// With `raw` set, the unparsed org-mode headline is returned verbatim — exactly
 /// as it appears in the file.
 pub async fn run_show(

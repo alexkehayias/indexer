@@ -15,13 +15,13 @@ use tokio::fs;
 use tokio_rusqlite::Connection;
 use zerocopy::IntoBytes;
 
-use super::export::MarkdownExport;
 use super::fts::schema::note_schema;
 use super::source::{note_filter, notes};
 use crate::ai::chat::db::{
     find_chat_session_by_id, get_non_background_sessions, session_has_background_tag,
 };
 use crate::core::fastembed_cache_dir;
+use crate::core::markdown::MarkdownExport;
 use crate::openai::{Message, Role};
 
 #[derive(Debug, Clone)]

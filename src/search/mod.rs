@@ -1,6 +1,5 @@
 pub mod aql;
 mod core;
-mod export;
 pub mod fts;
 pub use fts::utils::recreate_index;
 mod indexing;

@@ -2,11 +2,13 @@ use std::path::PathBuf;
 
 use anyhow::{Context, Result};
 use chrono::Local;
+use orgize::rowan::ast::AstNode;
 use tokio::fs;
 use tokio_rusqlite::Connection;
 use uuid::Uuid;
 
 use crate::cli::projects;
+use crate::core::markdown::MarkdownExport;
 use crate::core::orgmode;
 use crate::org;
 use crate::search::{index_single_file, remove_task_from_indexes};
@@ -460,6 +462,47 @@ async fn list_tasks_from_files(
         .collect();
 
     Ok(result)
+}
+
+/// Show the full details of a single task, including its body.
+///
+/// By default the task is rendered as markdown, using the same
+/// org-to-markdown converter the tasks API uses (`core::markdown::MarkdownExport`).
+/// With `raw` set, the unparsed org-mode headline is returned verbatim — exactly
+/// as it appears in the file.
+pub async fn run_show(
+    db: &Connection,
+    notes_path: &str,
+    id: &str,
+    raw: bool,
+) -> Result<String> {
+    let location = orgmode::find_task(db, notes_path, id).await?;
+
+    if raw {
+        let mut headline = location.content[location.range.start..location.range.end].to_string();
+        if !headline.ends_with('\n') {
+            headline.push('\n');
+        }
+        return Ok(headline);
+    }
+
+    // Render the task's headline (title + body) with the same converter the
+    // tasks API uses, so CLI output matches what the API returns for a task.
+    let headline_content = &location.content[location.range.start..location.range.end];
+    let config = org::todo_keywords_config();
+    let org = config.parse(headline_content);
+    let headline = org
+        .document()
+        .headlines()
+        .next()
+        .ok_or_else(|| anyhow::anyhow!("Could not locate headline for task {id}"))?;
+    let mut md = MarkdownExport::default();
+    md.render(headline.syntax());
+    let rendered = md.finish();
+
+    let mut out = rendered.trim_end().to_string();
+    out.push('\n');
+    Ok(out)
 }
 
 #[cfg(test)]
@@ -1337,6 +1380,56 @@ mod tests {
 
         let result = run_list(&db, &notes, Some("sprint-12"), Some("DONE")).await;
         assert!(result.is_ok());
+    }
+
+    // -----------------------------------------------------------------------
+    // run_show
+    // -----------------------------------------------------------------------
+
+    #[tokio::test]
+    async fn test_show_renders_markdown() {
+        let (db, _dir, notes, index) = test_env().await;
+        let (_path, id) = create_todo_task(&db, &notes, &index).await;
+        run_update(&db, &notes, &index, &id, None, Some("Investigate redirect"), None, None, &[], &[])
+            .await
+            .unwrap();
+
+        let output = run_show(&db, &notes, &id, false).await.unwrap();
+        assert!(output.contains("Test task"), "markdown output should contain title: {output}");
+        assert!(output.contains("Investigate redirect"), "markdown output should contain body: {output}");
+        assert!(
+            !output.contains("** ID**"),
+            "markdown output should be just the rendered task, not metadata: {output}"
+        );
+    }
+
+    #[tokio::test]
+    async fn test_show_raw_returns_headline_verbatim() {
+        let (db, _dir, notes, index) = test_env().await;
+
+        run_create(&db, &notes, &index, "Fix login", Some("Investigate redirect"), None, "TODO")
+            .await
+            .unwrap();
+        let (path, id) = create_todo_task(&db, &notes, &index).await;
+
+        let output = run_show(&db, &notes, &id, true).await.unwrap();
+
+        // Raw output should be the org headline exactly as stored in the file.
+        let content = fs::read_to_string(&path).unwrap();
+        assert!(
+            content.contains(output.trim()),
+            "raw output should match a substring of the file, got:\n{output}\n---file---\n{content}"
+        );
+        assert!(output.starts_with("* TODO Fix login"), "raw output should start with the headline: {output}");
+        assert!(output.contains("Investigate redirect"), "raw output should include body: {output}");
+    }
+
+    #[tokio::test]
+    async fn test_show_nonexistent_task() {
+        let (db, _dir, notes, _index) = test_env().await;
+
+        let result = run_show(&db, &notes, "nonexistent-uuid", false).await;
+        assert!(result.is_err());
     }
 
     // -----------------------------------------------------------------------

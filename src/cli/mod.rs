@@ -210,6 +210,13 @@ enum TasksCommand {
         #[arg(long)]
         project: String,
     },
+    /// Show full details of a task, including its body (markdown by default)
+    Show {
+        id: String,
+        /// Output the raw, unparsed org-mode headline as stored in the file
+        #[arg(long, default_value = "false")]
+        raw: bool,
+    },
 }
 
 #[derive(Subcommand)]
@@ -407,6 +414,10 @@ async fn run_dispatch(cli: Cli) -> Result<()> {
             }
             TasksCommand::Refile { id, project } => {
                 tasks::run_refile(&task_db, &notes_path, &index_path, &id, &project).await?;
+            }
+            TasksCommand::Show { id, raw } => {
+                let result = tasks::run_show(&task_db, &notes_path, &id, raw).await?;
+                print!("{result}");
             }
         }
         }

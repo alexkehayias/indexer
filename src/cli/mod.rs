@@ -223,6 +223,8 @@ enum SessionCommand {
     Summarize {
         id: String,
     },
+    /// List chat sessions with their IDs and titles
+    List {},
 }
 
 #[derive(Parser)]
@@ -421,6 +423,10 @@ async fn run_dispatch(cli: Cli) -> Result<()> {
                     .unwrap_or_else(|_| "gpt-4.1-mini".to_string());
                 let db = crate::core::db::async_db(&vec_db_path).await?;
                 session::run_summarize(db, &api_hostname, &api_key, &model, &id).await?;
+            }
+            SessionCommand::List {} => {
+                let db = crate::core::db::async_db(&vec_db_path).await?;
+                session::run_list(db).await?;
             }
         },
         None => {}

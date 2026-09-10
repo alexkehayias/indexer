@@ -31,6 +31,9 @@ pub use memory::MemoryTool;
 pub mod notify;
 pub use notify::NotifyTool;
 
+pub mod registry;
+pub use registry::{Tool, ToolContext, ToolRegistry};
+
 pub mod skills;
 pub use skills::{
     ListSkillsTool, LoadSkillTool, ReadSkillFileTool, SaveSkillTool, SearchSkillsTool,

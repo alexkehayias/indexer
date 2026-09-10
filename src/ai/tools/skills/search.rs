@@ -1,4 +1,5 @@
 use crate::ai::skills::{SkillRegistry, SkillSummary};
+use crate::ai::tools::registry::{Tool, ToolContext};
 use crate::openai::{Function, Parameters, Property, ToolCall, ToolType, parse_tool_args};
 use anyhow::{Error, Result};
 use async_trait::async_trait;
@@ -35,6 +36,12 @@ impl ToolCall for SearchSkillsTool {
 
     fn function_name(&self) -> String {
         self.function.name.clone()
+    }
+}
+
+impl Tool for SearchSkillsTool {
+    fn from_context(ctx: &ToolContext) -> Result<Self> {
+        Ok(Self::new(ctx.skill_registry_clone("search_skills")?))
     }
 }
 

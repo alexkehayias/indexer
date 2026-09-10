@@ -2,7 +2,7 @@ use crate::api::public::calendar::CalendarResponse;
 use crate::openai::{Function, Parameters, Property, ToolCall, ToolType, parse_tool_args};
 use anyhow::{Error, Result};
 use async_trait::async_trait;
-use reqwest;
+use super::registry::{Tool, ToolContext};
 use serde::{Deserialize, Serialize};
 use tokio_rusqlite::Connection;
 
@@ -138,6 +138,12 @@ impl ToolCall for CalendarTool {
 
     fn function_name(&self) -> String {
         self.function.name.clone()
+    }
+}
+
+impl Tool for CalendarTool {
+    fn from_context(ctx: &ToolContext) -> Result<Self> {
+        Ok(Self::new(ctx.db.clone(), &ctx.api_base_url))
     }
 }
 

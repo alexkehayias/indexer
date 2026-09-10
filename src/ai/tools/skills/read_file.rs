@@ -1,4 +1,5 @@
 use crate::ai::skills::SkillRegistry;
+use crate::ai::tools::registry::{Tool, ToolContext};
 use crate::openai::{Function, Parameters, Property, ToolCall, ToolType, parse_tool_args};
 use anyhow::{Error, Result};
 use async_trait::async_trait;
@@ -90,6 +91,12 @@ impl ToolCall for ReadSkillFileTool {
 
     fn function_name(&self) -> String {
         self.function.name.clone()
+    }
+}
+
+impl Tool for ReadSkillFileTool {
+    fn from_context(ctx: &ToolContext) -> Result<Self> {
+        Ok(Self::new(ctx.skill_registry_clone("read_skill_file")?))
     }
 }
 

@@ -2,7 +2,7 @@ use crate::api::public::notes::SearchResponse;
 use crate::openai::{Function, Parameters, Property, ToolCall, ToolType, parse_tool_args};
 use anyhow::{Error, Result};
 use async_trait::async_trait;
-use reqwest;
+use super::registry::{Tool, ToolContext};
 use serde::{Deserialize, Serialize};
 
 #[derive(Serialize)]
@@ -59,6 +59,12 @@ impl ToolCall for NoteSearchTool {
 
     fn function_name(&self) -> String {
         self.function.name.clone()
+    }
+}
+
+impl Tool for NoteSearchTool {
+    fn from_context(ctx: &ToolContext) -> Result<Self> {
+        Ok(Self::new(&ctx.api_base_url))
     }
 }
 

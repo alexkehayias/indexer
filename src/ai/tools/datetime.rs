@@ -1,5 +1,6 @@
 use crate::openai::{Function, Parameters, Property, RecoverableToolError, ToolCall, ToolType, parse_tool_args};
 use anyhow::{Error, Result};
+use super::registry::{Tool, ToolContext};
 use async_trait::async_trait;
 use chrono::{Days, Months, NaiveDate, NaiveDateTime, Utc};
 use serde::{Deserialize, Serialize};
@@ -54,6 +55,12 @@ impl ToolCall for DateTimeTool {
 
     fn function_name(&self) -> String {
         self.function.name.clone()
+    }
+}
+
+impl Tool for DateTimeTool {
+    fn from_context(_ctx: &ToolContext) -> Result<Self> {
+        Ok(Self::new())
     }
 }
 

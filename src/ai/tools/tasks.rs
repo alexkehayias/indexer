@@ -3,7 +3,7 @@ use crate::openai::{Function, Parameters, ToolCall, ToolType};
 use anyhow::{Error, Result};
 use async_trait::async_trait;
 use chrono::Utc;
-use reqwest;
+use super::registry::{Tool, ToolContext};
 use serde::{Deserialize, Serialize};
 
 #[derive(Serialize)]
@@ -56,6 +56,12 @@ impl ToolCall for TasksDueTodayTool {
 
     fn function_name(&self) -> String {
         self.function.name.clone()
+    }
+}
+
+impl Tool for TasksDueTodayTool {
+    fn from_context(ctx: &ToolContext) -> Result<Self> {
+        Ok(Self::new(&ctx.api_base_url))
     }
 }
 
@@ -138,6 +144,12 @@ impl ToolCall for TasksScheduledTodayTool {
 
     fn function_name(&self) -> String {
         self.function.name.clone()
+    }
+}
+
+impl Tool for TasksScheduledTodayTool {
+    fn from_context(ctx: &ToolContext) -> Result<Self> {
+        Ok(Self::new(&ctx.api_base_url))
     }
 }
 

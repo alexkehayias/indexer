@@ -1,5 +1,6 @@
 use crate::openai::{Function, Parameters, Property, ToolCall, ToolType, parse_tool_args};
 use anyhow::{Error, Result, anyhow};
+use super::registry::{Tool, ToolContext};
 use async_trait::async_trait;
 use serde::{Deserialize, Serialize};
 use tokio::fs;
@@ -131,6 +132,12 @@ impl ToolCall for MemoryTool {
 
     fn function_name(&self) -> String {
         self.function.name.clone()
+    }
+}
+
+impl Tool for MemoryTool {
+    fn from_context(ctx: &ToolContext) -> Result<Self> {
+        Ok(Self::new(&ctx.storage_path))
     }
 }
 

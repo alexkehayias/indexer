@@ -36,9 +36,9 @@ use uuid::Uuid;
 use crate::ai::chat::{
     ChatBuilder, InfiniteLoopDetector, InvisibleCharFilter, ToolSecurityMiddleware,
 };
-use crate::ai::tools::{BashTool, NotifyTool};
+use crate::ai::tools::{ToolContext, ToolRegistry};
 use crate::cli::channel::{event_stream_from_reader, sigterm, socket_path};
-use crate::openai::{BoxedToolCall, Message, Role};
+use crate::openai::{Message, Role};
 use tokio_rusqlite::Connection;
 
 /// Run the loop: subscribe to `channels`, feed events into an LLM chat.
@@ -62,6 +62,7 @@ pub async fn run(
     vapid_key_path: &str,
     channels: &[String],
     debounce: Duration,
+    tools: &[String],
     system_prompt: Option<&str>,
 ) -> Result<()> {
     if channels.is_empty() {
@@ -103,6 +104,24 @@ pub async fn run(
     // later turns even though the LLM transcript is rebuilt fresh each turn.
     let session_id = Uuid::new_v4().to_string();
 
+    // Build the tool registry once. The registry owns the context (including the
+    // fixed session_id), so tools rebuilt per event stay rooted in the same
+    // workspace. Defaults to bash+notify, preserving the original behavior.
+    let context = ToolContext {
+        db: db.clone(),
+        api_base_url: "http://localhost:2222".to_string(),
+        storage_path: storage_path.to_string(),
+        vapid_key_path: vapid_key_path.to_string(),
+        session_id: session_id.clone(),
+        skill_registry: None,
+    };
+    let registry = ToolRegistry::builtin(context);
+    let tool_names: Vec<String> = if tools.is_empty() {
+        vec!["bash".to_string(), "notify".to_string()]
+    } else {
+        tools.to_vec()
+    };
+
     // Main loop: read merged events, send to chat, print responses.
     // Ctrl-C or SIGTERM breaks out and exits cleanly.
     //
@@ -124,12 +143,7 @@ pub async fn run(
                 let Some((channel_id, event)) = event else { break; };
                 let user_msg = format!("[{}] {}", channel_id, event);
 
-                let bash_tool = BashTool::new(storage_path, &session_id);
-                let notify_tool = NotifyTool::new(db.clone(), vapid_key_path);
-                let tools: Vec<BoxedToolCall> = vec![
-                    Box::new(bash_tool) as BoxedToolCall,
-                    Box::new(notify_tool) as BoxedToolCall,
-                ];
+                let tools = registry.from_list(&tool_names)?;
 
                 let mut chat = ChatBuilder::new(api_hostname, api_key, model)
                     .transcript(vec![Message::new(Role::System, system_prompt)])

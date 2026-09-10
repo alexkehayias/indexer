@@ -1,5 +1,6 @@
 use crate::ai::skills::{validation::validate_skill_directory, validation::validate_skill_name};
 use crate::ai::tools::bash::SANDBOX_ROOT;
+use crate::ai::tools::registry::{Tool, ToolContext};
 use crate::ai::tools::skills::copy_dir;
 use crate::openai::{Function, Parameters, Property, ToolCall, ToolType};
 use anyhow::{Error, Result};
@@ -75,6 +76,13 @@ impl ToolCall for WorkOnSkillTool {
 
     fn function_name(&self) -> String {
         self.function.name.clone()
+    }
+}
+
+impl Tool for WorkOnSkillTool {
+    fn from_context(ctx: &ToolContext) -> Result<Self> {
+        let skills_dir = ctx.skills_dir("work_on_skill")?;
+        Ok(Self::new(&skills_dir, &ctx.storage_path, &ctx.session_id))
     }
 }
 

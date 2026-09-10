@@ -1,7 +1,7 @@
 use crate::openai::{Function, Parameters, Property, ToolCall, ToolType, parse_tool_args};
 use anyhow::{Error, Result};
 use async_trait::async_trait;
-use reqwest;
+use super::registry::{Tool, ToolContext};
 use serde::{Deserialize, Serialize};
 use serde_json::{Value, json};
 
@@ -54,6 +54,12 @@ impl ToolCall for WebSearchTool {
 
     fn function_name(&self) -> String {
         self.function.name.clone()
+    }
+}
+
+impl Tool for WebSearchTool {
+    fn from_context(ctx: &ToolContext) -> Result<Self> {
+        Ok(Self::new(&ctx.api_base_url))
     }
 }
 

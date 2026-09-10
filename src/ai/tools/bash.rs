@@ -1,5 +1,6 @@
 use crate::cli::bashkit::HqBuiltin;
 use crate::openai::{Function, Parameters, Property, ToolCall, ToolType, parse_tool_args};
+use super::registry::{Tool, ToolContext};
 use anyhow::{Error, Result};
 use async_trait::async_trait;
 use crate::bash::{Bash, PosixFs, RealFs, RealFsMode};
@@ -59,6 +60,12 @@ impl ToolCall for BashTool {
 
     fn function_name(&self) -> String {
         self.function.name.clone()
+    }
+}
+
+impl Tool for BashTool {
+    fn from_context(ctx: &ToolContext) -> Result<Self> {
+        Ok(Self::new(&ctx.storage_path, &ctx.session_id))
     }
 }
 

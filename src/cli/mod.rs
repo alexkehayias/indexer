@@ -100,6 +100,9 @@ enum Command {
         /// Coalesce lines arriving within this window (ms) into a single event
         #[arg(long, default_value_t = 250)]
         debounce_ms: u64,
+        /// Tool names to give the agent (repeat for multiple; defaults to bash+notify)
+        #[arg(long, num_args = 1..)]
+        tools: Vec<String>,
     },
     /// Set up a development worktree with herdr and Claude Code
     Develop {
@@ -307,6 +310,7 @@ async fn run_dispatch(cli: Cli) -> Result<()> {
             channel,
             prompt,
             debounce_ms,
+            tools,
         }) => {
             let api_hostname =
                 env::var("HQ_LOCAL_LLM_HOST").unwrap_or_else(|_| "https://api.openai.com".to_string());
@@ -325,6 +329,7 @@ async fn run_dispatch(cli: Cli) -> Result<()> {
                 &vapid_key_path,
                 &channel,
                 Duration::from_millis(debounce_ms),
+                &tools,
                 prompt.as_deref(),
             )
             .await?;

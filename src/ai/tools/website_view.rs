@@ -5,7 +5,7 @@ use crate::core::http::html_to_markdown;
 use crate::openai::{Function, Parameters, Property, RecoverableToolError, ToolCall, ToolType, parse_tool_args};
 use anyhow::{Context, Error, Result};
 use async_trait::async_trait;
-use reqwest;
+use super::registry::{Tool, ToolContext};
 use serde::{Deserialize, Serialize};
 use tokio::fs;
 
@@ -165,6 +165,12 @@ impl ToolCall for WebsiteViewTool {
 
     fn function_name(&self) -> String {
         self.function.name.clone()
+    }
+}
+
+impl Tool for WebsiteViewTool {
+    fn from_context(ctx: &ToolContext) -> Result<Self> {
+        Ok(Self::new(&ctx.storage_path, &ctx.session_id))
     }
 }
 

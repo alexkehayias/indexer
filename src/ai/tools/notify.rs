@@ -4,6 +4,7 @@ use crate::notify::{
 };
 use crate::openai::{Function, Parameters, Property, RecoverableToolError, ToolCall, ToolType, parse_tool_args};
 use anyhow::{Error, Result};
+use super::registry::{Tool, ToolContext};
 use async_trait::async_trait;
 use serde::{Deserialize, Serialize};
 use tokio_rusqlite::Connection;
@@ -96,6 +97,12 @@ impl ToolCall for NotifyTool {
 
     fn function_name(&self) -> String {
         self.function.name.clone()
+    }
+}
+
+impl Tool for NotifyTool {
+    fn from_context(ctx: &ToolContext) -> Result<Self> {
+        Ok(Self::new(ctx.db.clone(), &ctx.vapid_key_path))
     }
 }
 

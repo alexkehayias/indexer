@@ -10,6 +10,7 @@ use crate::ai::skills::SkillRegistry;
 use crate::api::state::AppState;
 use crate::core::{AppConfig, db::async_db};
 use crate::jobs::{DailyAgenda, GenerateSessionTitles, GitSync, spawn_periodic_job};
+use crate::loops::runtime::{self as loops, LoopRuntimeConfig};
 
 pub fn app(shared_state: Arc<RwLock<AppState>>) -> Router {
     let cors = CorsLayer::permissive();
@@ -64,6 +65,22 @@ pub async fn serve(host: String, port: String, config: AppConfig) {
         "Server started. Listening on {}",
         listener.local_addr().unwrap()
     );
+
+    // Respawn persisted channel loops before the periodic jobs (which move
+    // `config`). Failures are logged and skipped so a stale DB or a down
+    // publisher never blocks boot.
+    let loop_config = LoopRuntimeConfig {
+        db: db.clone(),
+        api_base_url: config.note_search_api_url.clone(),
+        api_hostname: config.openai_api_hostname.clone(),
+        api_key: config.openai_api_key.clone(),
+        model: config.openai_model.clone(),
+        storage_path: config.storage_path.clone(),
+        vapid_key_path: config.vapid_key_path.clone(),
+    };
+    if let Err(e) = loops::respawn_all(loop_config).await {
+        tracing::warn!("failed to respawn channel loops: {}", e);
+    }
 
     // Run background jobs. Each job is spawned in it's own tokio task
     // in a loop.

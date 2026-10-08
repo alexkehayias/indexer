@@ -31,14 +31,16 @@ use crate::ai::chat::{
     user_message_with_attachments,
 };
 use crate::ai::tools::{
-    BashTool, CalendarTool, DateTimeTool, EmailSearchTool, EmailUnreadTool, IterateTool,
-    MeetingSearchTool, MemoryTool, NoteSearchTool, NotifyTool, TasksDueTodayTool,
-    TasksScheduledTodayTool, WebSearchTool, WebsiteViewTool, run_in_sandbox,
+    BashTool, CalendarTool, CreateLoopTool, DateTimeTool, DeleteLoopTool, EmailSearchTool,
+    EmailUnreadTool, IterateTool, ListLoopsTool, MeetingSearchTool, MemoryTool, NoteSearchTool,
+    NotifyTool, TasksDueTodayTool, TasksScheduledTodayTool, WebSearchTool, WebsiteViewTool,
+    run_in_sandbox,
 };
 use crate::anthropic::claude::{ClaudeCodeSession, Delta, StreamEvent};
 use crate::api::state::AppState;
 use crate::api::utils::DetectDisconnect;
 use crate::core::AppConfig;
+use crate::loops::runtime::LoopRuntimeConfig;
 use crate::notify::{
     PushNotificationPayload, broadcast_push_notification, find_all_notification_subscriptions,
     mark_push_subscription_invalid,
@@ -284,6 +286,9 @@ async fn chat_handler(
         bash_tool,
         notify_tool,
         iterate_tool,
+        create_loop_tool,
+        list_loops_tool,
+        delete_loop_tool,
         skill_registry,
         openai_api_hostname,
         openai_api_key,
@@ -303,6 +308,17 @@ async fn chat_handler(
             vapid_key_path,
             ..
         } = &shared_state.config;
+
+        let loop_config = LoopRuntimeConfig {
+            db: db.clone(),
+            api_base_url: note_search_api_url.clone(),
+            api_hostname: openai_api_hostname.clone(),
+            api_key: openai_api_key.clone(),
+            model: openai_model.clone(),
+            storage_path: storage_path.clone(),
+            vapid_key_path: vapid_key_path.clone(),
+        };
+
         (
             NoteSearchTool::new(note_search_api_url),
             MeetingSearchTool::new(note_search_api_url),
@@ -318,6 +334,9 @@ async fn chat_handler(
             BashTool::new(storage_path, &session_id),
             NotifyTool::new(db.clone(), vapid_key_path),
             IterateTool::new(openai_api_hostname, openai_api_key, openai_model),
+            CreateLoopTool::new(loop_config.clone()),
+            ListLoopsTool::new(loop_config.clone()),
+            DeleteLoopTool::new(loop_config),
             shared_state.skill_registry.clone(),
             openai_api_hostname.clone(),
             openai_api_key.clone(),
@@ -344,6 +363,9 @@ async fn chat_handler(
         Box::new(bash_tool),
         Box::new(notify_tool),
         Box::new(iterate_tool),
+        Box::new(create_loop_tool),
+        Box::new(list_loops_tool),
+        Box::new(delete_loop_tool),
     ];
 
     let tools = all_tools;

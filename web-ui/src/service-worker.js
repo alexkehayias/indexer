@@ -1,17 +1,101 @@
 // A generic service worker for a PWA
-const CACHE_NAME = 'my-pwa-cache-v3';
+//
+// CACHE_NAME is the cache version. Bump it whenever any file under web-ui/src
+// changes: the new bytes make the browser install this worker, and `activate`
+// deletes the stale cache. This is how installed PWAs get updates without a
+// reinstall.
+const CACHE_NAME = 'my-pwa-cache-v4';
+
+// Everything the app shell needs, precached on install. `cache.addAll` is
+// all-or-nothing — a single 404 aborts the install — so keep this in sync with
+// the files under web-ui/src (see CLAUDE.md). Directory paths ('/search/')
+// resolve to their index.html and are what the in-app nav links request.
 const urlsToCache = [
+  // App shell
   '/',
   '/index.html',
   '/output.css',
+  '/manifest.json',
+  '/theme-init.js',
+  '/theme.js',
+  '/register-sw.js',
+
+  // Icons / images
+  '/favicon.ico',
+  '/icon512_maskable.png',
+  '/icon512_rounded.png',
+
+  // Shared components
+  '/components/index.js',
+  '/components/lib/html.js',
+  '/components/hq-badge.js',
+  '/components/hq-button.js',
+  '/components/hq-card.js',
+  '/components/hq-empty-state.js',
+  '/components/hq-file-tree.js',
+  '/components/hq-icon.js',
+  '/components/hq-modal.js',
+  '/components/hq-nav-rail.js',
+  '/components/hq-page-shell.js',
+  '/components/hq-pagination.js',
+  '/components/hq-select.js',
+  '/components/hq-spinner.js',
+  '/components/hq-stat-card.js',
+  '/components/hq-state-view.js',
+
+  // Search
+  '/search/',
   '/search/index.html',
   '/search/index.js',
+  '/search/note-modal.js',
+  '/search/search-result.js',
+
+  // Chat
+  '/chat/',
   '/chat/index.html',
   '/chat/index.js',
+  '/chat/attachment-bubble.js',
+  '/chat/message-bubble.js',
+  '/chat/img/dog1.png',
+  '/chat/img/dog2.png',
+  '/chat/img/dog3.png',
+
+  // Chat sessions
+  '/chat/sessions/',
   '/chat/sessions/index.html',
   '/chat/sessions/index.js',
+  '/chat/sessions/session-item.js',
+
+  // Metrics
+  '/metrics/',
   '/metrics/index.html',
   '/metrics/index.js',
+
+  // Skills
+  '/skills/',
+  '/skills/index.html',
+  '/skills/index.js',
+  '/skills/code-editor.js',
+
+  // Components gallery
+  '/components-gallery/',
+  '/components-gallery/index.html',
+  '/components-gallery/index.js',
+
+  // Vendor
+  '/vendor/echarts.simple.min.js',
+  '/vendor/highlight.min.js',
+  '/vendor/htm.js',
+  '/vendor/marked.min.js',
+  '/vendor/codemirror/codemirror.min.css',
+  '/vendor/codemirror/codemirror.min.js',
+  '/vendor/codemirror/theme/dracula.min.css',
+  '/vendor/codemirror/mode/javascript.min.js',
+  '/vendor/codemirror/mode/markdown.min.js',
+  '/vendor/codemirror/mode/python.min.js',
+  '/vendor/codemirror/mode/shell.min.js',
+  '/vendor/codemirror/mode/xml.min.js',
+  '/vendor/codemirror/mode/yaml.min.js',
 ];
 
 self.addEventListener('install', (event) => {

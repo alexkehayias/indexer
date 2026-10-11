@@ -28,29 +28,6 @@ fn loop_supervisor_config(conf: &ToolConfig) -> LoopSupervisorConfig {
     }
 }
 
-/// Whether a database error is SQLite's "no such table" failure, which means
-/// the schema is out of date and the user needs to run `hq migrate`.
-fn is_missing_table(err: &anyhow::Error) -> bool {
-    matches!(
-        err.downcast_ref::<tokio_rusqlite::Error>(),
-        Some(tokio_rusqlite::Error::Rusqlite(
-            rusqlite::Error::SqliteFailure(_, Some(msg))
-        )) if msg.contains("no such table")
-    )
-}
-
-/// Map a database failure to a recoverable error, pointing the user at
-/// `hq migrate` when the `loop` table is missing.
-fn db_error(action: &str, err: anyhow::Error) -> RecoverableToolError {
-    if is_missing_table(&err) {
-        RecoverableToolError::new(
-            "The loop storage table is missing. Run `hq migrate` to update the database, then try again.",
-        )
-    } else {
-        RecoverableToolError::new(&format!("Failed to {action} loop: {err}"))
-    }
-}
-
 #[derive(Serialize)]
 pub struct CreateLoopProps {
     pub channels: ArrayProperty,
@@ -96,9 +73,7 @@ impl ToolCall for CreateLoopTool {
         let id = Uuid::new_v4().to_string();
         let channels_display = fn_args.channels.join(", ");
 
-        ensure_channels(&self.config.db, &fn_args.channels)
-            .await
-            .map_err(|e| Error::from(db_error("create", e)))?;
+        ensure_channels(&self.config.db, &fn_args.channels).await?;
 
         let record = Loop {
             id: id.clone(),
@@ -110,16 +85,12 @@ impl ToolCall for CreateLoopTool {
             created_at: String::new(),
         };
 
-        insert_loop(&self.config.db, &record)
-            .await
-            .map_err(|e| Error::from(db_error("create", e)))?;
+        insert_loop(&self.config.db, &record).await?;
 
         // Persisted before starting so a failed start can be rolled back cleanly.
         if let Err(e) = supervisor::start(record, self.config.clone()).await {
             let _ = delete_loop(&self.config.db, &id).await;
-            return Err(Error::from(RecoverableToolError::new(&format!(
-                "Failed to start loop '{id}': {e}. Make sure the channel publisher is running."
-            ))));
+            return Err(e);
         }
 
         Ok(format!(
@@ -188,9 +159,7 @@ pub struct ListLoopsTool {
 #[async_trait]
 impl ToolCall for ListLoopsTool {
     async fn call(&self, _args: &str) -> Result<String, Error> {
-        let loops = find_all_loops(&self.config.db)
-            .await
-            .map_err(|e| Error::from(db_error("list", e)))?;
+        let loops = find_all_loops(&self.config.db).await?;
 
         if loops.is_empty() {
             return Ok("No loops are configured.".to_string());
@@ -275,9 +244,7 @@ impl ToolCall for DeleteLoopTool {
     async fn call(&self, args: &str) -> Result<String, Error> {
         let fn_args: DeleteLoopArgs = parse_tool_args(args)?;
 
-        let deleted = delete_loop(&self.config.db, &fn_args.id)
-            .await
-            .map_err(|e| Error::from(db_error("delete", e)))?;
+        let deleted = delete_loop(&self.config.db, &fn_args.id).await?;
         let stopped = supervisor::stop(&fn_args.id);
 
         if deleted == 0 && !stopped {
@@ -398,28 +365,5 @@ mod tests {
         let tool = ListLoopsTool::new(config);
         let out = tool.call("{}").await.unwrap();
         assert!(out.contains("No loops"));
-    }
-
-    #[test]
-    fn db_error_missing_table_points_at_migrate() {
-        let err: anyhow::Error = tokio_rusqlite::Error::Rusqlite(rusqlite::Error::SqliteFailure(
-            rusqlite::ffi::Error::new(1),
-            Some("no such table: loop".to_string()),
-        ))
-        .into();
-
-        assert!(is_missing_table(&err));
-        let recoverable = db_error("create", err);
-        assert!(recoverable.message.contains("hq migrate"));
-    }
-
-    #[test]
-    fn db_error_other_failure_includes_action_and_message() {
-        let err = anyhow::anyhow!("disk I/O error");
-
-        assert!(!is_missing_table(&err));
-        let recoverable = db_error("list", err);
-        assert!(recoverable.message.contains("Failed to list loop"));
-        assert!(recoverable.message.contains("disk I/O error"));
     }
 }

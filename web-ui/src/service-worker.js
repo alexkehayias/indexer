@@ -4,7 +4,7 @@
 // changes: the new bytes make the browser install this worker, and `activate`
 // deletes the stale cache. This is how installed PWAs get updates without a
 // reinstall.
-const CACHE_NAME = 'my-pwa-cache-v4';
+const CACHE_NAME = 'my-pwa-cache-v5';
 
 // Everything the app shell needs, precached on install. `cache.addAll` is
 // all-or-nothing — a single 404 aborts the install — so keep this in sync with
@@ -115,27 +115,52 @@ self.addEventListener('fetch', (event) => {
   // cache lookup, which resolves to undefined for these methods.
   if (request.method !== 'GET') return;
 
+  const url = new URL(request.url);
+
   // Never intercept API requests. SSE streams (e.g. /api/chat/{id}/stream)
   // must reach the network directly; cloning and caching a long-lived
   // streaming body breaks it.
-  if (new URL(request.url).pathname.startsWith('/api/')) return;
+  if (url.pathname.startsWith('/api/')) return;
 
-  // Network-first strategy: always try network first, fall back to cache if offline
+  // Only same-origin assets are ours to cache.
+  if (url.origin !== self.location.origin) return;
+
+  // HTML navigations: network-first so a freshly deployed app shell is picked
+  // up on reload, falling back to the cache when offline.
+  if (request.mode === 'navigate') {
+    event.respondWith(
+      fetch(request)
+        .then((response) => {
+          const responseClone = response.clone();
+          caches.open(CACHE_NAME).then((cache) => {
+            cache.put(request, responseClone);
+          });
+          return response;
+        })
+        .catch(async () => {
+          // respondWith requires a Response, so return a network error when
+          // there's no cached match.
+          return (await caches.match(request)) || Response.error();
+        }),
+    );
+    return;
+  }
+
+  // Static assets (JS/CSS/images): cache-first so repeat loads are instant.
+  // The cache is versioned — a deploy that bumps CACHE_NAME refills it — and
+  // the worker is only registered over HTTPS (see register-sw.js), so dev
+  // reloads always hit the network instead of serving stale files.
   event.respondWith(
-    fetch(request)
-      .then((response) => {
-        // Clone the response before caching it
+    caches.match(request).then((cached) => {
+      if (cached) return cached;
+      return fetch(request).then((response) => {
         const responseClone = response.clone();
         caches.open(CACHE_NAME).then((cache) => {
           cache.put(request, responseClone);
         });
         return response;
-      })
-      .catch(async () => {
-        // If network fails, try the cache. respondWith requires a Response, so
-        // return a network error response when there's no cached match.
-        return (await caches.match(request)) || Response.error();
-      }),
+      });
+    }),
   );
 });
 

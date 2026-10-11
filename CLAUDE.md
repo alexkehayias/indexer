@@ -74,6 +74,11 @@ The version bump changes the worker's bytes, which is what makes the browser
 install the new worker; its `activate` handler then deletes the stale cache.
 This is how updates reach installed PWAs without a reinstall.
 
+The worker is registered only over HTTPS (see `register-sw.js`), so the
+plain-HTTP dev server never runs it and dev reloads always hit the network. In
+production it serves static assets cache-first (instant repeat loads) and HTML
+navigations network-first (fresh app shell), falling back to the cache offline.
+
 ### Docker
 ```bash
 docker build -t hq:latest .

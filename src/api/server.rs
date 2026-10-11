@@ -10,7 +10,7 @@ use crate::ai::skills::SkillRegistry;
 use crate::api::state::AppState;
 use crate::core::{AppConfig, db::async_db};
 use crate::jobs::{DailyAgenda, GenerateSessionTitles, GitSync, spawn_periodic_job};
-use crate::loops::runtime::{self as loops, LoopRuntimeConfig};
+use crate::loops::supervisor::{self as loops, LoopSupervisorConfig};
 
 pub fn app(shared_state: Arc<RwLock<AppState>>) -> Router {
     let cors = CorsLayer::permissive();
@@ -69,7 +69,7 @@ pub async fn serve(host: String, port: String, config: AppConfig) {
     // Respawn persisted channel loops before the periodic jobs (which move
     // `config`). Failures are logged and skipped so a stale DB or a down
     // publisher never blocks boot.
-    let loop_config = LoopRuntimeConfig {
+    let loop_config = LoopSupervisorConfig {
         db: db.clone(),
         api_base_url: config.note_search_api_url.clone(),
         api_hostname: config.openai_api_hostname.clone(),

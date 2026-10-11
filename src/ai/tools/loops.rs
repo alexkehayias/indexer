@@ -2,17 +2,17 @@ use super::{Tool, ToolConfig};
 use crate::cli::channel::validate_channel_id;
 use crate::loops::db::{delete_loop, find_all_loops, insert_loop};
 use crate::loops::models::Loop;
-use crate::loops::runtime::{self, LoopRuntimeConfig};
+use crate::loops::supervisor::{self, LoopSupervisorConfig};
 use crate::openai::{
     Function, Parameters, Property, RecoverableToolError, ToolCall, ToolType, parse_tool_args,
 };
 use anyhow::{Error, Result};
 use async_trait::async_trait;
 use serde::{Deserialize, Serialize};
+use tokio_rusqlite::Connection;
 use uuid::Uuid;
 
 const DEFAULT_TOOLS: [&str; 2] = ["bash", "notify"];
-const DEFAULT_DEBOUNCE_MS: u64 = 250;
 
 /// JSON-schema property for an array parameter. `openai::Property` has no
 /// `items` field, so array params need their own struct.
@@ -33,9 +33,9 @@ impl ArrayProperty {
     }
 }
 
-/// Build a [`LoopRuntimeConfig`] from the shared tool context.
-fn loop_runtime_config(conf: &ToolConfig) -> LoopRuntimeConfig {
-    LoopRuntimeConfig {
+/// Build a [`LoopSupervisorConfig`] from the shared tool context.
+fn loop_supervisor_config(conf: &ToolConfig) -> LoopSupervisorConfig {
+    LoopSupervisorConfig {
         db: conf.db.clone(),
         api_base_url: conf.api_base_url.clone(),
         api_hostname: conf.api_hostname.clone(),
@@ -44,6 +44,23 @@ fn loop_runtime_config(conf: &ToolConfig) -> LoopRuntimeConfig {
         storage_path: conf.storage_path.clone(),
         vapid_key_path: conf.vapid_key_path.clone(),
     }
+}
+
+/// Ensure a `channel` row exists for each id so the loop's `loop_channel`
+/// links satisfy the foreign key. Existing rows are left untouched, preserving
+/// a channel's registered source and debounce.
+async fn ensure_channels(db: &Connection, channels: &[String]) -> Result<()> {
+    let channels = channels.to_vec();
+    db.call(move |conn| {
+        let mut stmt =
+            conn.prepare("INSERT OR IGNORE INTO channel (id, source) VALUES (?1, 'socket')")?;
+        for channel in &channels {
+            stmt.execute([channel])?;
+        }
+        Ok(())
+    })
+    .await
+    .map_err(Error::new)
 }
 
 /// Map a database failure to a recoverable error, pointing the user at
@@ -64,7 +81,6 @@ pub struct CreateLoopProps {
     pub channels: ArrayProperty,
     pub system_prompt: Property,
     pub tools: ArrayProperty,
-    pub debounce_ms: Property,
 }
 
 #[derive(Deserialize)]
@@ -74,8 +90,6 @@ struct CreateLoopArgs {
     system_prompt: Option<String>,
     #[serde(default)]
     tools: Option<Vec<String>>,
-    #[serde(default)]
-    debounce_ms: Option<u64>,
 }
 
 #[derive(Serialize)]
@@ -83,7 +97,7 @@ pub struct CreateLoopTool {
     pub r#type: ToolType,
     pub function: Function<CreateLoopProps>,
     #[serde(skip)]
-    config: LoopRuntimeConfig,
+    config: LoopSupervisorConfig,
 }
 
 #[async_trait]
@@ -106,6 +120,11 @@ impl ToolCall for CreateLoopTool {
 
         let id = Uuid::new_v4().to_string();
         let channels_display = fn_args.channels.join(", ");
+
+        ensure_channels(&self.config.db, &fn_args.channels)
+            .await
+            .map_err(|e| Error::from(db_error("create", e)))?;
+
         let record = Loop {
             id: id.clone(),
             channels: fn_args.channels,
@@ -113,7 +132,6 @@ impl ToolCall for CreateLoopTool {
             tools: fn_args
                 .tools
                 .unwrap_or_else(|| DEFAULT_TOOLS.iter().map(|s| s.to_string()).collect()),
-            debounce_ms: fn_args.debounce_ms.unwrap_or(DEFAULT_DEBOUNCE_MS) as i64,
             created_at: String::new(),
         };
 
@@ -122,7 +140,7 @@ impl ToolCall for CreateLoopTool {
             .map_err(|e| Error::from(db_error("create", e)))?;
 
         // Persisted before starting so a failed start can be rolled back cleanly.
-        if let Err(e) = runtime::start(record, self.config.clone()).await {
+        if let Err(e) = supervisor::start(record, self.config.clone()).await {
             let _ = delete_loop(&self.config.db, &id).await;
             return Err(Error::from(RecoverableToolError::new(&format!(
                 "Failed to start loop '{id}': {e}. Make sure the channel publisher is running."
@@ -143,12 +161,12 @@ impl Tool for CreateLoopTool {
     const NAME: &'static str = "create_loop";
 
     fn from_config(conf: &ToolConfig) -> Result<Self> {
-        Ok(Self::new(loop_runtime_config(conf)))
+        Ok(Self::new(loop_supervisor_config(conf)))
     }
 }
 
 impl CreateLoopTool {
-    pub fn new(config: LoopRuntimeConfig) -> Self {
+    pub fn new(config: LoopSupervisorConfig) -> Self {
         let function = Function {
             name: Self::NAME.to_string(),
             description: String::from(
@@ -166,10 +184,6 @@ impl CreateLoopTool {
                     ),
                     tools: ArrayProperty::strings(
                         "Optional tool names the loop's chat may call (defaults to [\"bash\", \"notify\"]).",
-                    ),
-                    debounce_ms: Property::new(
-                        "integer",
-                        "Optional debounce window in milliseconds for coalescing bursts of channel lines (default 250).",
                     ),
                 },
                 required: vec![String::from("channels")],
@@ -193,7 +207,7 @@ pub struct ListLoopsTool {
     pub r#type: ToolType,
     pub function: Function<ListLoopsProps>,
     #[serde(skip)]
-    config: LoopRuntimeConfig,
+    config: LoopSupervisorConfig,
 }
 
 #[async_trait]
@@ -207,7 +221,7 @@ impl ToolCall for ListLoopsTool {
             return Ok("No loops are configured.".to_string());
         }
 
-        let running = runtime::running_ids();
+        let running = supervisor::running_ids();
         let mut out = String::new();
         for record in &loops {
             let status = if running.iter().any(|id| id == &record.id) {
@@ -217,11 +231,10 @@ impl ToolCall for ListLoopsTool {
             };
             let prompt = record.system_prompt.as_deref().unwrap_or("(default)");
             out.push_str(&format!(
-                "- {} ({status})\n  channels: {}\n  tools: {}\n  debounce: {} ms\n  prompt: {}\n",
+                "- {} ({status})\n  channels: {}\n  tools: {}\n  prompt: {}\n",
                 record.id,
                 record.channels.join(", "),
                 record.tools.join(", "),
-                record.debounce_ms,
                 prompt,
             ));
         }
@@ -237,12 +250,12 @@ impl Tool for ListLoopsTool {
     const NAME: &'static str = "list_loops";
 
     fn from_config(conf: &ToolConfig) -> Result<Self> {
-        Ok(Self::new(loop_runtime_config(conf)))
+        Ok(Self::new(loop_supervisor_config(conf)))
     }
 }
 
 impl ListLoopsTool {
-    pub fn new(config: LoopRuntimeConfig) -> Self {
+    pub fn new(config: LoopSupervisorConfig) -> Self {
         let function = Function {
             name: Self::NAME.to_string(),
             description: String::from(
@@ -279,7 +292,7 @@ pub struct DeleteLoopTool {
     pub r#type: ToolType,
     pub function: Function<DeleteLoopProps>,
     #[serde(skip)]
-    config: LoopRuntimeConfig,
+    config: LoopSupervisorConfig,
 }
 
 #[async_trait]
@@ -290,7 +303,7 @@ impl ToolCall for DeleteLoopTool {
         let deleted = delete_loop(&self.config.db, &fn_args.id)
             .await
             .map_err(|e| Error::from(db_error("delete", e)))?;
-        let stopped = runtime::stop(&fn_args.id);
+        let stopped = supervisor::stop(&fn_args.id);
 
         if deleted == 0 && !stopped {
             return Err(Error::from(RecoverableToolError::new(&format!(
@@ -311,12 +324,12 @@ impl Tool for DeleteLoopTool {
     const NAME: &'static str = "delete_loop";
 
     fn from_config(conf: &ToolConfig) -> Result<Self> {
-        Ok(Self::new(loop_runtime_config(conf)))
+        Ok(Self::new(loop_supervisor_config(conf)))
     }
 }
 
 impl DeleteLoopTool {
-    pub fn new(config: LoopRuntimeConfig) -> Self {
+    pub fn new(config: LoopSupervisorConfig) -> Self {
         let function = Function {
             name: Self::NAME.to_string(),
             description: String::from(
@@ -345,7 +358,7 @@ mod tests {
     use super::*;
     use crate::core::db::{async_db, initialize_db};
 
-    async fn setup() -> (tempfile::TempDir, LoopRuntimeConfig) {
+    async fn setup() -> (tempfile::TempDir, LoopSupervisorConfig) {
         let dir = tempfile::tempdir().unwrap();
         let db = async_db(dir.path().to_str().unwrap()).await.unwrap();
         db.call(|conn| {
@@ -356,7 +369,7 @@ mod tests {
         .unwrap();
 
         let storage_path = dir.path().to_str().unwrap().to_string();
-        let config = LoopRuntimeConfig {
+        let config = LoopSupervisorConfig {
             db,
             api_base_url: "http://localhost".to_string(),
             api_hostname: "localhost".to_string(),
@@ -392,6 +405,53 @@ mod tests {
         let recoverable = err.downcast_ref::<RecoverableToolError>();
         assert!(recoverable.is_some());
         assert!(recoverable.unwrap().message.contains("Invalid channel"));
+    }
+
+    #[tokio::test]
+    async fn ensure_channels_creates_rows_and_preserves_existing() {
+        let (_dir, config) = setup().await;
+
+        // A channel that already exists with a non-socket source.
+        config
+            .db
+            .call(|conn| {
+                conn.execute(
+                    "INSERT INTO channel (id, source) VALUES ('gamma', 'server')",
+                    [],
+                )?;
+                Ok(())
+            })
+            .await
+            .unwrap();
+
+        ensure_channels(
+            &config.db,
+            &["alpha".to_string(), "beta".to_string(), "gamma".to_string()],
+        )
+        .await
+        .unwrap();
+
+        let rows = config
+            .db
+            .call(|conn| {
+                let mut stmt = conn.prepare("SELECT id, source FROM channel ORDER BY id")?;
+                let rows = stmt
+                    .query_map([], |i| Ok((i.get::<_, String>(0)?, i.get::<_, String>(1)?)))?
+                    .filter_map(Result::ok)
+                    .collect::<Vec<(String, String)>>();
+                Ok(rows)
+            })
+            .await
+            .unwrap();
+
+        assert_eq!(
+            rows,
+            vec![
+                ("alpha".to_string(), "socket".to_string()),
+                ("beta".to_string(), "socket".to_string()),
+                ("gamma".to_string(), "server".to_string()),
+            ]
+        );
     }
 
     #[tokio::test]

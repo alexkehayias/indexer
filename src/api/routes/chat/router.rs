@@ -40,7 +40,7 @@ use crate::anthropic::claude::{ClaudeCodeSession, Delta, StreamEvent};
 use crate::api::state::AppState;
 use crate::api::utils::DetectDisconnect;
 use crate::core::AppConfig;
-use crate::loops::runtime::LoopRuntimeConfig;
+use crate::loops::supervisor::LoopSupervisorConfig;
 use crate::notify::{
     PushNotificationPayload, broadcast_push_notification, find_all_notification_subscriptions,
     mark_push_subscription_invalid,
@@ -309,7 +309,7 @@ async fn chat_handler(
             ..
         } = &shared_state.config;
 
-        let loop_config = LoopRuntimeConfig {
+        let loop_config = LoopSupervisorConfig {
             db: db.clone(),
             api_base_url: note_search_api_url.clone(),
             api_hostname: openai_api_hostname.clone(),

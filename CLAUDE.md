@@ -58,6 +58,27 @@ cd web-ui && ../bin/biome check --write
 cd web-ui && ../bin/tailwindcss -i ./src/input.css -o ./src/output.css -m
 ```
 
+#### Service Worker Cache
+
+The PWA service worker (`web-ui/src/service-worker.js`) precaches the app shell
+into a versioned cache (`CACHE_NAME`). Whenever you add, remove, rename, or
+change a file under `web-ui/src/`, you must update the worker:
+
+1. Add/remove the file in the `urlsToCache` list. `cache.addAll` is
+   all-or-nothing — a single 404 aborts the install — so the list must match the
+   files on disk exactly. Page directories are listed both as `'/foo/'` (what
+   the nav links request) and `'/foo/index.html'`.
+2. Bump `CACHE_NAME` (e.g. `-v4` → `-v5`).
+
+The version bump changes the worker's bytes, which is what makes the browser
+install the new worker; its `activate` handler then deletes the stale cache.
+This is how updates reach installed PWAs without a reinstall.
+
+The worker is registered only over HTTPS (see `register-sw.js`), so the
+plain-HTTP dev server never runs it and dev reloads always hit the network. In
+production it serves static assets cache-first (instant repeat loads) and HTML
+navigations network-first (fresh app shell), falling back to the cache offline.
+
 ### Docker
 ```bash
 docker build -t hq:latest .

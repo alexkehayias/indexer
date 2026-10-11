@@ -159,6 +159,30 @@ pub struct ToolSecurityMiddleware {
     rules: Vec<ToolCallRule>,
 }
 
+/// Tools that read user data or untrusted external content. Once any of
+/// these has run in a session, the agent must not be allowed to create,
+/// list, or delete loops.
+///
+/// A loop is a persistent, self-directed agent: it keeps running across
+/// server restarts and executes tools (including `bash`) on the user's
+/// behalf for every event it receives. A webpage or email could otherwise
+/// steer the agent into spawning a loop that acts on the user's data, or
+/// into deleting a loop the user relies on.
+fn untrusted_data_tools() -> Vec<String> {
+    [
+        "view_website",
+        "web_search",
+        "get_unread_emails",
+        "search_emails",
+        "search_notes",
+        "search_meetings",
+        "get_calendar_events",
+    ]
+    .iter()
+    .map(|name| name.to_string())
+    .collect()
+}
+
 impl Default for ToolSecurityMiddleware {
     /// Returns a middleware with the default rule set.
     ///
@@ -216,6 +240,23 @@ impl Default for ToolSecurityMiddleware {
                     "search_emails".to_string(),
                     "get_calendar_events".to_string(),
                 ],
+            },
+            // Don't let untrusted content spawn, inspect, or tear down
+            // persistent loops. A loop runs autonomously across restarts,
+            // so creating one is a persistent action the user did not ask
+            // for, and deleting one can silently disable automation the
+            // user relies on.
+            ToolCallRule {
+                target: "create_loop".to_string(),
+                blocked_after: untrusted_data_tools(),
+            },
+            ToolCallRule {
+                target: "list_loops".to_string(),
+                blocked_after: untrusted_data_tools(),
+            },
+            ToolCallRule {
+                target: "delete_loop".to_string(),
+                blocked_after: untrusted_data_tools(),
             },
         ])
     }
@@ -805,6 +846,63 @@ mod tests {
         assert!(
             matches!(action, MiddlewareAction::Continue),
             "Expected Continue for bash after view_website, got {action:?}",
+        );
+    }
+
+    fn loop_call(name: &str, id: &str) -> FunctionCall {
+        FunctionCall {
+            function: crate::openai::FunctionCallFn {
+                name: name.into(),
+                arguments: r#"{"channels":["demo"]}"#.into(),
+            },
+            id: id.into(),
+            r#type: "function".into(),
+        }
+    }
+
+    #[tokio::test]
+    async fn test_security_rejects_create_loop_after_website() {
+        let mw = ToolSecurityMiddleware::default();
+        let transcript = vec![
+            Message::new(Role::User, "look at this"),
+            Message::new_tool_call_request(vec![view_website_call("call_1")]),
+            Message::new_tool_call_response("site content", "call_1"),
+            Message::new_tool_call_request(vec![loop_call("create_loop", "call_2")]),
+        ];
+        let action = mw.before_tool_calls(&transcript).await;
+        assert!(
+            matches!(action, MiddlewareAction::Reject(_)),
+            "Expected Reject for create_loop after view_website, got {action:?}",
+        );
+    }
+
+    #[tokio::test]
+    async fn test_security_rejects_delete_loop_after_search_notes() {
+        let mw = ToolSecurityMiddleware::default();
+        let transcript = vec![
+            Message::new(Role::User, "find my notes"),
+            Message::new_tool_call_request(vec![search_notes_call("call_1")]),
+            Message::new_tool_call_response("notes result", "call_1"),
+            Message::new_tool_call_request(vec![loop_call("delete_loop", "call_2")]),
+        ];
+        let action = mw.before_tool_calls(&transcript).await;
+        assert!(
+            matches!(action, MiddlewareAction::Reject(_)),
+            "Expected Reject for delete_loop after search_notes, got {action:?}",
+        );
+    }
+
+    #[tokio::test]
+    async fn test_security_allows_loop_tool_without_untrusted_data() {
+        let mw = ToolSecurityMiddleware::default();
+        let transcript = vec![
+            Message::new(Role::User, "make a loop"),
+            Message::new_tool_call_request(vec![loop_call("create_loop", "call_1")]),
+        ];
+        let action = mw.before_tool_calls(&transcript).await;
+        assert!(
+            matches!(action, MiddlewareAction::Continue),
+            "Expected Continue for create_loop without untrusted data, got {action:?}",
         );
     }
 

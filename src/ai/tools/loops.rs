@@ -1,37 +1,19 @@
-use super::{Tool, ToolConfig};
-use crate::cli::channel::validate_channel_id;
-use crate::loops::db::{delete_loop, find_all_loops, insert_loop};
-use crate::loops::models::Loop;
-use crate::loops::supervisor::{self, LoopSupervisorConfig};
-use crate::openai::{
-    Function, Parameters, Property, RecoverableToolError, ToolCall, ToolType, parse_tool_args,
-};
 use anyhow::{Error, Result};
 use async_trait::async_trait;
 use serde::{Deserialize, Serialize};
-use tokio_rusqlite::Connection;
 use uuid::Uuid;
 
+use super::{Tool, ToolConfig};
+use crate::cli::channel::validate_channel_id;
+use crate::loops::db::{delete_loop, ensure_channels, find_all_loops, insert_loop};
+use crate::loops::models::Loop;
+use crate::loops::supervisor::{self, LoopSupervisorConfig};
+use crate::openai::{
+    ArrayProperty, Function, Parameters, Property, RecoverableToolError, ToolCall, ToolType,
+    parse_tool_args,
+};
+
 const DEFAULT_TOOLS: [&str; 2] = ["bash", "notify"];
-
-/// JSON-schema property for an array parameter. `openai::Property` has no
-/// `items` field, so array params need their own struct.
-#[derive(Serialize)]
-pub struct ArrayProperty {
-    pub r#type: String,
-    pub description: String,
-    pub items: Property,
-}
-
-impl ArrayProperty {
-    fn strings(description: &str) -> Self {
-        Self {
-            r#type: "array".to_string(),
-            description: description.to_string(),
-            items: Property::new("string", "An item in the array."),
-        }
-    }
-}
 
 /// Build a [`LoopSupervisorConfig`] from the shared tool context.
 fn loop_supervisor_config(conf: &ToolConfig) -> LoopSupervisorConfig {
@@ -46,33 +28,26 @@ fn loop_supervisor_config(conf: &ToolConfig) -> LoopSupervisorConfig {
     }
 }
 
-/// Ensure a `channel` row exists for each id so the loop's `loop_channel`
-/// links satisfy the foreign key. Existing rows are left untouched, preserving
-/// a channel's registered source and debounce.
-async fn ensure_channels(db: &Connection, channels: &[String]) -> Result<()> {
-    let channels = channels.to_vec();
-    db.call(move |conn| {
-        let mut stmt =
-            conn.prepare("INSERT OR IGNORE INTO channel (id, source) VALUES (?1, 'socket')")?;
-        for channel in &channels {
-            stmt.execute([channel])?;
-        }
-        Ok(())
-    })
-    .await
-    .map_err(Error::new)
+/// Whether a database error is SQLite's "no such table" failure, which means
+/// the schema is out of date and the user needs to run `hq migrate`.
+fn is_missing_table(err: &anyhow::Error) -> bool {
+    matches!(
+        err.downcast_ref::<tokio_rusqlite::Error>(),
+        Some(tokio_rusqlite::Error::Rusqlite(
+            rusqlite::Error::SqliteFailure(_, Some(msg))
+        )) if msg.contains("no such table")
+    )
 }
 
 /// Map a database failure to a recoverable error, pointing the user at
 /// `hq migrate` when the `loop` table is missing.
 fn db_error(action: &str, err: anyhow::Error) -> RecoverableToolError {
-    let msg = err.to_string();
-    if msg.contains("no such table") {
+    if is_missing_table(&err) {
         RecoverableToolError::new(
             "The loop storage table is missing. Run `hq migrate` to update the database, then try again.",
         )
     } else {
-        RecoverableToolError::new(&format!("Failed to {action} loop: {msg}"))
+        RecoverableToolError::new(&format!("Failed to {action} loop: {err}"))
     }
 }
 
@@ -408,53 +383,6 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn ensure_channels_creates_rows_and_preserves_existing() {
-        let (_dir, config) = setup().await;
-
-        // A channel that already exists with a non-socket source.
-        config
-            .db
-            .call(|conn| {
-                conn.execute(
-                    "INSERT INTO channel (id, source) VALUES ('gamma', 'server')",
-                    [],
-                )?;
-                Ok(())
-            })
-            .await
-            .unwrap();
-
-        ensure_channels(
-            &config.db,
-            &["alpha".to_string(), "beta".to_string(), "gamma".to_string()],
-        )
-        .await
-        .unwrap();
-
-        let rows = config
-            .db
-            .call(|conn| {
-                let mut stmt = conn.prepare("SELECT id, source FROM channel ORDER BY id")?;
-                let rows = stmt
-                    .query_map([], |i| Ok((i.get::<_, String>(0)?, i.get::<_, String>(1)?)))?
-                    .filter_map(Result::ok)
-                    .collect::<Vec<(String, String)>>();
-                Ok(rows)
-            })
-            .await
-            .unwrap();
-
-        assert_eq!(
-            rows,
-            vec![
-                ("alpha".to_string(), "socket".to_string()),
-                ("beta".to_string(), "socket".to_string()),
-                ("gamma".to_string(), "server".to_string()),
-            ]
-        );
-    }
-
-    #[tokio::test]
     async fn delete_loop_unknown_id_is_recoverable() {
         let (_dir, config) = setup().await;
         let tool = DeleteLoopTool::new(config);
@@ -470,5 +398,28 @@ mod tests {
         let tool = ListLoopsTool::new(config);
         let out = tool.call("{}").await.unwrap();
         assert!(out.contains("No loops"));
+    }
+
+    #[test]
+    fn db_error_missing_table_points_at_migrate() {
+        let err: anyhow::Error = tokio_rusqlite::Error::Rusqlite(rusqlite::Error::SqliteFailure(
+            rusqlite::ffi::Error::new(1),
+            Some("no such table: loop".to_string()),
+        ))
+        .into();
+
+        assert!(is_missing_table(&err));
+        let recoverable = db_error("create", err);
+        assert!(recoverable.message.contains("hq migrate"));
+    }
+
+    #[test]
+    fn db_error_other_failure_includes_action_and_message() {
+        let err = anyhow::anyhow!("disk I/O error");
+
+        assert!(!is_missing_table(&err));
+        let recoverable = db_error("list", err);
+        assert!(recoverable.message.contains("Failed to list loop"));
+        assert!(recoverable.message.contains("disk I/O error"));
     }
 }

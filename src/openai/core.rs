@@ -224,6 +224,26 @@ impl Property {
     }
 }
 
+/// JSON-schema property for an array parameter. [`Property`] has no `items`
+/// field, so array params need their own struct.
+#[derive(Serialize)]
+pub struct ArrayProperty {
+    pub r#type: String,
+    pub description: String,
+    pub items: Property,
+}
+
+impl ArrayProperty {
+    /// An array-of-strings parameter, e.g. a list of channel ids.
+    pub fn strings(description: &str) -> Self {
+        Self {
+            r#type: "array".to_string(),
+            description: description.to_string(),
+            items: Property::new("string", "An item in the array."),
+        }
+    }
+}
+
 #[derive(Serialize)]
 pub struct Parameters<Props: Serialize> {
     pub r#type: String,

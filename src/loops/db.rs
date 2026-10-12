@@ -114,6 +114,28 @@ pub async fn delete_loop(db: &Connection, id: &str) -> Result<usize> {
     Ok(deleted.await?)
 }
 
+/// Ensure a `channel` row exists for each id so a loop's `loop_channel`
+/// links satisfy the foreign key. Existing rows are left untouched,
+/// preserving a channel's registered source and debounce.
+///
+/// Uses `ON CONFLICT(id) DO NOTHING` rather than `INSERT OR IGNORE` so only
+/// the duplicate-id conflict is suppressed; any other constraint failure
+/// still surfaces as an error.
+pub async fn ensure_channels(db: &Connection, channels: &[String]) -> Result<()> {
+    let channels = channels.to_vec();
+    let inserted = db.call(move |conn| {
+        let mut stmt = conn.prepare(
+            "INSERT INTO channel (id, source) VALUES (?1, 'socket')
+             ON CONFLICT(id) DO NOTHING",
+        )?;
+        for channel in &channels {
+            stmt.execute([channel])?;
+        }
+        Ok(())
+    });
+    Ok(inserted.await?)
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -249,5 +271,41 @@ mod tests {
         let (_dir, db) = setup_db().await;
         let deleted = delete_loop(&db, "does-not-exist").await.unwrap();
         assert_eq!(deleted, 0);
+    }
+
+    #[tokio::test]
+    async fn ensure_channels_creates_rows_and_preserves_existing() {
+        let (_dir, db) = setup_db().await;
+
+        // A channel that already exists with a non-socket source.
+        insert_channel(&db, "gamma", "server").await;
+
+        ensure_channels(
+            &db,
+            &["alpha".to_string(), "beta".to_string(), "gamma".to_string()],
+        )
+        .await
+        .unwrap();
+
+        let rows = db
+            .call(|conn| {
+                let mut stmt = conn.prepare("SELECT id, source FROM channel ORDER BY id")?;
+                let rows = stmt
+                    .query_map([], |i| Ok((i.get::<_, String>(0)?, i.get::<_, String>(1)?)))?
+                    .filter_map(Result::ok)
+                    .collect::<Vec<(String, String)>>();
+                Ok(rows)
+            })
+            .await
+            .unwrap();
+
+        assert_eq!(
+            rows,
+            vec![
+                ("alpha".to_string(), "socket".to_string()),
+                ("beta".to_string(), "socket".to_string()),
+                ("gamma".to_string(), "server".to_string()),
+            ]
+        );
     }
 }

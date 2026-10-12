@@ -34,6 +34,9 @@ pub use memory::MemoryTool;
 pub mod notify;
 pub use notify::NotifyTool;
 
+pub mod loops;
+pub use loops::{CreateLoopTool, DeleteLoopTool, ListLoopsTool};
+
 pub mod registry;
 pub use registry::{Tool, ToolConfig, ToolRegistry};
 

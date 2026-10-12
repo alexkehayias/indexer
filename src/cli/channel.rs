@@ -239,118 +239,150 @@ async fn bind_socket(path: &Path) -> Result<UnixListener> {
     }
 }
 
-/// Run the channel publisher.
+/// A bound channel publisher.
+///
+/// [`bind`](Publisher::bind) creates the socket and starts listening; the value
+/// is then consumed by [`serve`](Publisher::serve) to broadcast events from any
+/// stream. Binding is separated from serving so a caller can guarantee the
+/// socket is live before spawning the broadcast task — the server binds its
+/// default timer channels before respawning loops that connect to them.
+pub struct Publisher {
+    listener: UnixListener,
+    _guard: SocketGuard,
+}
+
+impl Publisher {
+    /// Bind the channel socket, recovering a stale socket file if present.
+    ///
+    /// Fails if another live publisher already owns the channel.
+    pub async fn bind(storage_path: &str, id: &str) -> Result<Self> {
+        let path = socket_path(storage_path, id)?;
+
+        // Ensure channels dir exists with 0o700 perms (macOS filesystem paths).
+        #[cfg(not(target_os = "linux"))]
+        {
+            let channels_dir = PathBuf::from(storage_path).join("channels");
+            tokio::fs::create_dir_all(&channels_dir).await?;
+            let perms = std::fs::Permissions::from_mode(0o700);
+            tokio::fs::set_permissions(&channels_dir, perms).await?;
+        }
+
+        let listener = bind_socket(&path).await?;
+
+        // Set 0o700 perms on the socket file (macOS).
+        #[cfg(not(target_os = "linux"))]
+        {
+            let perms = std::fs::Permissions::from_mode(0o700);
+            tokio::fs::set_permissions(&path, perms).await?;
+        }
+
+        // RAII cleanup guard: removes the socket file on Drop (macOS).
+        #[cfg(target_os = "linux")]
+        let _guard = SocketGuard::no_file();
+        #[cfg(not(target_os = "linux"))]
+        let _guard = SocketGuard::new_file(path.clone());
+
+        Ok(Self { listener, _guard })
+    }
+
+    /// Broadcast each event from `events` to all connected subscribers as a
+    /// newline-delimited string, until the stream ends.
+    ///
+    /// Accepts subscriber connections, verifying each peer's UID matches our
+    /// own. Sends are non-blocking: a slow subscriber never blocks others, and
+    /// a lagging subscriber misses events rather than stalling the publisher.
+    pub async fn serve(self, mut events: BoxStream<'static, String>) -> Result<()> {
+        let Self { listener, _guard } = self;
+
+        // Broadcast channel: non-blocking send, no head-of-line blocking.
+        // Lagging subscribers miss events (RecvError::Lagged).
+        let (broadcast_tx, _) = broadcast::channel::<String>(128);
+        let accept_tx = broadcast_tx.clone();
+
+        // Accept loop (spawned task). For each accepted connection:
+        // - Verify peer UID matches our UID (reject if not).
+        // - Subscribe to the broadcast channel; spawn a writer task that reads
+        //   events and writes `<msg>\n` to the subscriber's stream.
+        let our_uid = current_uid();
+        let accept_handle = tokio::spawn(async move {
+            loop {
+                match listener.accept().await {
+                    Ok((stream, _)) => {
+                        // Peer authentication: verify same UID.
+                        match stream.peer_cred() {
+                            Ok(creds) if creds.uid() == our_uid => {
+                                let mut rx = accept_tx.subscribe();
+                                let mut stream = stream;
+                                tokio::spawn(async move {
+                                    loop {
+                                        match rx.recv().await {
+                                            Ok(msg) => {
+                                                let mut buf = msg.into_bytes();
+                                                buf.push(b'\n');
+                                                if stream.write_all(&buf).await.is_err() {
+                                                    break;
+                                                }
+                                            }
+                                            Err(broadcast::error::RecvError::Lagged(n)) => {
+                                                warn!("subscriber lagged by {} messages", n);
+                                                continue;
+                                            }
+                                            Err(broadcast::error::RecvError::Closed) => break,
+                                        }
+                                    }
+                                });
+                            }
+                            Ok(_) => warn!("rejected subscriber: wrong UID"),
+                            Err(e) => warn!("failed to read peer creds: {}", e),
+                        }
+                    }
+                    Err(e) => {
+                        warn!("accept error: {e}");
+                        continue;
+                    }
+                }
+            }
+        });
+
+        // Forward every event to subscribers. broadcast::Sender::send() is
+        // non-blocking — a slow subscriber never blocks other subscribers.
+        while let Some(event) = events.next().await {
+            let _ = broadcast_tx.send(event);
+        }
+
+        // Cleanup: stop accept task, drop subscribers (they see EOF).
+        accept_handle.abort();
+
+        Ok(())
+    }
+}
+
+/// Run the channel publisher from stdin.
 ///
 /// Binds a Unix domain socket at `socket_path(id, storage_path)`, accepts
 /// subscriber connections (verifying peer UID matches our own), and broadcasts
 /// each stdin event to all active subscribers as a newline-delimited string.
 pub async fn run(storage_path: &str, id: &str, debounce: Duration) -> Result<()> {
-    let path = socket_path(storage_path, id)?;
+    let publisher = Publisher::bind(storage_path, id).await?;
+    let events = event_stream(debounce);
 
-    // Ensure channels dir exists with 0o700 perms (macOS filesystem paths).
-    #[cfg(not(target_os = "linux"))]
-    {
-        let channels_dir = PathBuf::from(storage_path).join("channels");
-        tokio::fs::create_dir_all(&channels_dir).await?;
-        let perms = std::fs::Permissions::from_mode(0o700);
-        tokio::fs::set_permissions(&channels_dir, perms).await?;
-    }
-
-    let listener = bind_socket(&path).await?;
-
-    // Set 0o700 perms on the socket file (macOS).
-    #[cfg(not(target_os = "linux"))]
-    {
-        let perms = std::fs::Permissions::from_mode(0o700);
-        tokio::fs::set_permissions(&path, perms).await?;
-    }
-
-    // RAII cleanup guard: removes the socket file on Drop (macOS).
-    #[cfg(target_os = "linux")]
-    let _guard = SocketGuard::no_file();
-    #[cfg(not(target_os = "linux"))]
-    let _guard = SocketGuard::new_file(path.clone());
-
-    // Broadcast channel: non-blocking send, no head-of-line blocking.
-    // Lagging subscribers miss events (RecvError::Lagged).
-    let (broadcast_tx, _) = broadcast::channel::<String>(128);
-    let accept_tx = broadcast_tx.clone();
-
-    // Accept loop (spawned task). For each accepted connection:
-    // - Verify peer UID matches our UID (reject if not).
-    // - Subscribe to the broadcast channel; spawn a writer task that reads
-    //   events and writes `<msg>\n` to the subscriber's stream.
-    let our_uid = current_uid();
-    let accept_handle = tokio::spawn(async move {
-        loop {
-            match listener.accept().await {
-                Ok((stream, _)) => {
-                    // Peer authentication: verify same UID.
-                    match stream.peer_cred() {
-                        Ok(creds) if creds.uid() == our_uid => {
-                            let mut rx = accept_tx.subscribe();
-                            let mut stream = stream;
-                            tokio::spawn(async move {
-                                loop {
-                                    match rx.recv().await {
-                                        Ok(msg) => {
-                                            let mut buf = msg.into_bytes();
-                                            buf.push(b'\n');
-                                            if stream.write_all(&buf).await.is_err() {
-                                                break;
-                                            }
-                                        }
-                                        Err(broadcast::error::RecvError::Lagged(n)) => {
-                                            warn!("subscriber lagged by {} messages", n);
-                                            continue;
-                                        }
-                                        Err(broadcast::error::RecvError::Closed) => break,
-                                    }
-                                }
-                            });
-                        }
-                        Ok(_) => warn!("rejected subscriber: wrong UID"),
-                        Err(e) => warn!("failed to read peer creds: {}", e),
-                    }
-                }
-                Err(e) => {
-                    warn!("accept error: {e}");
-                    continue;
-                }
-            }
-        }
-    });
-
-    // Read stdin, broadcast each event to all subscribers.
-    // broadcast::Sender::send() is non-blocking — a slow subscriber never
-    // blocks other subscribers.
-    let mut events = event_stream(debounce);
-    let main_loop = async {
-        while let Some(event) = events.next().await {
-            let _ = broadcast_tx.send(event);
-        }
-    };
-
-    // Ctrl-C / SIGTERM handling: race main loop against signals so the
-    // socket file is cleaned up via `_guard`'s Drop even on interrupt or
-    // `kill` (SIGTERM). SIGKILL cannot be caught — that's the only case
-    // where cleanup is skipped (stale socket recovery handles it on next bind).
+    // Ctrl-C / SIGTERM handling: race the broadcast loop against signals so the
+    // socket file is cleaned up via the publisher's guard even on interrupt or
+    // `kill` (SIGTERM). SIGKILL cannot be caught — that's the only case where
+    // cleanup is skipped (stale socket recovery handles it on next bind).
     tokio::select! {
-        _ = main_loop => {}
+        result = publisher.serve(events) => result,
         _ = tokio::signal::ctrl_c() => {
             eprintln!("\nShutting down...");
             flush_stdin();
+            Ok(())
         }
         _ = sigterm() => {
             eprintln!("\nShutting down (SIGTERM)...");
             flush_stdin();
+            Ok(())
         }
     }
-
-    // Cleanup: stop accept task, drop subscribers (they see EOF).
-    accept_handle.abort();
-
-    Ok(())
 }
 
 #[cfg(test)]

@@ -10,6 +10,7 @@ use crate::ai::skills::SkillRegistry;
 use crate::api::state::AppState;
 use crate::core::{AppConfig, db::async_db};
 use crate::jobs::{DailyAgenda, GenerateSessionTitles, GitSync, spawn_periodic_job};
+use crate::loops::channels::start_default_channels;
 use crate::loops::supervisor::{self as loops, LoopSupervisorConfig};
 
 pub fn app(shared_state: Arc<RwLock<AppState>>) -> Router {
@@ -65,6 +66,12 @@ pub async fn serve(host: String, port: String, config: AppConfig) {
         "Server started. Listening on {}",
         listener.local_addr().unwrap()
     );
+
+    // Start default timer channels before respawning loops: their sockets must
+    // be bound before loops connect to them. Failures are logged and skipped.
+    if let Err(e) = start_default_channels(&db, &config.storage_path).await {
+        tracing::warn!("failed to start default channels: {}", e);
+    }
 
     // Respawn persisted channel loops before the periodic jobs (which move
     // `config`). Failures are logged and skipped so a stale DB or a down

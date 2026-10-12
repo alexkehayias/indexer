@@ -40,6 +40,7 @@ use crate::anthropic::claude::{ClaudeCodeSession, Delta, StreamEvent};
 use crate::api::state::AppState;
 use crate::api::utils::DetectDisconnect;
 use crate::core::AppConfig;
+use crate::loops::channels::system_prompt_section;
 use crate::loops::supervisor::LoopSupervisorConfig;
 use crate::notify::{
     PushNotificationPayload, broadcast_push_notification, find_all_notification_subscriptions,
@@ -732,6 +733,9 @@ async fn chat_handler(
                 system_content.push_str(&skills_section);
             }
         }
+
+        // Describe channels and loops, including the default timer channels.
+        system_content.push_str(&system_prompt_section());
 
         tracing::debug!("System message: {}", &system_content);
 

@@ -1,9 +1,9 @@
 //! Default channels available to loops.
 //!
 //! These are server-owned channels: instead of a CLI publisher reading stdin,
-//! the server binds the channel socket and emits an event on a fixed interval.
-//! Loops subscribe to them exactly like any other channel, receiving events
-//! tagged `[timer-1h] tick <timestamp>`.
+//! the server publishes an event on a fixed interval through the in-process
+//! [`registry`](super::registry). Loops subscribe to them like any other
+//! channel, receiving events tagged `[timer-1h] tick <timestamp>`.
 //!
 //! [`start_default_channels`] ensures a `channel` row exists for each default
 //! channel (`source = 'server'`) and starts its publisher, so a persisted loop
@@ -19,7 +19,7 @@ use tokio::time::{Instant, interval_at};
 use tokio_rusqlite::Connection;
 
 use super::db::ensure_channels_with_source;
-use crate::cli::channel::Publisher;
+use super::registry;
 
 /// Default timer channels as `(id, interval)`.
 pub const DEFAULT_TIMER_CHANNELS: &[(&str, Duration)] = &[
@@ -45,36 +45,29 @@ pub async fn ensure_default_channels(db: &Connection) -> Result<()> {
 
 /// Ensure the default channel rows exist and start a publisher for each.
 ///
-/// Each publisher binds its socket before this returns, so a caller that
-/// respawns loops afterwards can rely on the sockets being live. A channel
-/// whose socket is already owned by another live publisher is logged and
-/// skipped, never blocking the rest.
-pub async fn start_default_channels(db: &Connection, storage_path: &str) -> Result<()> {
+/// Each publisher is registered in the in-process [`registry`] before this
+/// returns, so a caller that respawns loops afterwards can rely on the channels
+/// being live. Re-registering replaces any prior publisher (respawn on boot).
+pub async fn start_default_channels(db: &Connection) -> Result<()> {
     ensure_default_channels(db).await?;
     for &(id, interval) in DEFAULT_TIMER_CHANNELS {
-        match spawn_timer_channel(storage_path, id, interval).await {
-            Ok(_) => tracing::info!("started default timer channel '{}'", id),
-            Err(e) => tracing::warn!("failed to start default timer channel '{}': {}", id, e),
-        }
+        spawn_timer_channel(id, interval);
+        tracing::info!("started default timer channel '{}'", id);
     }
     Ok(())
 }
 
-/// Bind the socket for `id` and spawn a task publishing a tick every
-/// `interval`. Returns once the socket is bound.
-async fn spawn_timer_channel(
-    storage_path: &str,
-    id: &str,
-    interval: Duration,
-) -> Result<JoinHandle<()>> {
-    let publisher = Publisher::bind(storage_path, id).await?;
+/// Register `id` and spawn a task publishing a tick every `interval`.
+///
+/// Returns immediately; the publisher task runs until the process exits.
+fn spawn_timer_channel(id: &str, interval: Duration) -> JoinHandle<()> {
+    let publisher = registry::register(id);
     let id = id.to_string();
-    let handle = tokio::spawn(async move {
+    tokio::spawn(async move {
         if let Err(e) = publisher.serve(timer_events(interval)).await {
             tracing::warn!("timer channel '{}' stopped: {}", id, e);
         }
-    });
-    Ok(handle)
+    })
 }
 
 /// An infinite stream of tick events, one every `interval`.
@@ -138,9 +131,9 @@ pub fn system_prompt_section() -> String {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::cli::channel::socket_path;
     use crate::core::db::{async_db, initialize_db};
-    use tokio::io::{AsyncBufReadExt, BufReader};
+    use futures::StreamExt;
+    use uuid::Uuid;
 
     async fn setup_db() -> (tempfile::TempDir, Connection) {
         let dir = tempfile::tempdir().unwrap();
@@ -227,22 +220,17 @@ mod tests {
 
     #[tokio::test]
     async fn timer_channel_publishes_ticks_to_subscribers() {
-        let dir = tempfile::tempdir().unwrap();
-        let storage = dir.path().to_str().unwrap().to_string();
+        let id = format!("timer-test-{}", Uuid::new_v4());
 
-        let _handle = spawn_timer_channel(&storage, "timer-test", Duration::from_millis(20))
-            .await
-            .unwrap();
+        let _handle = spawn_timer_channel(&id, Duration::from_millis(20));
 
-        let path = socket_path(&storage, "timer-test").unwrap();
-        let stream = tokio::net::UnixStream::connect(&path).await.unwrap();
-        let mut reader = BufReader::new(stream);
-        let mut line = String::new();
-        tokio::time::timeout(Duration::from_secs(5), reader.read_line(&mut line))
+        let rx = registry::subscribe(&id).expect("timer channel is registered");
+        let mut events = registry::broadcast_stream(rx);
+        let event = tokio::time::timeout(Duration::from_secs(5), events.next())
             .await
             .expect("timed out waiting for tick")
             .unwrap();
 
-        assert!(line.trim().starts_with("tick "), "unexpected event: {line}");
+        assert!(event.starts_with("tick "), "unexpected event: {event}");
     }
 }

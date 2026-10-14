@@ -67,9 +67,10 @@ pub async fn serve(host: String, port: String, config: AppConfig) {
         listener.local_addr().unwrap()
     );
 
-    // Start default timer channels before respawning loops: their sockets must
-    // be bound before loops connect to them. Failures are logged and skipped.
-    if let Err(e) = start_default_channels(&db, &config.storage_path).await {
+    // Start default timer channels before respawning loops: their publishers
+    // must be registered before loops subscribe to them. Failures are logged
+    // and skipped.
+    if let Err(e) = start_default_channels(&db).await {
         tracing::warn!("failed to start default channels: {}", e);
     }
 

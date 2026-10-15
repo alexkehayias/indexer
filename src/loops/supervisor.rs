@@ -13,23 +13,22 @@
 
 use std::collections::HashMap;
 use std::sync::{Mutex, OnceLock};
-use std::time::Duration;
 
-use anyhow::{Result, anyhow};
+use anyhow::Result;
 use futures::StreamExt;
-use tokio::io::BufReader;
-use tokio::net::UnixStream;
+use futures::stream::BoxStream;
 use tokio::sync::mpsc;
 use tokio::task::JoinHandle;
 use tokio_rusqlite::Connection;
 
 use super::db::find_all_loops;
 use super::models::Loop;
+use super::subscribe::subscribe;
 use crate::ai::chat::{
     ChatBuilder, InfiniteLoopDetector, InvisibleCharFilter, ToolSecurityMiddleware,
 };
 use crate::ai::tools::{ToolConfig, ToolRegistry};
-use crate::cli::channel::{event_stream_from_reader, socket_path, validate_channel_id};
+use crate::cli::channel::validate_channel_id;
 use crate::openai::{Message, Role};
 
 /// Configuration for the loop supervisor, assembled by the caller from server
@@ -52,50 +51,19 @@ fn running() -> &'static Mutex<HashMap<String, JoinHandle<()>>> {
     RUNNING.get_or_init(|| Mutex::new(HashMap::new()))
 }
 
-/// Debounce window used when a channel has no `channel` row.
-const DEFAULT_DEBOUNCE_MS: u64 = 250;
-
-/// Debounce window for a channel, read from its `channel` row.
-///
-/// Falls back to [`DEFAULT_DEBOUNCE_MS`] when the channel has no row (e.g. a
-/// socket channel whose publisher has not registered yet).
-async fn channel_debounce_ms(db: &Connection, channel_id: &str) -> Result<u64> {
-    let id = channel_id.to_string();
-    let debounce = db
-        .call(move |conn| {
-            let mut stmt = conn.prepare("SELECT debounce_ms FROM channel WHERE id = ?1")?;
-            let mut rows = stmt.query_map([&id], |i| i.get::<_, i64>(0))?;
-            Ok(rows.next().transpose()?)
-        })
-        .await?;
-    Ok(debounce
-        .map(|ms| ms.max(0) as u64)
-        .unwrap_or(DEFAULT_DEBOUNCE_MS))
-}
-
 /// Start running `record`, replacing any loop already running under the same id.
 ///
-/// Every channel is validated and connected up front so a missing publisher
+/// Every channel is validated and subscribed up front so a missing publisher
 /// fails fast (before any task is spawned). All `.await`s happen before the
 /// [`RUNNING`] lock is touched.
 pub async fn start(record: Loop, config: LoopSupervisorConfig) -> Result<()> {
     let id = record.id.clone();
 
-    for channel in &record.channels {
-        validate_channel_id(channel)?;
-    }
-
     let mut streams = Vec::with_capacity(record.channels.len());
     for channel in &record.channels {
-        let path = socket_path(&config.storage_path, channel)?;
-        let stream = UnixStream::connect(&path).await.map_err(|_| {
-            anyhow!(
-                "channel '{}' not found — is the publisher running?",
-                channel
-            )
-        })?;
-        let debounce_ms = channel_debounce_ms(&config.db, channel).await?;
-        streams.push((channel.clone(), debounce_ms, stream));
+        validate_channel_id(channel)?;
+        let stream = subscribe(&config.db, &config.storage_path, channel).await?;
+        streams.push((channel.clone(), stream));
     }
 
     // Dedupe: abort any previous task for this id before replacing it.
@@ -149,18 +117,17 @@ pub async fn respawn_all(config: LoopSupervisorConfig) -> Result<()> {
 async fn run_loop(
     record: Loop,
     config: LoopSupervisorConfig,
-    streams: Vec<(String, u64, UnixStream)>,
+    streams: Vec<(String, BoxStream<'static, String>)>,
 ) {
-    // Merge event streams from all channels into one receiver. Each channel
-    // coalesces its line bursts with its own debounce window.
+    // Merge each channel's event stream into one receiver. The streams are
+    // already coalesced by source (socket debounce, or one event per server
+    // publish).
     let (event_tx, mut event_rx) = mpsc::channel::<(String, String)>(100);
 
-    for (channel_id, debounce_ms, stream) in streams {
-        let debounce = Duration::from_millis(debounce_ms);
+    for (channel_id, stream) in streams {
         let tx = event_tx.clone();
         tokio::spawn(async move {
-            let reader = BufReader::new(stream);
-            let mut events = event_stream_from_reader(reader, debounce);
+            let mut events = stream;
             while let Some(event) = events.next().await {
                 if tx.send((channel_id.clone(), event)).await.is_err() {
                     return; // main loop exited
@@ -237,6 +204,8 @@ async fn run_loop(
 mod tests {
     use super::*;
     use crate::core::db::{async_db, initialize_db};
+    use crate::loops::registry;
+    use uuid::Uuid;
 
     async fn setup() -> (tempfile::TempDir, LoopSupervisorConfig) {
         let dir = tempfile::tempdir().unwrap();
@@ -272,31 +241,34 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn channel_debounce_reads_row_and_defaults_when_absent() {
+    async fn start_with_registered_server_channel_runs() {
         let (_dir, config) = setup().await;
-
-        // No row -> built-in default.
-        assert_eq!(
-            channel_debounce_ms(&config.db, "absent").await.unwrap(),
-            DEFAULT_DEBOUNCE_MS
-        );
-
+        let channel = format!("srv-{}", Uuid::new_v4());
+        let channel_for_db = channel.clone();
         config
             .db
-            .call(|conn| {
+            .call(move |conn| {
                 conn.execute(
-                    "INSERT INTO channel (id, source, debounce_ms) VALUES (?1, ?2, ?3)",
-                    rusqlite::params!["alpha", "socket", 1000],
+                    "INSERT INTO channel (id, source) VALUES (?1, 'server')",
+                    [&channel_for_db],
                 )?;
                 Ok(())
             })
             .await
             .unwrap();
+        let _publisher = registry::register(&channel);
 
-        assert_eq!(
-            channel_debounce_ms(&config.db, "alpha").await.unwrap(),
-            1000
-        );
+        let record = Loop {
+            id: "loop-server".to_string(),
+            channels: vec![channel],
+            system_prompt: None,
+            tools: vec![],
+            created_at: String::new(),
+        };
+
+        start(record, config).await.unwrap();
+        assert!(running_ids().iter().any(|id| id == "loop-server"));
+        stop("loop-server");
     }
 
     #[tokio::test]

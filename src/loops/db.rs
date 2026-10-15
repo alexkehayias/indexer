@@ -114,26 +114,37 @@ pub async fn delete_loop(db: &Connection, id: &str) -> Result<usize> {
     Ok(deleted.await?)
 }
 
-/// Ensure a `channel` row exists for each id so a loop's `loop_channel`
-/// links satisfy the foreign key. Existing rows are left untouched,
-/// preserving a channel's registered source and debounce.
+/// Ensure a `channel` row exists for each id with the given source so a loop's
+/// `loop_channel` links satisfy the foreign key. Existing rows are left
+/// untouched, preserving a channel's registered source and debounce.
 ///
 /// Uses `ON CONFLICT(id) DO NOTHING` rather than `INSERT OR IGNORE` so only
 /// the duplicate-id conflict is suppressed; any other constraint failure
 /// still surfaces as an error.
-pub async fn ensure_channels(db: &Connection, channels: &[String]) -> Result<()> {
+pub async fn ensure_channels_with_source(
+    db: &Connection,
+    channels: &[String],
+    source: &str,
+) -> Result<()> {
     let channels = channels.to_vec();
+    let source = source.to_string();
     let inserted = db.call(move |conn| {
         let mut stmt = conn.prepare(
-            "INSERT INTO channel (id, source) VALUES (?1, 'socket')
+            "INSERT INTO channel (id, source) VALUES (?1, ?2)
              ON CONFLICT(id) DO NOTHING",
         )?;
         for channel in &channels {
-            stmt.execute([channel])?;
+            stmt.execute(rusqlite::params![channel, source])?;
         }
         Ok(())
     });
     Ok(inserted.await?)
+}
+
+/// Ensure a `channel` row exists for each id as a `socket` channel (the default
+/// for a loop's own subscriptions). See [`ensure_channels_with_source`].
+pub async fn ensure_channels(db: &Connection, channels: &[String]) -> Result<()> {
+    ensure_channels_with_source(db, channels, "socket").await
 }
 
 #[cfg(test)]

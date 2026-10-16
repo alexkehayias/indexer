@@ -23,7 +23,9 @@ use tokio_rusqlite::Connection;
 
 use super::db::find_all_loops;
 use super::models::Loop;
+use super::prompt::build_system_prompt;
 use super::subscribe::subscribe;
+use super::tools::resolve_loop_tools;
 use crate::ai::chat::{
     ChatBuilder, InfiniteLoopDetector, InvisibleCharFilter, ToolSecurityMiddleware,
 };
@@ -137,14 +139,7 @@ async fn run_loop(
     }
     drop(event_tx); // close our sender so event_rx drains then returns None
 
-    let default_prompt = "You are a helpful assistant. You receive events from one or more \
-         channels, each tagged as [channel-name] event. Respond to each \
-         event appropriately. You have access to a bash tool for running commands \
-         and a notify tool for sending push notifications.";
-    let system_prompt = record
-        .system_prompt
-        .clone()
-        .unwrap_or_else(|| default_prompt.to_string());
+    let system_prompt = build_system_prompt(record.system_prompt.as_deref());
 
     // session_id is the loop id, fixed for the lifetime of the loop so every
     // BashTool mounts the same workspace directory across events and restarts.
@@ -160,11 +155,7 @@ async fn run_loop(
         model: config.model.clone(),
     };
     let registry = ToolRegistry::builtin(context);
-    let tool_names: Vec<String> = if record.tools.is_empty() {
-        vec!["bash".to_string(), "notify".to_string()]
-    } else {
-        record.tools.clone()
-    };
+    let tool_names = resolve_loop_tools(&record.tools);
 
     // Each event is processed with only the system prompt and that event — no
     // accumulated transcript. Tools and chat are rebuilt per event.

@@ -39,7 +39,9 @@ use crate::ai::chat::{
 use crate::ai::tools::{ToolConfig, ToolRegistry};
 use crate::cli::channel::{event_stream_from_reader, sigterm, socket_path};
 use crate::core::markdown_render;
+use crate::loops::prompt::build_system_prompt;
 use crate::loops::subscribe::{ChannelSource, channel_meta};
+use crate::loops::tools::resolve_loop_tools;
 use crate::openai::{Message, Role};
 use tokio_rusqlite::Connection;
 
@@ -124,11 +126,7 @@ pub async fn run(db: Connection, config: LoopConfig<'_>) -> Result<()> {
     }
     drop(event_tx); // close our sender so event_rx drains then returns None
 
-    let default_prompt = "You are a helpful assistant. You receive events from one or more \
-         channels, each tagged as [channel-name] event. Respond to each \
-         event appropriately. You have access to a bash tool for running commands \
-         and a notify tool for sending push notifications.";
-    let system_prompt = system_prompt.unwrap_or(default_prompt);
+    let system_prompt = build_system_prompt(system_prompt);
 
     // session_id is fixed for the lifetime of the loop so every BashTool mounts
     // the same workspace directory. Files written in one turn are visible in
@@ -150,11 +148,7 @@ pub async fn run(db: Connection, config: LoopConfig<'_>) -> Result<()> {
         model: model.to_string(),
     };
     let registry = ToolRegistry::builtin(context);
-    let tool_names: Vec<String> = if tools.is_empty() {
-        vec!["bash".to_string(), "notify".to_string()]
-    } else {
-        tools.to_vec()
-    };
+    let tool_names = resolve_loop_tools(tools);
 
     // Main loop: read merged events, send to chat, print responses.
     // Ctrl-C or SIGTERM breaks out and exits cleanly.
@@ -180,7 +174,7 @@ pub async fn run(db: Connection, config: LoopConfig<'_>) -> Result<()> {
                 let tools = registry.from_list(&tool_names)?;
 
                 let mut chat = ChatBuilder::new(api_hostname, api_key, model)
-                    .transcript(vec![Message::new(Role::System, system_prompt)])
+                    .transcript(vec![Message::new(Role::System, &system_prompt)])
                     .tools(tools)
                     .middleware(vec![
                         Box::new(InfiniteLoopDetector::new(3)),

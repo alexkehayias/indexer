@@ -1,5 +1,5 @@
 use anyhow::Result;
-use clap::{Parser, Subcommand};
+use clap::{ArgAction, Parser, Subcommand};
 use std::env;
 use std::time::Duration;
 
@@ -45,8 +45,16 @@ enum Command {
     },
     /// Migrate indices and db schema
     Migrate {
-        #[arg(long, action, default_value = "false")]
+        /// Run the DB schema migration (default: on)
+        #[arg(
+            long,
+            default_value_t = true,
+            num_args = 0..=1,
+            default_missing_value = "true",
+            action = ArgAction::Set
+        )]
         db: bool,
+        /// Rebuild the search index (destructive; default: off)
         #[arg(long, action, default_value = "false")]
         index: bool,
     },

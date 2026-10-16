@@ -25,6 +25,7 @@ use super::db::find_all_loops;
 use super::models::Loop;
 use super::prompt::build_system_prompt;
 use super::subscribe::subscribe;
+use super::tools::resolve_loop_tools;
 use crate::ai::chat::{
     ChatBuilder, InfiniteLoopDetector, InvisibleCharFilter, ToolSecurityMiddleware,
 };
@@ -154,11 +155,7 @@ async fn run_loop(
         model: config.model.clone(),
     };
     let registry = ToolRegistry::builtin(context);
-    let tool_names: Vec<String> = if record.tools.is_empty() {
-        vec!["bash".to_string(), "notify".to_string()]
-    } else {
-        record.tools.clone()
-    };
+    let tool_names = resolve_loop_tools(&record.tools);
 
     // Each event is processed with only the system prompt and that event — no
     // accumulated transcript. Tools and chat are rebuilt per event.

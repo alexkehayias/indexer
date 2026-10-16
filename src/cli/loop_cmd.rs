@@ -41,6 +41,7 @@ use crate::cli::channel::{event_stream_from_reader, sigterm, socket_path};
 use crate::core::markdown_render;
 use crate::loops::prompt::build_system_prompt;
 use crate::loops::subscribe::{ChannelSource, channel_meta};
+use crate::loops::tools::resolve_loop_tools;
 use crate::openai::{Message, Role};
 use tokio_rusqlite::Connection;
 
@@ -147,11 +148,7 @@ pub async fn run(db: Connection, config: LoopConfig<'_>) -> Result<()> {
         model: model.to_string(),
     };
     let registry = ToolRegistry::builtin(context);
-    let tool_names: Vec<String> = if tools.is_empty() {
-        vec!["bash".to_string(), "notify".to_string()]
-    } else {
-        tools.to_vec()
-    };
+    let tool_names = resolve_loop_tools(tools);
 
     // Main loop: read merged events, send to chat, print responses.
     // Ctrl-C or SIGTERM breaks out and exits cleanly.

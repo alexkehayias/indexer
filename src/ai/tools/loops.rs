@@ -126,7 +126,7 @@ impl CreateLoopTool {
                     ),
                     system_prompt: Property::new(
                         "string",
-                        "Optional system prompt for the loop's chat. Defaults to a generic assistant prompt.",
+                        "Optional instructions for the loop, appended at the bottom of the autonomous-agent system prompt.",
                     ),
                     tools: ArrayProperty::strings(
                         "Optional tool names the loop's chat may call (defaults to [\"bash\", \"notify\"]).",

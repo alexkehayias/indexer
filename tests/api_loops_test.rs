@@ -49,7 +49,8 @@ mod tests {
                 [],
             )?;
             conn.execute(
-                "INSERT INTO loop (id, tools) VALUES ('loop-1', '[\"bash\"]')",
+                "INSERT INTO loop (id, system_prompt, tools)
+                 VALUES ('loop-1', 'You are a loop.', '[\"bash\"]')",
                 [],
             )?;
             conn.execute(

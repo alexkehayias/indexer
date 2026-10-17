@@ -104,9 +104,9 @@ enum Command {
         /// Channel ID to subscribe to (repeat for multiple channels)
         #[arg(long, num_args = 1..)]
         channel: Vec<String>,
-        /// System prompt for the LLM (defaults to a multi-channel event assistant)
+        /// System prompt for the LLM (required; describe what to do with each event)
         #[arg(long)]
-        prompt: Option<String>,
+        prompt: String,
         /// Coalesce lines arriving within this window (ms) into a single event
         #[arg(long, default_value_t = 250)]
         debounce_ms: u64,
@@ -375,7 +375,7 @@ async fn run_dispatch(cli: Cli) -> Result<()> {
                     channels: &channel,
                     tools: &tools,
                     debounce: Duration::from_millis(debounce_ms),
-                    system_prompt: prompt.as_deref(),
+                    system_prompt: &prompt,
                 },
             )
             .await?;

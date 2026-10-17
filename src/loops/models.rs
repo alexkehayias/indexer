@@ -4,7 +4,7 @@ use serde::{Deserialize, Serialize};
 pub struct Loop {
     pub id: String,
     pub channels: Vec<String>,
-    pub system_prompt: Option<String>,
+    pub system_prompt: String,
     pub tools: Vec<String>,
     pub created_at: String,
 }

@@ -210,9 +210,7 @@ async function showLoopDetail(id) {
     )}
     ${section(
       'System prompt',
-      loop.system_prompt
-        ? html`<pre class="overflow-auto rounded-[14px] bg-code p-4 font-mono text-[12.5px] leading-relaxed text-teal-tint">${loop.system_prompt}</pre>`
-        : html`<p class="text-sm text-muted">Using the built-in default prompt.</p>`,
+      html`<pre class="overflow-auto rounded-[14px] bg-code p-4 font-mono text-[12.5px] leading-relaxed text-teal-tint">${loop.system_prompt}</pre>`,
     )}
     ${section('Created', html`<p class="text-sm text-body">${loop.created_at}</p>`)}
   </div>`.value;

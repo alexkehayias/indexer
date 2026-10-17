@@ -55,7 +55,7 @@ pub struct LoopConfig<'a> {
     pub channels: &'a [String],
     pub tools: &'a [String],
     pub debounce: Duration,
-    pub system_prompt: Option<&'a str>,
+    pub system_prompt: &'a str,
 }
 
 /// Run the loop: subscribe to `channels`, feed events into an LLM chat.
@@ -123,12 +123,6 @@ pub async fn run(db: Connection, config: LoopConfig<'_>) -> Result<()> {
         });
     }
     drop(event_tx); // close our sender so event_rx drains then returns None
-
-    let default_prompt = "You are a helpful assistant. You receive events from one or more \
-         channels, each tagged as [channel-name] event. Respond to each \
-         event appropriately. You have access to a bash tool for running commands \
-         and a notify tool for sending push notifications.";
-    let system_prompt = system_prompt.unwrap_or(default_prompt);
 
     // session_id is fixed for the lifetime of the loop so every BashTool mounts
     // the same workspace directory. Files written in one turn are visible in

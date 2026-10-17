@@ -204,7 +204,7 @@ mod tests {
         Loop {
             id: "loop-1".to_string(),
             channels: vec!["alpha".to_string(), "beta".to_string()],
-            system_prompt: Some("You are a loop.".to_string()),
+            system_prompt: "You are a loop.".to_string(),
             tools: vec!["bash".to_string(), "note_search".to_string()],
             created_at: String::new(),
         }

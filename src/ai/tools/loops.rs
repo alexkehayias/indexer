@@ -8,12 +8,11 @@ use crate::cli::channel::validate_channel_id;
 use crate::loops::db::{delete_loop, ensure_channels, find_all_loops, insert_loop};
 use crate::loops::models::Loop;
 use crate::loops::supervisor::{self, LoopSupervisorConfig};
+use crate::loops::tools::resolve_loop_tools;
 use crate::openai::{
     ArrayProperty, Function, Parameters, Property, RecoverableToolError, ToolCall, ToolType,
     parse_tool_args,
 };
-
-const DEFAULT_TOOLS: [&str; 2] = ["bash", "notify"];
 
 /// Build a [`LoopSupervisorConfig`] from the shared tool context.
 fn loop_supervisor_config(conf: &ToolConfig) -> LoopSupervisorConfig {
@@ -83,9 +82,7 @@ impl ToolCall for CreateLoopTool {
             id: id.clone(),
             channels: fn_args.channels,
             system_prompt: fn_args.system_prompt,
-            tools: fn_args
-                .tools
-                .unwrap_or_else(|| DEFAULT_TOOLS.iter().map(|s| s.to_string()).collect()),
+            tools: resolve_loop_tools(fn_args.tools.as_deref().unwrap_or(&[])),
             created_at: String::new(),
         };
 
@@ -130,10 +127,10 @@ impl CreateLoopTool {
                     ),
                     system_prompt: Property::new(
                         "string",
-                        "System prompt for the loop's chat. Describe what the loop should do with each event; events arrive as \"[channel] <text>\" user messages.",
+                        "Instructions for the loop, appended to the autonomous-agent system prompt. Describe what the loop should do with each event; events arrive as \"[channel] <text>\" user messages.",
                     ),
                     tools: ArrayProperty::strings(
-                        "Optional tool names the loop's chat may call (defaults to [\"bash\", \"notify\"]).",
+                        "Optional tool names the loop's chat may call (defaults to [\"bash\", \"notify\"]). The bash tool is always included so the loop can read and write its state/ files.",
                     ),
                 },
                 required: vec![String::from("channels"), String::from("system_prompt")],

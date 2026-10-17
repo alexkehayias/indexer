@@ -83,7 +83,19 @@
           </span>
         </a>
       </nav>
+
+      <section id="notifications-prompt" class="mt-8 flex hidden items-center gap-4 rounded-tile bg-mist p-4">
+        <span class="flex size-10 shrink-0 items-center justify-center rounded-icon bg-teal-tint text-teal">
+          <hq-icon name="bell" size="lg"></hq-icon>
+        </span>
+        <div class="flex-1">
+          <p class="font-semibold text-ink">Enable notifications</p>
+          <p class="mt-0.5 text-sm text-muted">Get notified about your agenda, email, and reminders.</p>
+        </div>
+        <hq-button id="enable-notifications">Enable</hq-button>
+      </section>
     </main>
+    <script type="module" src="/notifications.js"></script>
     <script src="/register-sw.js"></script>
   </body>
 </html>

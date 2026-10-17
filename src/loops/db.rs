@@ -3,7 +3,7 @@ use std::collections::HashMap;
 use anyhow::Result;
 use tokio_rusqlite::Connection;
 
-use super::models::Loop;
+use super::models::{Channel, Loop};
 
 pub async fn find_all_loops(db: &Connection) -> Result<Vec<Loop>> {
     let loops = db.call(|conn| {
@@ -40,6 +40,27 @@ pub async fn find_all_loops(db: &Connection) -> Result<Vec<Loop>> {
         Ok(loops)
     });
     Ok(loops.await?)
+}
+
+/// List every channel, ordered by id.
+pub async fn find_all_channels(db: &Connection) -> Result<Vec<Channel>> {
+    let channels = db.call(|conn| {
+        let mut stmt =
+            conn.prepare("SELECT id, source, debounce_ms, created_at FROM channel ORDER BY id")?;
+        let channels = stmt
+            .query_map([], |i| {
+                Ok(Channel {
+                    id: i.get(0)?,
+                    source: i.get(1)?,
+                    debounce_ms: i.get(2)?,
+                    created_at: i.get(3)?,
+                })
+            })?
+            .filter_map(Result::ok)
+            .collect::<Vec<Channel>>();
+        Ok(channels)
+    });
+    Ok(channels.await?)
 }
 
 pub async fn find_loop(db: &Connection, id: &str) -> Result<Option<Loop>> {
@@ -257,6 +278,28 @@ mod tests {
             .await
             .unwrap();
         assert_eq!(remaining, 0);
+    }
+
+    #[tokio::test]
+    async fn find_all_channels_returns_rows_ordered_by_id() {
+        let (_dir, db) = setup_db().await;
+        insert_channel(&db, "beta", "server").await;
+        insert_channel(&db, "alpha", "socket").await;
+
+        let channels = find_all_channels(&db).await.unwrap();
+
+        let ids: Vec<&str> = channels.iter().map(|c| c.id.as_str()).collect();
+        assert_eq!(ids, vec!["alpha", "beta"]);
+        assert_eq!(channels[0].source, "socket");
+        assert_eq!(channels[0].debounce_ms, 250);
+        assert!(!channels[0].created_at.is_empty());
+        assert_eq!(channels[1].source, "server");
+    }
+
+    #[tokio::test]
+    async fn find_all_channels_empty_table_returns_empty() {
+        let (_dir, db) = setup_db().await;
+        assert!(find_all_channels(&db).await.unwrap().is_empty());
     }
 
     #[tokio::test]

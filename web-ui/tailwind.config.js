@@ -32,6 +32,10 @@ module.exports = {
           DEFAULT: 'var(--color-mauve)',
           tint: 'var(--color-mauve-tint)',
         },
+        cobalt: {
+          DEFAULT: 'var(--color-cobalt)',
+          tint: 'var(--color-cobalt-tint)',
+        },
         card: 'var(--color-card)',
         canvas: 'var(--color-canvas)',
         mist: 'var(--color-mist)',

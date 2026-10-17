@@ -119,6 +119,7 @@ function iconDemo(c) {
       <div class="flex items-center gap-2"><hq-icon name="chat"></hq-icon> <span class="text-sm">chat</span></div>
       <div class="flex items-center gap-2"><hq-icon name="sessions"></hq-icon> <span class="text-sm">sessions</span></div>
       <div class="flex items-center gap-2"><hq-icon name="skills"></hq-icon> <span class="text-sm">skills</span></div>
+      <div class="flex items-center gap-2"><hq-icon name="loops"></hq-icon> <span class="text-sm">loops</span></div>
       <div class="flex items-center gap-2"><hq-icon name="metrics"></hq-icon> <span class="text-sm">metrics</span></div>
       <div class="flex items-center gap-2"><hq-icon name="close"></hq-icon> <span class="text-sm">close</span></div>
       <div class="flex items-center gap-2"><hq-icon name="alert"></hq-icon> <span class="text-sm">alert</span></div>

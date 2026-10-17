@@ -2,10 +2,10 @@
  * <hq-nav-rail> — desktop (md+) 80px icon navigation rail.
  *
  * @attr {string} active - destination key to highlight: search|chat|sessions|
- *   skills|metrics. The active item is shown in its fixed accent tint.
+ *   skills|loops|metrics. The active item is shown in its fixed accent tint.
  *
  * Each destination keeps one accent everywhere it appears: Search = teal,
- * Chat = amber, Sessions = rust, Skills = moss, Metrics = mauve.
+ * Chat = amber, Sessions = rust, Skills = moss, Loops = cobalt, Metrics = mauve.
  *
  * Hidden below md; mobile pages navigate from the home tile grid. The host is
  * display:contents so the inner <aside> is the flex item.
@@ -23,6 +23,7 @@ const ITEMS = [
     icon: 'sessions',
   },
   { key: 'skills', href: '/skills/', label: 'Skills', icon: 'skills' },
+  { key: 'loops', href: '/loops/', label: 'Loops', icon: 'loops' },
   { key: 'metrics', href: '/metrics/', label: 'Metrics', icon: 'metrics' },
 ];
 
@@ -31,6 +32,7 @@ const ACCENT = {
   chat: 'bg-amber-tint text-amber',
   sessions: 'bg-rust-tint text-rust',
   skills: 'bg-moss-tint text-moss',
+  loops: 'bg-cobalt-tint text-cobalt',
   metrics: 'bg-mauve-tint text-mauve',
 };
 

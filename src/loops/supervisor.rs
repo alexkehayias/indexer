@@ -139,7 +139,7 @@ async fn run_loop(
     }
     drop(event_tx); // close our sender so event_rx drains then returns None
 
-    let system_prompt = build_system_prompt(record.system_prompt.as_deref());
+    let system_prompt = build_system_prompt(&record.system_prompt);
 
     // session_id is the loop id, fixed for the lifetime of the loop so every
     // BashTool mounts the same workspace directory across events and restarts.
@@ -225,7 +225,7 @@ mod tests {
         Loop {
             id: "loop-test".to_string(),
             channels: vec!["nonexistent-channel".to_string()],
-            system_prompt: None,
+            system_prompt: "You are a loop.".to_string(),
             tools: vec![],
             created_at: String::new(),
         }
@@ -252,7 +252,7 @@ mod tests {
         let record = Loop {
             id: "loop-server".to_string(),
             channels: vec![channel],
-            system_prompt: None,
+            system_prompt: "You are a loop.".to_string(),
             tools: vec![],
             created_at: String::new(),
         };

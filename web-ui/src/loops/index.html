@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="theme-color" content="#FAFBF8">
+    <link href="/output.css" rel="stylesheet">
+    <title>Loops</title>
+    <script src="/theme-init.js"></script>
+    <script type="module" src="/components/index.js"></script>
+  </head>
+  <body class="bg-canvas text-ink">
+    <hq-page-shell id="page-shell" meta-title="Loops" nav-rail="loops" back-href="/" back-label="Home">
+
+      <!-- ===== List View (tabs: Loops | Channels) ===== -->
+      <div id="list-view">
+        <div class="mx-auto w-full max-w-[1000px]">
+          <header class="mb-6">
+            <h1 class="text-3xl font-bold text-ink">Loops</h1>
+            <p class="mt-2 text-muted">Persistent subscribers and the channels that feed them</p>
+          </header>
+
+          <div id="tabs" role="tablist" class="mb-6 inline-flex rounded-[12px] border border-line bg-mist p-1">
+            <button id="tab-loops" type="button" role="tab" data-tab="loops" class="rounded-[9px] px-4 py-1.5 text-sm font-medium transition-colors">Loops</button>
+            <button id="tab-channels" type="button" role="tab" data-tab="channels" class="rounded-[9px] px-4 py-1.5 text-sm font-medium transition-colors">Channels</button>
+          </div>
+
+          <div id="loops-panel">
+            <hq-state-view id="loops-state" state="loading">
+              <div slot="empty">
+                <hq-empty-state icon="loops" title="No loops yet">
+                  Loops you create will show up here.
+                </hq-empty-state>
+              </div>
+              <div slot="error">
+                <hq-empty-state icon="alert" title="Failed to load loops">
+                  <span id="loops-error-msg">Failed to load loops</span>
+                  <hq-button id="loops-retry" slot="action" variant="secondary">Retry</hq-button>
+                </hq-empty-state>
+              </div>
+              <div slot="content">
+                <div id="loop-grid" class="grid grid-cols-1 gap-4 sm:grid-cols-2 md:grid-cols-3"></div>
+              </div>
+            </hq-state-view>
+          </div>
+
+          <div id="channels-panel" class="hidden">
+            <hq-state-view id="channels-state" state="loading">
+              <div slot="empty">
+                <hq-empty-state icon="loops" title="No channels yet">
+                  Channels appear when a publisher registers or a loop subscribes.
+                </hq-empty-state>
+              </div>
+              <div slot="error">
+                <hq-empty-state icon="alert" title="Failed to load channels">
+                  <span id="channels-error-msg">Failed to load channels</span>
+                  <hq-button id="channels-retry" slot="action" variant="secondary">Retry</hq-button>
+                </hq-empty-state>
+              </div>
+              <div slot="content">
+                <div id="channel-grid" class="grid grid-cols-1 gap-4 sm:grid-cols-2 md:grid-cols-3"></div>
+              </div>
+            </hq-state-view>
+          </div>
+        </div>
+      </div>
+
+      <!-- ===== Loop Detail (?loop=xxx) ===== -->
+      <div id="loop-detail-view" class="hidden">
+        <hq-card max-width="4xl">
+          <div slot="header">
+            <div class="flex items-start justify-between flex-wrap gap-4">
+              <div class="min-w-0">
+                <h1 class="text-2xl font-bold text-ink">Loop</h1>
+                <p id="loop-detail-id" class="mt-1 text-sm text-muted font-mono truncate"></p>
+              </div>
+              <div id="loop-detail-status" class="flex flex-wrap gap-2"></div>
+            </div>
+          </div>
+          <div id="loop-detail-body"></div>
+        </hq-card>
+      </div>
+
+      <!-- ===== Channel Detail (?channel=xxx) ===== -->
+      <div id="channel-detail-view" class="hidden">
+        <hq-card max-width="4xl">
+          <div slot="header">
+            <div class="flex items-start justify-between flex-wrap gap-4">
+              <div class="min-w-0">
+                <h1 id="channel-detail-id" class="text-2xl font-bold text-ink font-mono break-all"></h1>
+                <p class="mt-1 text-muted">Channel</p>
+              </div>
+              <div id="channel-detail-badges" class="flex flex-wrap gap-2"></div>
+            </div>
+          </div>
+          <div id="channel-detail-body"></div>
+        </hq-card>
+      </div>
+
+    </hq-page-shell>
+
+    <script type="module" src="index.js"></script>
+  </body>
+</html>

@@ -237,8 +237,8 @@ embedding float[384]
         "CREATE TABLE IF NOT EXISTS loop (
     -- UUID identifying the loop (also used as its bash session id)
     id TEXT PRIMARY KEY,
-    -- System prompt for the per-event chat (NULL = built-in default)
-    system_prompt TEXT,
+    -- System prompt for the per-event chat
+    system_prompt TEXT NOT NULL,
     -- JSON array of tool names available to the per-event chat
     tools TEXT NOT NULL,
     -- Creation timestamp
@@ -621,8 +621,8 @@ COMMIT;",
         "CREATE TABLE IF NOT EXISTS loop (
     -- UUID identifying the loop (also used as its bash session id)
     id TEXT PRIMARY KEY,
-    -- System prompt for the per-event chat (NULL = built-in default)
-    system_prompt TEXT,
+    -- System prompt for the per-event chat
+    system_prompt TEXT NOT NULL,
     -- JSON array of tool names available to the per-event chat
     tools TEXT NOT NULL,
     -- Creation timestamp
@@ -655,6 +655,69 @@ COMMIT;",
         Err(e) => println!("Create loop_channel table failed: {}", e),
     };
 
+    // 2026-10-16 Make loop.system_prompt required. It used to be nullable with a
+    // generic built-in default substituted at runtime, but that default only
+    // described event plumbing, not the task, so a promptless loop could not do
+    // anything useful. Loops without a prompt are dropped rather than backfilled.
+    //
+    // SQLite can't add NOT NULL in place, so rebuild the table. `notnull` is a
+    // reserved word and must be quoted here.
+    let loop_prompt_nullable: bool = db
+        .query_row(
+            "SELECT \"notnull\" = 0 FROM pragma_table_info('loop') WHERE name = 'system_prompt'",
+            [],
+            |row| row.get(0),
+        )
+        .unwrap_or(false);
+
+    if loop_prompt_nullable {
+        // The bundled SQLite sets SQLITE_DEFAULT_FOREIGN_KEYS=1, so DROP TABLE
+        // loop would trip loop_channel's REFERENCES loop(id). Disable enforcement
+        // for the rebuild (the pragma is a no-op inside a transaction, so it must
+        // be set before BEGIN) and restore it after. With FK off the RENAME
+        // leaves loop_channel's clause untouched, still pointing at `loop`.
+        let foreign_keys: bool = db
+            .query_row("PRAGMA foreign_keys", [], |row| row.get(0))
+            .unwrap_or(false);
+        if foreign_keys {
+            let _ = db.execute_batch("PRAGMA foreign_keys=OFF;");
+        }
+
+        let migrated_loop_table = db.execute_batch(
+            r"BEGIN;
+
+DELETE FROM loop_channel
+ WHERE loop_id IN (SELECT id FROM loop WHERE system_prompt IS NULL);
+
+DELETE FROM loop WHERE system_prompt IS NULL;
+
+CREATE TABLE loop_new (
+    id TEXT PRIMARY KEY,
+    system_prompt TEXT NOT NULL,
+    tools TEXT NOT NULL,
+    created_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))
+);
+
+INSERT INTO loop_new (id, system_prompt, tools, created_at)
+SELECT id, system_prompt, tools, created_at FROM loop;
+
+DROP TABLE loop;
+
+ALTER TABLE loop_new RENAME TO loop;
+
+COMMIT;",
+        );
+
+        if foreign_keys {
+            let _ = db.execute_batch("PRAGMA foreign_keys=ON;");
+        }
+
+        match migrated_loop_table {
+            Ok(_) => (),
+            Err(e) => println!("Migrate loop table failed: {}", e),
+        }
+    }
+
     Ok(())
 }
 
@@ -671,4 +734,72 @@ pub async fn async_db(path_to_db_file: &str) -> anyhow::Result<Connection, anyho
     }
     let db = Connection::open(format!("{}/vector.db", path_to_db_file)).await;
     Ok(db?)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    /// A pre-migration `loop` table has a nullable `system_prompt`. migrate_db
+    /// must tighten it to NOT NULL and drop the loops (and their channel links)
+    /// that never had a prompt.
+    #[test]
+    fn migrate_db_makes_loop_system_prompt_required() {
+        let db = rusqlite::Connection::open_in_memory().unwrap();
+        // Full schema so the earlier migrations find their tables; then revert
+        // just the loop table to its old nullable form to simulate an upgrade.
+        initialize_db(&db).unwrap();
+        db.execute_batch(
+            "DROP TABLE loop_channel;
+             DROP TABLE loop;
+             CREATE TABLE loop (
+                 id TEXT PRIMARY KEY,
+                 system_prompt TEXT,
+                 tools TEXT NOT NULL,
+                 created_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))
+             );
+             CREATE TABLE loop_channel (
+                 loop_id TEXT NOT NULL REFERENCES loop(id),
+                 channel_id TEXT NOT NULL REFERENCES channel(id),
+                 position INTEGER NOT NULL,
+                 PRIMARY KEY (loop_id, channel_id)
+             );
+             INSERT INTO channel (id, source) VALUES ('alpha', 'socket');
+             INSERT INTO loop (id, system_prompt, tools)
+                 VALUES ('kept', 'Do the thing.', '[\"bash\"]');
+             INSERT INTO loop (id, system_prompt, tools)
+                 VALUES ('dropped', NULL, '[\"bash\"]');
+             INSERT INTO loop_channel (loop_id, channel_id, position)
+                 VALUES ('kept', 'alpha', 0), ('dropped', 'alpha', 0);",
+        )
+        .unwrap();
+
+        migrate_db(&db).unwrap();
+
+        let not_null: bool = db
+            .query_row(
+                "SELECT \"notnull\" = 1 FROM pragma_table_info('loop') WHERE name = 'system_prompt'",
+                [],
+                |row| row.get(0),
+            )
+            .unwrap();
+        assert!(not_null, "system_prompt should be NOT NULL after migrating");
+
+        let ids: Vec<String> = db
+            .prepare("SELECT id FROM loop ORDER BY id")
+            .unwrap()
+            .query_map([], |row| row.get(0))
+            .unwrap()
+            .filter_map(|row| row.ok())
+            .collect();
+        assert_eq!(ids, vec!["kept"]);
+
+        let links: i64 = db
+            .query_row("SELECT COUNT(*) FROM loop_channel", [], |row| row.get(0))
+            .unwrap();
+        assert_eq!(
+            links, 1,
+            "the dropped loop's channel link should be removed"
+        );
+    }
 }

@@ -1,10 +1,12 @@
 //! API routes module
 
 pub mod calendar;
+pub mod channels;
 pub mod chat;
 pub mod email;
 pub mod files;
 mod kv;
+pub mod loops;
 pub mod metrics;
 pub mod notes;
 pub mod push;
@@ -42,6 +44,10 @@ pub fn router() -> Router<SharedState> {
         .nest("/metrics", metrics::router())
         // Skills routes
         .nest("/skills", skills::router())
+        // Channel loop routes
+        .nest("/loops", loops::router())
+        // Channels routes
+        .nest("/channels", channels::router())
         // Webhook routes
         .nest("/webhook", webhook::router())
 }

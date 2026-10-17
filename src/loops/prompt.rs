@@ -2,11 +2,11 @@
 //!
 //! Every loop iteration runs in a stateless event loop: the transcript is
 //! rebuilt per event, so the prompt teaches the model to treat files under
-//! `state/` as its only continuity. A caller-supplied prompt (the user's loop
+//! `state/` as its only continuity. The caller-supplied prompt (the user's loop
 //! instructions) is appended at the bottom, after a horizontal rule.
 
-/// Base system prompt for every loop. A user-supplied prompt, when present, is
-/// appended after a `---` separator by [`build_system_prompt`].
+/// Base system prompt for every loop. The caller-supplied prompt is appended
+/// after a `---` separator by [`build_system_prompt`].
 pub const LOOP_SYSTEM_PROMPT: &str = r#"You are an autonomous agent running in a stateless event loop. Each iteration, you receive one input event and must produce tool calls, text output, or both. The transcript is discarded between iterations — your only persistent context lives in files on disk.
 
 ## Every Iteration: READ → REASON → ACT → WRITE
@@ -82,12 +82,9 @@ future iterations know what's confirmed vs inferred.
 2. All other files in `state/` referenced by history or relevant to this event"#;
 
 /// Build the loop system prompt: the base prompt, with `user_prompt` appended
-/// at the bottom after a `---` separator when one is supplied.
-pub fn build_system_prompt(user_prompt: Option<&str>) -> String {
-    match user_prompt.map(str::trim).filter(|p| !p.is_empty()) {
-        Some(prompt) => format!("{LOOP_SYSTEM_PROMPT}\n\n---\n\n{prompt}"),
-        None => LOOP_SYSTEM_PROMPT.to_string(),
-    }
+/// at the bottom after a `---` separator.
+pub fn build_system_prompt(user_prompt: &str) -> String {
+    format!("{LOOP_SYSTEM_PROMPT}\n\n---\n\n{}", user_prompt.trim())
 }
 
 #[cfg(test)]
@@ -95,14 +92,8 @@ mod tests {
     use super::*;
 
     #[test]
-    fn no_user_prompt_is_just_the_base() {
-        assert_eq!(build_system_prompt(None), LOOP_SYSTEM_PROMPT);
-        assert_eq!(build_system_prompt(Some("   ")), LOOP_SYSTEM_PROMPT);
-    }
-
-    #[test]
     fn user_prompt_is_appended_at_the_bottom() {
-        let prompt = build_system_prompt(Some("Check the inbox every hour."));
+        let prompt = build_system_prompt("Check the inbox every hour.");
         assert!(prompt.starts_with(LOOP_SYSTEM_PROMPT));
         assert!(prompt.ends_with("---\n\nCheck the inbox every hour."));
     }

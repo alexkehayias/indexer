@@ -5,8 +5,8 @@
  * @attr {string} back-href - URL for the back link (default "/")
  * @attr {string} back-label - destination label, rendered as "Back to {label}" (default "Home")
  * @attr {string} nav-rail - optional destination key (search|chat|sessions|skills|
- *   metrics). When set, an <hq-nav-rail> is shown on md+ and the back link is
- *   hidden there (the rail handles desktop navigation).
+ *   loops|metrics). When set, an <hq-nav-rail> is shown on md+ and the back link
+ *   is hidden there (the rail handles desktop navigation).
  * @slot default - page body, placed inside <main>
  *
  * Light DOM: original children are moved into a <main> container on first connect.

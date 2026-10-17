@@ -37,8 +37,7 @@ pub struct CreateLoopProps {
 #[derive(Deserialize)]
 struct CreateLoopArgs {
     channels: Vec<String>,
-    #[serde(default)]
-    system_prompt: Option<String>,
+    system_prompt: String,
     #[serde(default)]
     tools: Option<Vec<String>>,
 }
@@ -67,6 +66,11 @@ impl ToolCall for CreateLoopTool {
                     "Invalid channel '{channel}': {e}"
                 ))));
             }
+        }
+        if fn_args.system_prompt.trim().is_empty() {
+            return Err(Error::from(RecoverableToolError::new(
+                "A system prompt is required — describe what the loop should do with each event.",
+            )));
         }
 
         let id = Uuid::new_v4().to_string();
@@ -123,13 +127,13 @@ impl CreateLoopTool {
                     ),
                     system_prompt: Property::new(
                         "string",
-                        "Optional instructions for the loop, appended at the bottom of the autonomous-agent system prompt.",
+                        "Instructions for the loop, appended to the autonomous-agent system prompt. Describe what the loop should do with each event; events arrive as \"[channel] <text>\" user messages.",
                     ),
                     tools: ArrayProperty::strings(
                         "Optional tool names the loop's chat may call (defaults to [\"bash\", \"notify\"]). The bash tool is always included so the loop can read and write its state/ files.",
                     ),
                 },
-                required: vec![String::from("channels")],
+                required: vec![String::from("channels"), String::from("system_prompt")],
                 additional_properties: false,
             },
             strict: false,
@@ -170,7 +174,7 @@ impl ToolCall for ListLoopsTool {
             } else {
                 "stopped"
             };
-            let prompt = record.system_prompt.as_deref().unwrap_or("(default)");
+            let prompt = &record.system_prompt;
             out.push_str(&format!(
                 "- {} ({status})\n  channels: {}\n  tools: {}\n  prompt: {}\n",
                 record.id,
@@ -333,17 +337,47 @@ mod tests {
         assert_eq!(properties["tools"]["items"]["type"], "string");
 
         let required = json["parameters"]["required"].as_array().unwrap();
-        assert_eq!(required, &vec![serde_json::json!("channels")]);
+        assert_eq!(
+            required,
+            &vec![
+                serde_json::json!("channels"),
+                serde_json::json!("system_prompt")
+            ]
+        );
     }
 
     #[tokio::test]
     async fn create_loop_invalid_channel_is_recoverable() {
         let (_dir, config) = setup().await;
         let tool = CreateLoopTool::new(config);
-        let err = tool.call(r#"{"channels": ["../bad"]}"#).await.unwrap_err();
+        let err = tool
+            .call(r#"{"channels": ["../bad"], "system_prompt": "Do the thing."}"#)
+            .await
+            .unwrap_err();
         let recoverable = err.downcast_ref::<RecoverableToolError>();
         assert!(recoverable.is_some());
         assert!(recoverable.unwrap().message.contains("Invalid channel"));
+    }
+
+    #[tokio::test]
+    async fn create_loop_requires_system_prompt() {
+        let (_dir, config) = setup().await;
+        let tool = CreateLoopTool::new(config);
+
+        // Omitted entirely: serde rejects the args before the handler runs.
+        let err = tool.call(r#"{"channels": ["alpha"]}"#).await.unwrap_err();
+        let recoverable = err.downcast_ref::<RecoverableToolError>();
+        assert!(recoverable.is_some());
+        assert!(recoverable.unwrap().message.contains("system_prompt"));
+
+        // Present but blank: rejected by the handler's validation.
+        let err = tool
+            .call(r#"{"channels": ["alpha"], "system_prompt": "  "}"#)
+            .await
+            .unwrap_err();
+        let recoverable = err.downcast_ref::<RecoverableToolError>();
+        assert!(recoverable.is_some());
+        assert!(recoverable.unwrap().message.contains("system prompt"));
     }
 
     #[tokio::test]

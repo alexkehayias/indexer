@@ -38,12 +38,20 @@ pub mod calendar {
     pub use crate::api::routes::calendar::public::*;
 }
 
+pub mod channels {
+    pub use crate::api::routes::channels::public::*;
+}
+
 pub mod email {
     pub use crate::api::routes::email::public::*;
 }
 
 pub mod files {
     pub use crate::api::routes::files::public::*;
+}
+
+pub mod loops {
+    pub use crate::api::routes::loops::public::*;
 }
 
 pub mod metrics {

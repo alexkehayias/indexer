@@ -57,7 +57,7 @@ pub struct LoopConfig<'a> {
     pub channels: &'a [String],
     pub tools: &'a [String],
     pub debounce: Duration,
-    pub system_prompt: Option<&'a str>,
+    pub system_prompt: &'a str,
 }
 
 /// Run the loop: subscribe to `channels`, feed events into an LLM chat.

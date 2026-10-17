@@ -315,9 +315,10 @@ pub struct DeletedChatSession {
 ///
 /// Deletes in dependency order inside a transaction: `chat_message` rows
 /// first (FK reference to session), then `session_tag` links (linking
-/// table cleanup), then the `session` row itself. SQLite FKs are off in
-/// this codebase (no `PRAGMA foreign_keys`), so manual ordering is
-/// required to avoid orphaned rows.
+/// table cleanup), then the `session` row itself. The bundled SQLite
+/// enables foreign keys by default (`SQLITE_DEFAULT_FOREIGN_KEYS=1`), so
+/// deleting the parent first would violate the `REFERENCES session(id)`
+/// constraints — the ordering is what keeps the deletes valid.
 ///
 /// Returns counts so the caller can report what was deleted. Does not
 /// error if the session doesn't exist — `session_existed: false` signals

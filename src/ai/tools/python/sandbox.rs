@@ -1,11 +1,12 @@
 //! Sandboxed Python execution via the embedded pybox WASM component.
 //!
-//! Adapted from the `pybox` project (`~/Projects/pybox`). The component is
-//! built with `componentize-py` from a guest module and runs with no ambient
-//! capabilities: no environment, network, subprocesses, or ctypes. The only
-//! host access granted is a single preopened directory — the session workspace —
-//! mounted at `/`, matching the bash tool. Memory and captured output are
-//! bounded, and a wall-clock timeout is enforced via engine epoch interruption.
+//! Adapted from the `pybox` project (https://github.com/alexkehayias/pybox).
+//! The component is built with `componentize-py` from a guest module and runs
+//! with no ambient capabilities: no environment, network, subprocesses, or
+//! ctypes. The only host access granted is a single preopened directory — the
+//! session workspace — mounted at `/`, matching the bash tool. Memory and
+//! captured output are bounded, and a wall-clock timeout is enforced via engine
+//! epoch interruption.
 
 use anyhow::{Context, Result, anyhow};
 use once_cell::sync::OnceCell;

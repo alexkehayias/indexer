@@ -6,6 +6,7 @@ use anyhow::{Error, Result};
 use async_trait::async_trait;
 use serde::{Deserialize, Serialize};
 use std::path::PathBuf;
+use tokio::fs;
 
 use super::sandbox::{ExecResult, shared_sandbox};
 
@@ -45,6 +46,10 @@ pub struct PythonTool {
 impl ToolCall for PythonTool {
     async fn call(&self, args: &str) -> Result<String, Error> {
         let fn_args: PythonArgs = parse_tool_args(args)?;
+
+        // The sandbox preopens this directory, so it must exist on the host
+        // first. Create it asynchronously rather than blocking the async worker.
+        fs::create_dir_all(&self.workspace_path).await?;
 
         // The sandbox is CPU-bound and can run for up to the timeout, so keep
         // it off the async runtime's worker threads.

@@ -182,11 +182,9 @@ impl PySandbox {
     /// `workspace` is exposed to guest code as the root directory (`/`) — the
     /// same directory the bash tool mounts — so files are shared between the two
     /// tools. Guest code cannot reach anything outside it, nor the host's
-    /// stdin/stdout/stderr, environment, or network.
+    /// stdin/stdout/stderr, environment, or network. The caller must ensure
+    /// `workspace` already exists on the host; the preopen fails otherwise.
     pub fn exec(&self, code: &str, workspace: &Path) -> Result<ExecResult> {
-        // The preopen below requires the host directory to already exist.
-        std::fs::create_dir_all(workspace)?;
-
         let stdout_pipe = MemoryOutputPipe::new(MAX_OUTPUT_BYTES);
         let stderr_pipe = MemoryOutputPipe::new(MAX_OUTPUT_BYTES);
 

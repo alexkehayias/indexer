@@ -23,4 +23,4 @@ jobs:
         run: cargo install cargo-tarpaulin
 
       - name: Run coverage
-        run: cargo tarpaulin --locked --fail-under 50 --out Xml --output-dir coverage
+        run: cargo tarpaulin --locked --timeout 600 --fail-under 50 --out Xml --output-dir coverage

@@ -33,8 +33,8 @@ use crate::ai::chat::{
 use crate::ai::tools::{
     BashTool, CalendarTool, CreateLoopTool, DateTimeTool, DeleteLoopTool, EmailSearchTool,
     EmailUnreadTool, IterateTool, ListLoopsTool, MeetingSearchTool, MemoryTool, NoteSearchTool,
-    NotifyTool, TasksDueTodayTool, TasksScheduledTodayTool, WebSearchTool, WebsiteViewTool,
-    run_in_sandbox,
+    NotifyTool, PythonTool, TasksDueTodayTool, TasksScheduledTodayTool, WebSearchTool,
+    WebsiteViewTool, run_in_sandbox,
 };
 use crate::anthropic::claude::{ClaudeCodeSession, Delta, StreamEvent};
 use crate::api::state::AppState;
@@ -285,6 +285,7 @@ async fn chat_handler(
         memory_tool,
         datetime_tool,
         bash_tool,
+        python_tool,
         notify_tool,
         iterate_tool,
         create_loop_tool,
@@ -333,6 +334,7 @@ async fn chat_handler(
             MemoryTool::new(storage_path),
             DateTimeTool::new(),
             BashTool::new(storage_path, &session_id),
+            PythonTool::new(storage_path, &session_id),
             NotifyTool::new(db.clone(), vapid_key_path),
             IterateTool::new(openai_api_hostname, openai_api_key, openai_model),
             CreateLoopTool::new(loop_config.clone()),
@@ -362,6 +364,7 @@ async fn chat_handler(
         Box::new(memory_tool),
         Box::new(datetime_tool),
         Box::new(bash_tool),
+        Box::new(python_tool),
         Box::new(notify_tool),
         Box::new(iterate_tool),
         Box::new(create_loop_tool),

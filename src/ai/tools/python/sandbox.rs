@@ -2,12 +2,14 @@
 //!
 //! Adapted from the `pybox` project (`~/Projects/pybox`). The component is
 //! built with `componentize-py` from a guest module and runs with no ambient
-//! capabilities: no filesystem, environment, network, subprocesses, or ctypes.
-//! Memory and captured output are bounded, and a wall-clock timeout is enforced
-//! via engine epoch interruption.
+//! capabilities: no environment, network, subprocesses, or ctypes. The only
+//! host access granted is a single preopened directory — the session workspace —
+//! mounted at `/`, matching the bash tool. Memory and captured output are
+//! bounded, and a wall-clock timeout is enforced via engine epoch interruption.
 
 use anyhow::{Context, Result, anyhow};
 use once_cell::sync::OnceCell;
+use std::path::Path;
 use std::sync::Arc;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::thread::{self, JoinHandle};
@@ -16,7 +18,7 @@ use std::time::Duration;
 use wasmtime::component::{Component, Linker};
 use wasmtime::{Cache, Config, Engine, Store, StoreLimits, StoreLimitsBuilder, Strategy};
 use wasmtime_wasi::p2::pipe::{MemoryInputPipe, MemoryOutputPipe};
-use wasmtime_wasi::{ResourceTable, WasiCtx, WasiCtxBuilder, WasiCtxView};
+use wasmtime_wasi::{DirPerms, FilePerms, ResourceTable, WasiCtx, WasiCtxBuilder, WasiCtxView};
 
 // Default timeout in seconds.
 const DEFAULT_TIMEOUT_SECONDS: u64 = 40;
@@ -172,18 +174,26 @@ impl PySandbox {
     /// Execute Python code in the sandbox.
     ///
     /// Returns the last expression's value plus any captured stdout/stderr.
-    /// Guest code has no access to the host's stdin/stdout/stderr, filesystem,
-    /// environment, or network.
-    pub fn exec(&self, code: &str) -> Result<ExecResult> {
+    /// `workspace` is exposed to guest code as the root directory (`/`) — the
+    /// same directory the bash tool mounts — so files are shared between the two
+    /// tools. Guest code cannot reach anything outside it, nor the host's
+    /// stdin/stdout/stderr, environment, or network.
+    pub fn exec(&self, code: &str, workspace: &Path) -> Result<ExecResult> {
+        // The preopen below requires the host directory to already exist.
+        std::fs::create_dir_all(workspace)?;
+
         let stdout_pipe = MemoryOutputPipe::new(MAX_OUTPUT_BYTES);
         let stderr_pipe = MemoryOutputPipe::new(MAX_OUTPUT_BYTES);
 
-        // Grant no ambient capabilities: empty stdin (reads see EOF
-        // immediately) and bounded in-memory stdout/stderr.
+        // Grant no ambient capabilities beyond the workspace: empty stdin (reads
+        // see EOF immediately) and bounded in-memory stdout/stderr. The single
+        // preopened directory is confined to `workspace` by WASI/cap-std, so
+        // `..` and symlinks cannot escape it.
         let mut builder = WasiCtxBuilder::new();
         builder.stdin(MemoryInputPipe::new(Vec::<u8>::new()));
         builder.stdout(stdout_pipe.clone());
         builder.stderr(stderr_pipe.clone());
+        builder.preopened_dir(workspace, "/", DirPerms::all(), FilePerms::all())?;
 
         let state = SandboxState {
             wasi_ctx: builder.build(),

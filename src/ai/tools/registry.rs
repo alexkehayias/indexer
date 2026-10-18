@@ -10,8 +10,9 @@ use crate::openai::{BoxedToolCall, ToolCall};
 use super::{
     BashTool, CalendarTool, CreateLoopTool, DateTimeTool, DeleteLoopTool, EmailSearchTool,
     EmailUnreadTool, IterateTool, ListLoopsTool, ListSkillsTool, LoadSkillTool, MeetingSearchTool,
-    MemoryTool, NoteSearchTool, NotifyTool, ReadSkillFileTool, SaveSkillTool, SearchSkillsTool,
-    TasksDueTodayTool, TasksScheduledTodayTool, WebSearchTool, WebsiteViewTool, WorkOnSkillTool,
+    MemoryTool, NoteSearchTool, NotifyTool, PythonTool, ReadSkillFileTool, SaveSkillTool,
+    SearchSkillsTool, TasksDueTodayTool, TasksScheduledTodayTool, WebSearchTool, WebsiteViewTool,
+    WorkOnSkillTool,
 };
 
 /// Shared dependencies needed to construct tools by name.
@@ -81,6 +82,7 @@ impl ToolRegistry {
             constructors: HashMap::new(),
         };
         registry.register::<BashTool>();
+        registry.register::<PythonTool>();
         registry.register::<WebsiteViewTool>();
         registry.register::<MemoryTool>();
         registry.register::<DateTimeTool>();

@@ -33,8 +33,8 @@ use crate::ai::chat::{
 use crate::ai::tools::{
     BashTool, CalendarTool, CreateLoopTool, DateTimeTool, DeleteLoopTool, EmailSearchTool,
     EmailUnreadTool, IterateTool, ListLoopsTool, MeetingSearchTool, MemoryTool, NoteSearchTool,
-    NotifyTool, TasksDueTodayTool, TasksScheduledTodayTool, WebSearchTool, WebsiteViewTool,
-    run_in_sandbox,
+    NotifyTool, PythonTool, TasksDueTodayTool, TasksScheduledTodayTool, WebSearchTool,
+    WebsiteViewTool, run_in_sandbox,
 };
 use crate::anthropic::claude::{ClaudeCodeSession, Delta, StreamEvent};
 use crate::api::state::AppState;
@@ -362,6 +362,7 @@ async fn chat_handler(
         Box::new(memory_tool),
         Box::new(datetime_tool),
         Box::new(bash_tool),
+        Box::new(PythonTool::new()),
         Box::new(notify_tool),
         Box::new(iterate_tool),
         Box::new(create_loop_tool),

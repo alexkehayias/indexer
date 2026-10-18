@@ -6,7 +6,7 @@
 //! list.
 
 /// Tools a loop uses when none are configured.
-pub const DEFAULT_LOOP_TOOLS: [&str; 2] = ["bash", "notify"];
+pub const DEFAULT_LOOP_TOOLS: [&str; 3] = ["bash", "python", "notify"];
 
 /// Tools a loop always has, regardless of its configured list. `bash` backs the
 /// `state/` file protocol in the loop system prompt.
@@ -39,7 +39,10 @@ mod tests {
 
     #[test]
     fn empty_config_uses_defaults() {
-        assert_eq!(resolve_loop_tools(&[]), names(&["bash", "notify"]));
+        assert_eq!(
+            resolve_loop_tools(&[]),
+            names(&["bash", "python", "notify"])
+        );
     }
 
     #[test]

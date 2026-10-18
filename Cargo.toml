@@ -2,7 +2,7 @@
 name = "hq"
 version = "0.1.0"
 edition = "2024"
-rust-version = "1.89"
+rust-version = "1.91"
 
 [dependencies]
 anyhow = "1.0.103"
@@ -52,9 +52,9 @@ libc = "0.2"
 pulldown-cmark = { version = "0.13.4", default-features = false }
 terminal_size = "0.4.4"
 unicode-width = "0.2.2"
-wasmtime = { version = "41", features = ["winch"] }
-wasmtime-wasi = "41"
-wasmtime-wasi-io = "41"
+wasmtime = { version = "42.0.2", features = ["winch"] }
+wasmtime-wasi = "42.0.2"
+wasmtime-wasi-io = "42.0.2"
 
 # Vendored bashkit deps (previously transitive via bashkit)
 bitflags = "2"

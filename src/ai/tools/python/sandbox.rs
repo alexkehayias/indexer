@@ -108,7 +108,9 @@ impl PySandbox {
         // Enable the compilation cache, using the default cache configuration
         // settings.
         cfg.cache(Some(Cache::from_file(None)?));
-        let engine = Engine::new(&cfg).context("Failed to create wasm engine")?;
+        let engine = Engine::new(&cfg)
+            .map_err(anyhow::Error::from)
+            .context("Failed to create wasm engine")?;
 
         Self::from_engine(engine, timeout_secs)
     }
@@ -136,7 +138,9 @@ impl PySandbox {
         // Enable epoch interruption for timeout support
         config.epoch_interruption(true);
 
-        let engine = Engine::new(&config).context("Failed to create wasm engine")?;
+        let engine = Engine::new(&config)
+            .map_err(anyhow::Error::from)
+            .context("Failed to create wasm engine")?;
 
         Self::from_engine(engine, timeout_secs)
     }
@@ -145,6 +149,7 @@ impl PySandbox {
         let timeout_seconds = timeout_secs.unwrap_or(DEFAULT_TIMEOUT_SECONDS);
 
         let component = Component::new(&engine, SANDBOX_WASM)
+            .map_err(anyhow::Error::from)
             .context("Failed to load embedded sandbox.wasm")?;
 
         // A single background thread advances the engine epoch for all stores.
@@ -212,7 +217,7 @@ impl PySandbox {
         store.set_epoch_deadline(deadline);
         store.epoch_deadline_callback(|mut ctx| {
             ctx.data_mut().timed_out = true;
-            anyhow::bail!("execution timed out")
+            Err(wasmtime::Error::msg("execution timed out"))
         });
 
         // Set up linker with WASI

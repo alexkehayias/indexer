@@ -120,7 +120,9 @@ pub fn system_prompt_section() -> String {
          published to a channel runs an LLM turn with the loop's system prompt and tools. \
          Use the `create_loop` tool to create a loop subscribed to one or more channels, \
          `list_loops` to inspect them, and `delete_loop` to remove one. Loops keep running \
-         across server restarts.\n\n\
+         across server restarts. Use `create_channel` to create a channel you own and \
+         `emit_channel` to publish messages to it; only the agent that created a channel \
+         can emit to it.\n\n\
          The following timer channels are always available; each publishes a `tick` event \
          with the current UTC time on a fixed interval:\n\
          {channels}\n\n\

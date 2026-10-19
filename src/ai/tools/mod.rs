@@ -40,6 +40,9 @@ pub use python::PythonTool;
 pub mod loops;
 pub use loops::{CreateLoopTool, DeleteLoopTool, ListLoopsTool};
 
+pub mod channels;
+pub use channels::{CreateChannelTool, EmitChannelTool};
+
 pub mod registry;
 pub use registry::{Tool, ToolConfig, ToolRegistry};
 

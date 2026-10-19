@@ -30,6 +30,7 @@ async fn list_channels(State(state): State<SharedState>) -> Result<impl IntoResp
             id: channel.id,
             source: channel.source,
             debounce_ms: channel.debounce_ms,
+            created_by: channel.created_by,
             created_at: channel.created_at,
         })
         .collect();

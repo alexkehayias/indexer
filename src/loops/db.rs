@@ -45,15 +45,17 @@ pub async fn find_all_loops(db: &Connection) -> Result<Vec<Loop>> {
 /// List every channel, ordered by id.
 pub async fn find_all_channels(db: &Connection) -> Result<Vec<Channel>> {
     let channels = db.call(|conn| {
-        let mut stmt =
-            conn.prepare("SELECT id, source, debounce_ms, created_at FROM channel ORDER BY id")?;
+        let mut stmt = conn.prepare(
+            "SELECT id, source, debounce_ms, created_by, created_at FROM channel ORDER BY id",
+        )?;
         let channels = stmt
             .query_map([], |i| {
                 Ok(Channel {
                     id: i.get(0)?,
                     source: i.get(1)?,
                     debounce_ms: i.get(2)?,
-                    created_at: i.get(3)?,
+                    created_by: i.get(3)?,
+                    created_at: i.get(4)?,
                 })
             })?
             .filter_map(Result::ok)
@@ -61,6 +63,48 @@ pub async fn find_all_channels(db: &Connection) -> Result<Vec<Channel>> {
         Ok(channels)
     });
     Ok(channels.await?)
+}
+
+/// Find a single channel by id.
+pub async fn find_channel(db: &Connection, id: &str) -> Result<Option<Channel>> {
+    let id = id.to_string();
+    let channel = db.call(move |conn| {
+        let mut stmt = conn.prepare(
+            "SELECT id, source, debounce_ms, created_by, created_at FROM channel WHERE id = ?1",
+        )?;
+        let mut rows = stmt.query_map([&id], |i| {
+            Ok(Channel {
+                id: i.get(0)?,
+                source: i.get(1)?,
+                debounce_ms: i.get(2)?,
+                created_by: i.get(3)?,
+                created_at: i.get(4)?,
+            })
+        })?;
+        Ok(rows.next().transpose()?)
+    });
+    Ok(channel.await?)
+}
+
+/// Create a channel row owned by `created_by`. Fails if the id already exists.
+pub async fn insert_channel(
+    db: &Connection,
+    id: &str,
+    source: &str,
+    created_by: Option<&str>,
+) -> Result<()> {
+    let id = id.to_string();
+    let source = source.to_string();
+    let created_by = created_by.map(str::to_string);
+    db.call(move |conn| {
+        conn.execute(
+            "INSERT INTO channel (id, source, created_by) VALUES (?1, ?2, ?3)",
+            rusqlite::params![id, source, created_by],
+        )?;
+        Ok(())
+    })
+    .await
+    .map_err(anyhow::Error::new)
 }
 
 pub async fn find_loop(db: &Connection, id: &str) -> Result<Option<Loop>> {
@@ -185,8 +229,8 @@ mod tests {
         (dir, db)
     }
 
-    /// Insert a channel row directly; channel helpers land in a later PR.
-    async fn insert_channel(db: &Connection, id: &str, source: &str) {
+    /// Insert a channel row directly, bypassing the helpers.
+    async fn insert_raw_channel(db: &Connection, id: &str, source: &str) {
         let id = id.to_string();
         let source = source.to_string();
         db.call(move |conn| {
@@ -235,8 +279,8 @@ mod tests {
     #[tokio::test]
     async fn insert_find_and_delete_round_trip() {
         let (_dir, db) = setup_db().await;
-        insert_channel(&db, "alpha", "socket").await;
-        insert_channel(&db, "beta", "server").await;
+        insert_raw_channel(&db, "alpha", "socket").await;
+        insert_raw_channel(&db, "beta", "server").await;
         let record = sample_loop();
 
         insert_loop(&db, &record).await.unwrap();
@@ -260,8 +304,8 @@ mod tests {
     #[tokio::test]
     async fn delete_loop_removes_channel_links() {
         let (_dir, db) = setup_db().await;
-        insert_channel(&db, "alpha", "socket").await;
-        insert_channel(&db, "beta", "server").await;
+        insert_raw_channel(&db, "alpha", "socket").await;
+        insert_raw_channel(&db, "beta", "server").await;
         insert_loop(&db, &sample_loop()).await.unwrap();
 
         delete_loop(&db, "loop-1").await.unwrap();
@@ -283,8 +327,8 @@ mod tests {
     #[tokio::test]
     async fn find_all_channels_returns_rows_ordered_by_id() {
         let (_dir, db) = setup_db().await;
-        insert_channel(&db, "beta", "server").await;
-        insert_channel(&db, "alpha", "socket").await;
+        insert_raw_channel(&db, "beta", "server").await;
+        insert_raw_channel(&db, "alpha", "socket").await;
 
         let channels = find_all_channels(&db).await.unwrap();
 
@@ -303,10 +347,37 @@ mod tests {
     }
 
     #[tokio::test]
+    async fn insert_and_find_channel_round_trip() {
+        let (_dir, db) = setup_db().await;
+
+        insert_channel(&db, "owned", "server", Some("agent-a"))
+            .await
+            .unwrap();
+
+        let found = find_channel(&db, "owned").await.unwrap().unwrap();
+        assert_eq!(found.source, "server");
+        assert_eq!(found.created_by.as_deref(), Some("agent-a"));
+        assert!(find_channel(&db, "missing").await.unwrap().is_none());
+    }
+
+    #[tokio::test]
+    async fn insert_channel_rejects_duplicate_id() {
+        let (_dir, db) = setup_db().await;
+        insert_channel(&db, "dup", "server", Some("agent-a"))
+            .await
+            .unwrap();
+        assert!(
+            insert_channel(&db, "dup", "server", Some("agent-a"))
+                .await
+                .is_err()
+        );
+    }
+
+    #[tokio::test]
     async fn find_loop_returns_some_for_present_and_none_for_missing() {
         let (_dir, db) = setup_db().await;
-        insert_channel(&db, "alpha", "socket").await;
-        insert_channel(&db, "beta", "server").await;
+        insert_raw_channel(&db, "alpha", "socket").await;
+        insert_raw_channel(&db, "beta", "server").await;
         let record = sample_loop();
         insert_loop(&db, &record).await.unwrap();
 
@@ -332,7 +403,7 @@ mod tests {
         let (_dir, db) = setup_db().await;
 
         // A channel that already exists with a non-socket source.
-        insert_channel(&db, "gamma", "server").await;
+        insert_raw_channel(&db, "gamma", "server").await;
 
         ensure_channels(
             &db,

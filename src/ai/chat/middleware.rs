@@ -258,6 +258,17 @@ impl Default for ToolSecurityMiddleware {
                 target: "delete_loop".to_string(),
                 blocked_after: untrusted_data_tools(),
             },
+            // Creating a channel and emitting to it can drive loops that run
+            // autonomously on the user's behalf, so untrusted content must not
+            // reach either.
+            ToolCallRule {
+                target: "create_channel".to_string(),
+                blocked_after: untrusted_data_tools(),
+            },
+            ToolCallRule {
+                target: "emit_channel".to_string(),
+                blocked_after: untrusted_data_tools(),
+            },
         ])
     }
 }

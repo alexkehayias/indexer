@@ -63,6 +63,34 @@ pub fn register(id: &str) -> ServerPublisher {
     ServerPublisher { tx }
 }
 
+/// Register `id` with a fresh publisher if it has none; a no-op otherwise.
+///
+/// Unlike [`register`], an existing entry is left in place, so current
+/// subscribers keep their receiver. Used to bring an agent-created channel live
+/// without disturbing anyone already listening.
+pub fn ensure_registered(id: &str) {
+    channels()
+        .lock()
+        .unwrap()
+        .entry(id.to_string())
+        .or_insert_with(|| broadcast::channel(BUFFER).0);
+}
+
+/// Publish `event` to the registered server channel `id`.
+///
+/// Returns `false` if the channel has no publisher (so the caller can report
+/// it as not running). Like [`ServerPublisher::serve`], the send is
+/// non-blocking: with no subscribers the event is dropped.
+pub fn publish(id: &str, event: String) -> bool {
+    match channels().lock().unwrap().get(id) {
+        Some(tx) => {
+            let _ = tx.send(event);
+            true
+        }
+        None => false,
+    }
+}
+
 /// Subscribe to a registered server channel, or `None` if it is not running.
 pub fn subscribe(id: &str) -> Option<broadcast::Receiver<String>> {
     channels().lock().unwrap().get(id).map(|tx| tx.subscribe())
@@ -140,5 +168,29 @@ mod tests {
             old_rx.recv().await,
             Err(broadcast::error::RecvError::Closed)
         ));
+    }
+
+    #[tokio::test]
+    async fn publish_delivers_to_subscribers_and_reports_missing() {
+        let id = unique_id();
+        register(&id);
+        let mut rx = subscribe(&id).unwrap();
+
+        assert!(publish(&id, "hello".to_string()));
+        assert_eq!(rx.recv().await.unwrap(), "hello");
+
+        assert!(!publish(&unique_id(), "nobody".to_string()));
+    }
+
+    #[tokio::test]
+    async fn ensure_registered_is_idempotent_and_preserves_subscribers() {
+        let id = unique_id();
+        ensure_registered(&id);
+        let mut rx = subscribe(&id).unwrap();
+
+        // A second call must not swap the sender out from under `rx`.
+        ensure_registered(&id);
+        assert!(publish(&id, "kept".to_string()));
+        assert_eq!(rx.recv().await.unwrap(), "kept");
     }
 }

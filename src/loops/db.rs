@@ -107,6 +107,23 @@ pub async fn insert_channel(
     .map_err(anyhow::Error::new)
 }
 
+/// Ids of agent-created server channels (those with a `created_by`). Their
+/// in-process publishers must be re-registered on boot; see
+/// [`crate::loops::channels::register_owned_channels`].
+pub async fn find_owned_server_channels(db: &Connection) -> Result<Vec<String>> {
+    let ids = db.call(|conn| {
+        let mut stmt = conn.prepare(
+            "SELECT id FROM channel WHERE source = 'server' AND created_by IS NOT NULL ORDER BY id",
+        )?;
+        let ids = stmt
+            .query_map([], |i| i.get::<_, String>(0))?
+            .filter_map(Result::ok)
+            .collect::<Vec<String>>();
+        Ok(ids)
+    });
+    Ok(ids.await?)
+}
+
 pub async fn find_loop(db: &Connection, id: &str) -> Result<Option<Loop>> {
     let id = id.to_string();
     let record = db.call(move |conn| {
@@ -371,6 +388,19 @@ mod tests {
                 .await
                 .is_err()
         );
+    }
+
+    #[tokio::test]
+    async fn find_owned_server_channels_excludes_unowned_and_socket() {
+        let (_dir, db) = setup_db().await;
+        insert_raw_channel(&db, "timer", "server").await; // server, no owner
+        insert_raw_channel(&db, "sock", "socket").await; // socket
+        insert_channel(&db, "owned", "server", Some("agent-a"))
+            .await
+            .unwrap();
+
+        let ids = find_owned_server_channels(&db).await.unwrap();
+        assert_eq!(ids, vec!["owned"]);
     }
 
     #[tokio::test]

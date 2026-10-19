@@ -18,7 +18,7 @@ use tokio::task::JoinHandle;
 use tokio::time::{Instant, interval_at};
 use tokio_rusqlite::Connection;
 
-use super::db::ensure_channels_with_source;
+use super::db::{ensure_channels_with_source, find_owned_server_channels};
 use super::registry;
 
 /// Default timer channels as `(id, interval)`.
@@ -53,6 +53,21 @@ pub async fn start_default_channels(db: &Connection) -> Result<()> {
     for &(id, interval) in DEFAULT_TIMER_CHANNELS {
         spawn_timer_channel(id, interval);
         tracing::info!("started default timer channel '{}'", id);
+    }
+    Ok(())
+}
+
+/// Re-register in-process publishers for agent-created server channels.
+///
+/// A server channel's publisher lives only in the in-memory [`registry`], so it
+/// is lost on restart. Agent-created channels are otherwise registered lazily by
+/// their owner, which is too late for a loop subscribed to one: the loop's
+/// subscription fails fast and it never respawns. Run this at boot before
+/// respawning loops.
+pub async fn register_owned_channels(db: &Connection) -> Result<()> {
+    for id in find_owned_server_channels(db).await? {
+        registry::ensure_registered(&id);
+        tracing::info!("registered owned channel '{}'", id);
     }
     Ok(())
 }
@@ -134,6 +149,7 @@ pub fn system_prompt_section() -> String {
 mod tests {
     use super::*;
     use crate::core::db::{async_db, initialize_db};
+    use crate::loops::db::insert_channel;
     use futures::StreamExt;
     use uuid::Uuid;
 
@@ -234,5 +250,24 @@ mod tests {
             .unwrap();
 
         assert!(event.starts_with("tick "), "unexpected event: {event}");
+    }
+
+    #[tokio::test]
+    async fn register_owned_channels_registers_only_owned_server_channels() {
+        let (_dir, db) = setup_db().await;
+        let owned = format!("owned-{}", Uuid::new_v4());
+        let socket = format!("sock-{}", Uuid::new_v4());
+
+        insert_channel(&db, &owned, "server", Some("agent-a"))
+            .await
+            .unwrap();
+        insert_channel(&db, &socket, "socket", Some("agent-a"))
+            .await
+            .unwrap();
+
+        register_owned_channels(&db).await.unwrap();
+
+        assert!(registry::subscribe(&owned).is_some());
+        assert!(registry::subscribe(&socket).is_none());
     }
 }

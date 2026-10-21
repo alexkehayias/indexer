@@ -193,6 +193,13 @@ impl Default for ToolSecurityMiddleware {
     /// actions on it. `bash` is intentionally not guarded — it runs in a
     /// fully virtualized, session-scoped sandbox with no network, so a
     /// malicious `bash` call cannot reach sensitive host state.
+    ///
+    /// The channel tools (`create_channel`, `emit_channel`) are intentionally
+    /// not guarded either. Publishing to a channel is data flow, not a
+    /// persistent or user-visible action; the trust boundary is the tools a
+    /// consuming loop is configured with, not the act of emitting. Guarding the
+    /// producer would make channels useless for the case they exist for —
+    /// reading external content and publishing it.
     fn default() -> Self {
         Self::new(vec![
             // Don't let a malicious skill (authored via bash in the
@@ -256,17 +263,6 @@ impl Default for ToolSecurityMiddleware {
             },
             ToolCallRule {
                 target: "delete_loop".to_string(),
-                blocked_after: untrusted_data_tools(),
-            },
-            // Creating a channel and emitting to it can drive loops that run
-            // autonomously on the user's behalf, so untrusted content must not
-            // reach either.
-            ToolCallRule {
-                target: "create_channel".to_string(),
-                blocked_after: untrusted_data_tools(),
-            },
-            ToolCallRule {
-                target: "emit_channel".to_string(),
                 blocked_after: untrusted_data_tools(),
             },
         ])
@@ -914,6 +910,27 @@ mod tests {
         assert!(
             matches!(action, MiddlewareAction::Continue),
             "Expected Continue for create_loop without untrusted data, got {action:?}",
+        );
+    }
+
+    #[tokio::test]
+    async fn test_security_allows_channel_tools_after_untrusted_data() {
+        // Channels are data plumbing, not a persistent or user-visible action,
+        // so reading external content must not block creating or emitting.
+        let mw = ToolSecurityMiddleware::default();
+        let transcript = vec![
+            Message::new(Role::User, "research this"),
+            Message::new_tool_call_request(vec![view_website_call("call_1")]),
+            Message::new_tool_call_response("site content", "call_1"),
+            Message::new_tool_call_request(vec![
+                loop_call("create_channel", "call_2"),
+                loop_call("emit_channel", "call_3"),
+            ]),
+        ];
+        let action = mw.before_tool_calls(&transcript).await;
+        assert!(
+            matches!(action, MiddlewareAction::Continue),
+            "Expected Continue for channel tools after view_website, got {action:?}",
         );
     }
 

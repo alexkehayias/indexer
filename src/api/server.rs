@@ -8,9 +8,9 @@ use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
 use super::{assets, routes};
 use crate::ai::skills::SkillRegistry;
 use crate::api::state::AppState;
+use crate::channels::default::{register_owned_channels, start_default_channels};
 use crate::core::{AppConfig, db::async_db};
 use crate::jobs::{DailyAgenda, GenerateSessionTitles, GitSync, spawn_periodic_job};
-use crate::loops::channels::{register_owned_channels, start_default_channels};
 use crate::loops::supervisor::{self as loops, LoopSupervisorConfig};
 
 pub fn app(shared_state: Arc<RwLock<AppState>>) -> Router {

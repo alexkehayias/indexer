@@ -18,7 +18,8 @@ use tokio::task::JoinHandle;
 use tokio::time::{Instant, interval_at};
 use tokio_rusqlite::Connection;
 
-use super::db::{ensure_channels_with_source, find_owned_server_channels};
+use super::db::{ensure_channels, find_agent_channels};
+use super::models::ChannelOwner;
 use super::registry;
 
 /// Default timer channels as `(id, interval)`.
@@ -37,10 +38,10 @@ fn default_channel_ids() -> Vec<String> {
         .collect()
 }
 
-/// Ensure a `channel` row exists for each default channel (`source = 'server'`).
+/// Ensure a `channel` row exists for each default channel (`owner = Server`).
 /// Existing rows are left untouched.
 pub async fn ensure_default_channels(db: &Connection) -> Result<()> {
-    ensure_channels_with_source(db, &default_channel_ids(), "server").await
+    ensure_channels(db, &default_channel_ids(), &ChannelOwner::Server).await
 }
 
 /// Ensure the default channel rows exist and start a publisher for each.
@@ -57,7 +58,7 @@ pub async fn start_default_channels(db: &Connection) -> Result<()> {
     Ok(())
 }
 
-/// Re-register in-process publishers for agent-created server channels.
+/// Re-register in-process publishers for agent-created channels.
 ///
 /// A server channel's publisher lives only in the in-memory [`registry`], so it
 /// is lost on restart. Agent-created channels are otherwise registered lazily by
@@ -65,7 +66,7 @@ pub async fn start_default_channels(db: &Connection) -> Result<()> {
 /// subscription fails fast and it never respawns. Run this at boot before
 /// respawning loops.
 pub async fn register_owned_channels(db: &Connection) -> Result<()> {
-    for id in find_owned_server_channels(db).await? {
+    for id in find_agent_channels(db).await? {
         registry::ensure_registered(&id);
         tracing::info!("registered owned channel '{}'", id);
     }
@@ -106,50 +107,11 @@ fn utc_timestamp() -> String {
     chrono::Utc::now().to_rfc3339_opts(chrono::SecondsFormat::Secs, true)
 }
 
-/// Human-readable label for a timer interval (e.g. `every 30 minutes`).
-fn interval_label(interval: Duration) -> String {
-    let secs = interval.as_secs();
-    if secs.is_multiple_of(3600) {
-        let hours = secs / 3600;
-        format!("every {hours} hour{}", if hours == 1 { "" } else { "s" })
-    } else if secs.is_multiple_of(60) {
-        format!("every {} minutes", secs / 60)
-    } else {
-        format!("every {secs} seconds")
-    }
-}
-
-/// System-message section describing channels, loops, and the default timer
-/// channels. Appended to the main chat's system prompt so the model knows how
-/// to schedule work and which channels are available.
-pub fn system_prompt_section() -> String {
-    let channels = DEFAULT_TIMER_CHANNELS
-        .iter()
-        .map(|(id, interval)| format!("- {id}: {}", interval_label(*interval)))
-        .collect::<Vec<_>>()
-        .join("\n");
-
-    format!(
-        "\n\n## Channels and Loops\n\
-         Channels are streams of events. A loop is a persistent subscriber: each event \
-         published to a channel runs an LLM turn with the loop's system prompt and tools. \
-         Use the `create_loop` tool to create a loop subscribed to one or more channels, \
-         `list_loops` to inspect them, and `delete_loop` to remove one. Loops keep running \
-         across server restarts. Use `create_channel` to create a channel you own and \
-         `emit_channel` to publish messages to it; only the agent that created a channel \
-         can emit to it.\n\n\
-         The following timer channels are always available; each publishes a `tick` event \
-         with the current UTC time on a fixed interval:\n\
-         {channels}\n\n\
-         To run something on a schedule, create a loop subscribed to the matching timer channel."
-    )
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::channels::db::insert_channel;
     use crate::core::db::{async_db, initialize_db};
-    use crate::loops::db::insert_channel;
     use futures::StreamExt;
     use uuid::Uuid;
 
@@ -222,20 +184,6 @@ mod tests {
         assert_eq!(debounce, 999);
     }
 
-    #[test]
-    fn system_prompt_section_lists_default_channels() {
-        let section = system_prompt_section();
-        assert!(section.contains("## Channels and Loops"));
-        assert!(section.contains("create_loop"));
-        for (id, _) in DEFAULT_TIMER_CHANNELS {
-            assert!(section.contains(id), "missing channel {id}");
-        }
-        assert!(section.contains("every 30 minutes"), "{section}");
-        assert!(section.contains("every 1 hour"), "{section}");
-        assert!(section.contains("every 4 hours"), "{section}");
-        assert!(section.contains("every 12 hours"), "{section}");
-    }
-
     #[tokio::test]
     async fn timer_channel_publishes_ticks_to_subscribers() {
         let id = format!("timer-test-{}", Uuid::new_v4());
@@ -253,15 +201,15 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn register_owned_channels_registers_only_owned_server_channels() {
+    async fn register_owned_channels_registers_only_agent_channels() {
         let (_dir, db) = setup_db().await;
         let owned = format!("owned-{}", Uuid::new_v4());
         let socket = format!("sock-{}", Uuid::new_v4());
 
-        insert_channel(&db, &owned, "server", Some("agent-a"))
+        insert_channel(&db, &owned, &ChannelOwner::Agent("agent-a".to_string()))
             .await
             .unwrap();
-        insert_channel(&db, &socket, "socket", Some("agent-a"))
+        insert_channel(&db, &socket, &ChannelOwner::Socket)
             .await
             .unwrap();
 

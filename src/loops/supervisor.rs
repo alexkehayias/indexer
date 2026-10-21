@@ -24,12 +24,12 @@ use tokio_rusqlite::Connection;
 use super::db::find_all_loops;
 use super::models::Loop;
 use super::prompt::build_system_prompt;
-use super::subscribe::subscribe;
 use super::tools::resolve_loop_tools;
 use crate::ai::chat::{
     ChatBuilder, InfiniteLoopDetector, InvisibleCharFilter, ToolSecurityMiddleware,
 };
 use crate::ai::tools::{ToolConfig, ToolRegistry};
+use crate::channels::subscribe::subscribe;
 use crate::cli::channel::validate_channel_id;
 use crate::openai::{Message, Role};
 
@@ -194,8 +194,8 @@ async fn run_loop(
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::channels::registry;
     use crate::core::db::{async_db, initialize_db};
-    use crate::loops::registry;
     use uuid::Uuid;
 
     async fn setup() -> (tempfile::TempDir, LoopSupervisorConfig) {

@@ -39,8 +39,8 @@ use crate::ai::tools::{
 use crate::anthropic::claude::{ClaudeCodeSession, Delta, StreamEvent};
 use crate::api::state::AppState;
 use crate::api::utils::DetectDisconnect;
+use crate::channels::prompt::system_prompt_section;
 use crate::core::AppConfig;
-use crate::loops::channels::system_prompt_section;
 use crate::loops::supervisor::LoopSupervisorConfig;
 use crate::notify::{
     PushNotificationPayload, broadcast_push_notification, find_all_notification_subscriptions,

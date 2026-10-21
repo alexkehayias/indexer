@@ -1,10 +1,10 @@
 //! Tools for agent-owned channels.
 //!
 //! An agent (a loop, or a chat session) can create a channel it owns and emit
-//! events to it. Ownership is recorded as `channel.created_by` — the caller's
-//! session id — so only the creating agent may emit. Other agents subscribe to
-//! the channel by id like any other, letting one agent publish a stream for
-//! loops to react to.
+//! events to it. Ownership is recorded as a [`ChannelOwner::Agent`] carrying the
+//! caller's session id, so only the creating agent may emit. Other agents
+//! subscribe to the channel by id like any other, letting one agent publish a
+//! stream for loops to react to.
 
 use anyhow::{Error, Result};
 use async_trait::async_trait;
@@ -12,17 +12,13 @@ use serde::{Deserialize, Serialize};
 use tokio_rusqlite::Connection;
 
 use super::{Tool, ToolConfig};
+use crate::channels::db::{find_channel, insert_channel};
+use crate::channels::models::ChannelOwner;
+use crate::channels::registry;
 use crate::cli::channel::validate_channel_id;
-use crate::loops::db::{find_channel, insert_channel};
-use crate::loops::registry;
 use crate::openai::{
     Function, Parameters, Property, RecoverableToolError, ToolCall, ToolType, parse_tool_args,
 };
-
-/// Source recorded for agent-created channels. Server channels are served
-/// in-process by the [`registry`], so the creating agent can emit to them
-/// directly.
-const SERVER_SOURCE: &str = "server";
 
 #[derive(Serialize)]
 pub struct CreateChannelProps {
@@ -58,7 +54,7 @@ impl ToolCall for CreateChannelTool {
 
         match find_channel(&self.db, &fn_args.id).await? {
             Some(existing) => {
-                if existing.created_by.as_deref() != Some(self.session_id.as_str()) {
+                if existing.owner != ChannelOwner::Agent(self.session_id.clone()) {
                     return Err(Error::from(RecoverableToolError::new(&format!(
                         "Channel '{}' already exists and belongs to another agent.",
                         fn_args.id
@@ -70,8 +66,12 @@ impl ToolCall for CreateChannelTool {
                 Ok(format!("Channel '{}' is ready.", fn_args.id))
             }
             None => {
-                insert_channel(&self.db, &fn_args.id, SERVER_SOURCE, Some(&self.session_id))
-                    .await?;
+                insert_channel(
+                    &self.db,
+                    &fn_args.id,
+                    &ChannelOwner::Agent(self.session_id.clone()),
+                )
+                .await?;
                 registry::ensure_registered(&fn_args.id);
                 Ok(format!(
                     "Created channel '{}'. Emit to it with emit_channel; loops can subscribe to it by id.",
@@ -157,7 +157,7 @@ impl ToolCall for EmitChannelTool {
             )))
         })?;
 
-        if channel.created_by.as_deref() != Some(self.session_id.as_str()) {
+        if channel.owner != ChannelOwner::Agent(self.session_id.clone()) {
             return Err(Error::from(RecoverableToolError::new(&format!(
                 "You can only emit to channels you created; '{}' belongs to another agent.",
                 fn_args.id
@@ -214,8 +214,8 @@ impl EmitChannelTool {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::channels::registry::{broadcast_stream, subscribe};
     use crate::core::db::{async_db, initialize_db};
-    use crate::loops::registry::{broadcast_stream, subscribe};
     use futures::StreamExt;
     use std::time::Duration;
     use uuid::Uuid;
@@ -266,8 +266,7 @@ mod tests {
         tool.call(&format!(r#"{{"id": "{id}"}}"#)).await.unwrap();
 
         let channel = find_channel(&db, &id).await.unwrap().unwrap();
-        assert_eq!(channel.source, "server");
-        assert_eq!(channel.created_by.as_deref(), Some("agent-a"));
+        assert_eq!(channel.owner, ChannelOwner::Agent("agent-a".to_string()));
         assert!(subscribe(&id).is_some());
     }
 

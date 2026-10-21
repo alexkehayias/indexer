@@ -221,8 +221,8 @@ embedding float[384]
     source TEXT NOT NULL,
     -- Debounce window (ms) for coalescing a channel's line burst into one event
     debounce_ms INTEGER NOT NULL DEFAULT 250,
-    -- Session/agent that created an agent-owned channel; NULL for externally
-    -- published (socket) and default server channels
+    -- Session/agent that created an agent-owned channel; NULL for server and
+    -- socket channels. The channel's owner is derived from source + created_by.
     created_by TEXT,
     -- Creation timestamp
     created_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))
@@ -609,8 +609,8 @@ COMMIT;",
     source TEXT NOT NULL,
     -- Debounce window (ms) for coalescing a channel's line burst into one event
     debounce_ms INTEGER NOT NULL DEFAULT 250,
-    -- Session/agent that created an agent-owned channel; NULL for externally
-    -- published (socket) and default server channels
+    -- Session/agent that created an agent-owned channel; NULL for server and
+    -- socket channels. The channel's owner is derived from source + created_by.
     created_by TEXT,
     -- Creation timestamp
     created_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))

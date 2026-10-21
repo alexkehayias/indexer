@@ -50,7 +50,7 @@ docker run --rm \
     -v "${REPO_ROOT}":/workspace \
     -w /workspace \
     hq-buildx:local \
-    docker buildx build --load -t "${IMAGE_NAME}" -t "hq:latest" .
+    docker buildx build --load --no-cache-filter runner -t "${IMAGE_NAME}" -t "hq:latest" .
 
 # 4. Stream the image to Dokku via SSH
 echo "==> Streaming image to Dokku..."

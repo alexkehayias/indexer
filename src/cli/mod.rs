@@ -1,6 +1,7 @@
 use anyhow::Result;
 use clap::{ArgAction, Parser, Subcommand};
 use std::env;
+use std::path::PathBuf;
 use std::time::Duration;
 
 pub mod auth;
@@ -16,6 +17,7 @@ pub mod job;
 pub mod loop_cmd;
 pub mod migrate;
 pub mod projects;
+pub mod python;
 pub mod query;
 pub mod rebuild;
 pub mod serve;
@@ -150,6 +152,14 @@ enum Command {
         /// Run without saving results to the database
         #[arg(long, default_value = "false")]
         dry_run: bool,
+    },
+    /// Run Python code in the pybox WASM sandbox
+    Python {
+        /// Program passed in as a string (like `python -c`)
+        #[arg(short = 'c', long)]
+        command: Option<String>,
+        /// Script file to run (like `python script.py`)
+        file: Option<PathBuf>,
     },
     /// Web-related commands (fetch, etc.)
     Web {
@@ -407,6 +417,9 @@ async fn run_dispatch(cli: Cli) -> Result<()> {
                 .unwrap_or_else(|| env::var("HQ_LOCAL_LLM_MODEL").expect("Missing model name"));
 
             eval::run(vec_db_path, api_hostname, api_key, model, file, dry_run).await?;
+        }
+        Some(Command::Python { command, file }) => {
+            python::run(command, file).await?;
         }
         Some(Command::Web { command }) => {
             web::run(command).await?;

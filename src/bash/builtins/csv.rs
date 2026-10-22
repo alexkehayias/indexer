@@ -115,6 +115,7 @@ fn resolve_column(col: &str, headers: &Option<Vec<String>>) -> Option<usize> {
 }
 
 /// Read input from file arg or stdin.
+#[allow(clippy::result_large_err)]
 async fn read_input<'a>(
     ctx: &Context<'a>,
     file_arg: Option<&str>,

@@ -35,7 +35,7 @@ impl ToolCall for NoteSearchTool {
         // journal entries from polluting the results.
         let query = format!(
             "{} type:note -tags:project -title:journal -category:work -category:personal",
-            &fn_args.query
+            fn_args.query
         );
         url.query_pairs_mut().append_pair("query", &query);
 

@@ -117,6 +117,7 @@ fn format_value(v: &Value) -> String {
 }
 
 /// Read JSON input from stdin or file argument.
+#[allow(clippy::result_large_err)]
 async fn read_json_input(
     ctx: &Context<'_>,
     file_arg: Option<&str>,

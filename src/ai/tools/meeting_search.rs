@@ -31,7 +31,7 @@ impl ToolCall for MeetingSearchTool {
             .expect("Invalid URL");
 
         // Search for notes with the "meeting" tag
-        let query = format!("tags:meeting {}", &fn_args.query);
+        let query = format!("tags:meeting {}", fn_args.query);
         url.query_pairs_mut().append_pair("query", &query);
 
         let resp = reqwest::Client::new()

@@ -166,6 +166,7 @@ use crate::bash::error::Result;
 use crate::bash::fs::FileSystem;
 use crate::bash::interpreter::ExecResult;
 
+#[allow(clippy::result_large_err)]
 pub(crate) async fn read_text_file(
     fs: &dyn FileSystem,
     path: &Path,

@@ -1978,7 +1978,6 @@ mod tests {
     /// tests construct `OverlayFs` directly and never touch `Bash`, so
     /// they belong with the type they exercise.
     mod path_validation {
-        use super::super::*;
         use super::*;
 
         fn make_overlay() -> OverlayFs {

@@ -4,7 +4,7 @@
 // changes: the new bytes make the browser install this worker, and `activate`
 // deletes the stale cache. This is how installed PWAs get updates without a
 // reinstall.
-const CACHE_NAME = 'my-pwa-cache-v7';
+const CACHE_NAME = 'my-pwa-cache-v8';
 
 // Everything the app shell needs, precached on install. `cache.addAll` is
 // all-or-nothing — a single 404 aborts the install — so keep this in sync with

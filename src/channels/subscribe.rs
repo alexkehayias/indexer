@@ -1,11 +1,12 @@
-//! Owner-aware channel subscription for in-process consumers.
+//! Source-aware channel subscription for in-process consumers.
 //!
-//! A subscriber connects to a channel according to its [`ChannelOwner`]:
-//! [`Socket`](ChannelOwner::Socket) channels are read from their Unix socket
+//! A subscriber connects to a channel according to its [`ChannelSource`]:
+//! [`Socket`](ChannelSource::Socket) channels are read from their Unix socket
 //! publisher (coalescing line bursts with the channel's debounce);
-//! [`Server`](ChannelOwner::Server) and [`Agent`](ChannelOwner::Agent) channels
-//! from the in-process [`registry`]. Both yield a [`BoxStream`] of events so
-//! the caller (the loop supervisor) treats them uniformly.
+//! [`Server`](ChannelSource::Server) channels — including agent-created ones,
+//! which are stored as server-sourced — from the in-process [`registry`]. Both
+//! yield a [`BoxStream`] of events so the caller (the loop supervisor) treats
+//! them uniformly.
 
 use std::time::Duration;
 
@@ -15,27 +16,26 @@ use tokio::io::BufReader;
 use tokio::net::UnixStream;
 use tokio_rusqlite::Connection;
 
-use super::models::ChannelOwner;
+use super::models::ChannelSource;
 use super::registry;
 use crate::cli::channel::{event_stream_from_reader, socket_path};
 
 /// Debounce window used when a channel has no `channel` row.
 pub const DEFAULT_DEBOUNCE_MS: u64 = 250;
 
-/// Read a channel's owner and debounce window from its `channel` row.
+/// Read a channel's source and debounce window from its `channel` row.
 ///
-/// Falls back to [`ChannelOwner::Socket`] / [`DEFAULT_DEBOUNCE_MS`] when the
+/// Falls back to [`ChannelSource::Socket`] / [`DEFAULT_DEBOUNCE_MS`] when the
 /// channel has no row, preserving the behavior for channels whose publisher has
 /// not registered yet.
-pub async fn channel_meta(db: &Connection, id: &str) -> Result<(ChannelOwner, u64)> {
+pub async fn channel_meta(db: &Connection, id: &str) -> Result<(ChannelSource, u64)> {
     let id = id.to_string();
     let row = db
         .call(move |conn| {
-            let mut stmt =
-                conn.prepare("SELECT source, debounce_ms, created_by FROM channel WHERE id = ?1")?;
+            let mut stmt = conn.prepare("SELECT source, debounce_ms FROM channel WHERE id = ?1")?;
             let mut rows = stmt.query_map([&id], |i| {
                 Ok((
-                    ChannelOwner::from_columns(&i.get::<_, String>(0)?, i.get(2)?),
+                    ChannelSource::from_column(&i.get::<_, String>(0)?),
                     i.get::<_, i64>(1)?,
                 ))
             })?;
@@ -44,12 +44,12 @@ pub async fn channel_meta(db: &Connection, id: &str) -> Result<(ChannelOwner, u6
         .await?;
 
     Ok(match row {
-        Some((owner, debounce_ms)) => (owner, debounce_ms.max(0) as u64),
-        None => (ChannelOwner::Socket, DEFAULT_DEBOUNCE_MS),
+        Some((source, debounce_ms)) => (source, debounce_ms.max(0) as u64),
+        None => (ChannelSource::Socket, DEFAULT_DEBOUNCE_MS),
     })
 }
 
-/// Subscribe to channel `id`, dispatching on its owner.
+/// Subscribe to channel `id`, dispatching on its source.
 ///
 /// Fails fast (before any events flow) if a socket publisher is not reachable
 /// or a server channel is not registered.
@@ -59,13 +59,13 @@ pub async fn subscribe(
     id: &str,
 ) -> Result<BoxStream<'static, String>> {
     match channel_meta(db, id).await? {
-        (ChannelOwner::Server | ChannelOwner::Agent(_), _) => {
+        (ChannelSource::Server, _) => {
             let rx = registry::subscribe(id).ok_or_else(|| {
                 anyhow!("server channel '{id}' not found — is the publisher running?")
             })?;
             Ok(registry::broadcast_stream(rx))
         }
-        (ChannelOwner::Socket, debounce_ms) => {
+        (ChannelSource::Socket, debounce_ms) => {
             let path = socket_path(storage_path, id)?;
             let stream = UnixStream::connect(&path)
                 .await
@@ -119,7 +119,7 @@ mod tests {
 
         assert_eq!(
             channel_meta(&db, "absent").await.unwrap(),
-            (ChannelOwner::Socket, DEFAULT_DEBOUNCE_MS)
+            (ChannelSource::Socket, DEFAULT_DEBOUNCE_MS)
         );
 
         insert_channel(&db, "socket-chan", "socket", 1000).await;
@@ -127,11 +127,11 @@ mod tests {
 
         assert_eq!(
             channel_meta(&db, "socket-chan").await.unwrap(),
-            (ChannelOwner::Socket, 1000)
+            (ChannelSource::Socket, 1000)
         );
         assert_eq!(
             channel_meta(&db, "server-chan").await.unwrap(),
-            (ChannelOwner::Server, 5)
+            (ChannelSource::Server, 5)
         );
     }
 
@@ -160,10 +160,11 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn subscribe_agent_source_reads_from_registry() {
+    async fn subscribe_agent_created_channel_reads_from_registry() {
         let (_dir, db) = setup_db().await;
         let id = format!("agent-{}", Uuid::new_v4());
-        crate::channels::db::insert_channel(&db, &id, &ChannelOwner::Agent("sess".to_string()))
+        // Agent-created channels are stored as server-sourced with an owner.
+        crate::channels::db::insert_channel(&db, &id, &ChannelSource::Server, Some("sess"))
             .await
             .unwrap();
 

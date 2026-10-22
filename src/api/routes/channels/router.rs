@@ -28,7 +28,8 @@ async fn list_channels(State(state): State<SharedState>) -> Result<impl IntoResp
         .into_iter()
         .map(|channel| ChannelSummaryResponse {
             id: channel.id,
-            source: channel.owner.as_str().to_string(),
+            source: channel.source.as_str().to_string(),
+            created_by: channel.created_by,
             debounce_ms: channel.debounce_ms,
             created_at: channel.created_at,
         })

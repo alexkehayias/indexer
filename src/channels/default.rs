@@ -1,6 +1,6 @@
 //! Default channels available to loops.
 //!
-//! These are server-owned channels: instead of a CLI publisher reading stdin,
+//! These are server-sourced channels: instead of a CLI publisher reading stdin,
 //! the server publishes an event on a fixed interval through the in-process
 //! [`registry`](super::registry). Loops subscribe to them like any other
 //! channel, receiving events tagged `[timer-1h] tick <timestamp>`.
@@ -19,7 +19,7 @@ use tokio::time::{Instant, interval_at};
 use tokio_rusqlite::Connection;
 
 use super::db::{ensure_channels, find_agent_channels};
-use super::models::ChannelOwner;
+use super::models::ChannelSource;
 use super::registry;
 
 /// Default timer channels as `(id, interval)`.
@@ -38,10 +38,10 @@ fn default_channel_ids() -> Vec<String> {
         .collect()
 }
 
-/// Ensure a `channel` row exists for each default channel (`owner = Server`).
+/// Ensure a `channel` row exists for each default channel (`source = server`).
 /// Existing rows are left untouched.
 pub async fn ensure_default_channels(db: &Connection) -> Result<()> {
-    ensure_channels(db, &default_channel_ids(), &ChannelOwner::Server).await
+    ensure_channels(db, &default_channel_ids(), &ChannelSource::Server).await
 }
 
 /// Ensure the default channel rows exist and start a publisher for each.
@@ -60,15 +60,15 @@ pub async fn start_default_channels(db: &Connection) -> Result<()> {
 
 /// Re-register in-process publishers for agent-created channels.
 ///
-/// A server channel's publisher lives only in the in-memory [`registry`], so it
-/// is lost on restart. Agent-created channels are otherwise registered lazily by
-/// their owner, which is too late for a loop subscribed to one: the loop's
-/// subscription fails fast and it never respawns. Run this at boot before
-/// respawning loops.
-pub async fn register_owned_channels(db: &Connection) -> Result<()> {
+/// A server-sourced channel's publisher lives only in the in-memory
+/// [`registry`], so it is lost on restart. Agent-created channels are otherwise
+/// registered lazily by their owner, which is too late for a loop subscribed to
+/// one: the loop's subscription fails fast and it never respawns. Run this at
+/// boot before respawning loops.
+pub async fn register_agent_channels(db: &Connection) -> Result<()> {
     for id in find_agent_channels(db).await? {
         registry::ensure_registered(&id);
-        tracing::info!("registered owned channel '{}'", id);
+        tracing::info!("registered agent channel '{}'", id);
     }
     Ok(())
 }
@@ -201,19 +201,19 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn register_owned_channels_registers_only_agent_channels() {
+    async fn register_agent_channels_registers_only_agent_created_channels() {
         let (_dir, db) = setup_db().await;
         let owned = format!("owned-{}", Uuid::new_v4());
         let socket = format!("sock-{}", Uuid::new_v4());
 
-        insert_channel(&db, &owned, &ChannelOwner::Agent("agent-a".to_string()))
+        insert_channel(&db, &owned, &ChannelSource::Server, Some("agent-a"))
             .await
             .unwrap();
-        insert_channel(&db, &socket, &ChannelOwner::Socket)
+        insert_channel(&db, &socket, &ChannelSource::Socket, None)
             .await
             .unwrap();
 
-        register_owned_channels(&db).await.unwrap();
+        register_agent_channels(&db).await.unwrap();
 
         assert!(registry::subscribe(&owned).is_some());
         assert!(registry::subscribe(&socket).is_none());

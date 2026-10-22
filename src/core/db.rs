@@ -217,12 +217,13 @@ embedding float[384]
         "CREATE TABLE IF NOT EXISTS channel (
     -- Channel ID (alphanumeric with dashes/underscores)
     id TEXT PRIMARY KEY,
-    -- Where events for this channel come from: 'socket', 'server', or 'webhook'
+    -- How the channel is served: 'socket' (external Unix-socket publisher) or
+    -- 'server' (in-process publisher, e.g. timer channels and webhooks)
     source TEXT NOT NULL,
     -- Debounce window (ms) for coalescing a channel's line burst into one event
     debounce_ms INTEGER NOT NULL DEFAULT 250,
-    -- Session/agent that created an agent-owned channel; NULL for server and
-    -- socket channels. The channel's owner is derived from source + created_by.
+    -- Session/agent that created the channel, if any; NULL for server- and
+    -- socket-defined channels. Only this owner may emit to the channel.
     created_by TEXT,
     -- Creation timestamp
     created_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))
@@ -605,12 +606,13 @@ COMMIT;",
         "CREATE TABLE IF NOT EXISTS channel (
     -- Channel ID (alphanumeric with dashes/underscores)
     id TEXT PRIMARY KEY,
-    -- Where events for this channel come from: 'socket', 'server', or 'webhook'
+    -- How the channel is served: 'socket' (external Unix-socket publisher) or
+    -- 'server' (in-process publisher, e.g. timer channels and webhooks)
     source TEXT NOT NULL,
     -- Debounce window (ms) for coalescing a channel's line burst into one event
     debounce_ms INTEGER NOT NULL DEFAULT 250,
-    -- Session/agent that created an agent-owned channel; NULL for server and
-    -- socket channels. The channel's owner is derived from source + created_by.
+    -- Session/agent that created the channel, if any; NULL for server- and
+    -- socket-defined channels. Only this owner may emit to the channel.
     created_by TEXT,
     -- Creation timestamp
     created_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))

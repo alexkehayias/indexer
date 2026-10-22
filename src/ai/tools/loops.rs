@@ -5,7 +5,7 @@ use uuid::Uuid;
 
 use super::{Tool, ToolConfig};
 use crate::channels::db::ensure_channels;
-use crate::channels::models::ChannelOwner;
+use crate::channels::models::ChannelSource;
 use crate::cli::channel::validate_channel_id;
 use crate::loops::db::{delete_loop, find_all_loops, insert_loop};
 use crate::loops::models::Loop;
@@ -78,7 +78,7 @@ impl ToolCall for CreateLoopTool {
         let id = Uuid::new_v4().to_string();
         let channels_display = fn_args.channels.join(", ");
 
-        ensure_channels(&self.config.db, &fn_args.channels, &ChannelOwner::Socket).await?;
+        ensure_channels(&self.config.db, &fn_args.channels, &ChannelSource::Socket).await?;
 
         let record = Loop {
             id: id.clone(),

@@ -153,9 +153,9 @@ impl<'a> ArgParser<'a> {
     /// Try to consume a flag with a value, silently returning None if
     /// the flag matches but no value is available (for lenient parsers).
     pub fn flag_value_opt(&mut self, name: &str) -> Option<&'a str> {
-        let arg = match self.args.get(self.pos) {
-            Some(a) => a.as_str(),
-            None => return None,
+        let arg = {
+            let a = self.args.get(self.pos)?;
+            a.as_str()
         };
 
         if arg == name {

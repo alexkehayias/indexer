@@ -1478,7 +1478,7 @@ impl Interpreter {
 
         // Initialize default shell variables
         let mut variables = HashMap::new();
-        variables.insert("HOME".to_string(), format!("/home/{}", &username_val));
+        variables.insert("HOME".to_string(), format!("/home/{}", username_val));
         variables.insert("USER".to_string(), username_val.clone());
         variables.insert("UID".to_string(), "1000".to_string());
         variables.insert("EUID".to_string(), "1000".to_string());

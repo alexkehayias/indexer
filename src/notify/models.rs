@@ -47,7 +47,7 @@ impl PushNotificationPayload {
         Self {
             title: title.to_string(),
             body: body.to_string(),
-            actions: actions.map_or(Vec::new(), |u| u),
+            actions: actions.unwrap_or_default(),
             tag: tag.map(|s| s.to_string()),
             data: PushNotificationData {
                 url: url.map(|u| u.to_string()).unwrap_or("/".to_string()),

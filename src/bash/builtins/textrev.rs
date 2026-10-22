@@ -14,6 +14,7 @@ use crate::bash::error::Result;
 use crate::bash::interpreter::ExecResult;
 
 /// Read input from files or stdin, returning the raw text. Used by `rev`.
+#[allow(clippy::result_large_err)]
 async fn read_input(ctx: &Context<'_>) -> std::result::Result<String, ExecResult> {
     let mut files: Vec<&str> = Vec::new();
     for arg in ctx.args {
@@ -102,6 +103,7 @@ impl Builtin for Tac {
     }
 }
 
+#[allow(clippy::result_large_err)]
 async fn read_tac_files(
     ctx: &Context<'_>,
     files: &[String],

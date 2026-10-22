@@ -19,7 +19,7 @@ use std::time::Duration;
 use wasmtime::component::{Component, Linker};
 use wasmtime::{Cache, Config, Engine, Store, StoreLimits, StoreLimitsBuilder, Strategy};
 use wasmtime_wasi::p2::pipe::{MemoryInputPipe, MemoryOutputPipe};
-use wasmtime_wasi::{DirPerms, FilePerms, ResourceTable, WasiCtx, WasiCtxBuilder, WasiCtxView};
+use wasmtime_wasi::{FsPerms, ResourceTable, WasiCtx, WasiCtxBuilder, WasiCtxView};
 
 // Default timeout in seconds.
 const DEFAULT_TIMEOUT_SECONDS: u64 = 40;
@@ -197,7 +197,7 @@ impl PySandbox {
         builder.stdin(MemoryInputPipe::new(Vec::<u8>::new()));
         builder.stdout(stdout_pipe.clone());
         builder.stderr(stderr_pipe.clone());
-        builder.preopened_dir(workspace, "/", DirPerms::all(), FilePerms::all())?;
+        builder.preopened_dir(workspace, "/", FsPerms::ReadWrite)?;
 
         let state = SandboxState {
             wasi_ctx: builder.build(),

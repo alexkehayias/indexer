@@ -52,9 +52,9 @@ libc = "0.2"
 pulldown-cmark = { version = "0.13.4", default-features = false }
 terminal_size = "0.4.4"
 unicode-width = "0.2.2"
-wasmtime = { version = "45.0.3", features = ["winch"] }
-wasmtime-wasi = "45.0.3"
-wasmtime-wasi-io = "45.0.3"
+wasmtime = { version = "50.0.0", features = ["winch"] }
+wasmtime-wasi = "50.0.0"
+wasmtime-wasi-io = "50.0.0"
 
 # Vendored bashkit deps (previously transitive via bashkit)
 bitflags = "2"

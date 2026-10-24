@@ -1,10 +1,12 @@
 //! Source-aware channel subscription for in-process consumers.
 //!
-//! A subscriber connects to a channel according to its `channel.source`:
-//! `socket` channels are read from their Unix socket publisher (coalescing line
-//! bursts with the channel's debounce), `server` channels from the in-process
-//! [`registry`]. Both yield a [`BoxStream`] of events so the caller (the loop
-//! supervisor) treats them uniformly.
+//! A subscriber connects to a channel according to its [`ChannelSource`]:
+//! [`Socket`](ChannelSource::Socket) channels are read from their Unix socket
+//! publisher (coalescing line bursts with the channel's debounce);
+//! [`Server`](ChannelSource::Server) channels — including agent-created ones,
+//! which are stored as server-sourced — from the in-process [`registry`]. Both
+//! yield a [`BoxStream`] of events so the caller (the loop supervisor) treats
+//! them uniformly.
 
 use std::time::Duration;
 
@@ -14,20 +16,12 @@ use tokio::io::BufReader;
 use tokio::net::UnixStream;
 use tokio_rusqlite::Connection;
 
+use super::models::ChannelSource;
 use super::registry;
 use crate::cli::channel::{event_stream_from_reader, socket_path};
 
 /// Debounce window used when a channel has no `channel` row.
 pub const DEFAULT_DEBOUNCE_MS: u64 = 250;
-
-/// Where a channel's events come from.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum ChannelSource {
-    /// An external publisher broadcasting over a Unix domain socket.
-    Socket,
-    /// An in-process publisher broadcasting via [`registry`].
-    Server,
-}
 
 /// Read a channel's source and debounce window from its `channel` row.
 ///
@@ -39,21 +33,18 @@ pub async fn channel_meta(db: &Connection, id: &str) -> Result<(ChannelSource, u
     let row = db
         .call(move |conn| {
             let mut stmt = conn.prepare("SELECT source, debounce_ms FROM channel WHERE id = ?1")?;
-            let mut rows =
-                stmt.query_map([&id], |i| Ok((i.get::<_, String>(0)?, i.get::<_, i64>(1)?)))?;
+            let mut rows = stmt.query_map([&id], |i| {
+                Ok((
+                    ChannelSource::from_column(&i.get::<_, String>(0)?),
+                    i.get::<_, i64>(1)?,
+                ))
+            })?;
             Ok(rows.next().transpose()?)
         })
         .await?;
 
     Ok(match row {
-        Some((source, debounce_ms)) => {
-            let source = if source == "server" {
-                ChannelSource::Server
-            } else {
-                ChannelSource::Socket
-            };
-            (source, debounce_ms.max(0) as u64)
-        }
+        Some((source, debounce_ms)) => (source, debounce_ms.max(0) as u64),
         None => (ChannelSource::Socket, DEFAULT_DEBOUNCE_MS),
     })
 }
@@ -166,6 +157,32 @@ mod tests {
             .expect("timed out waiting for event")
             .unwrap();
         assert_eq!(event, "tick");
+    }
+
+    #[tokio::test]
+    async fn subscribe_agent_created_channel_reads_from_registry() {
+        let (_dir, db) = setup_db().await;
+        let id = format!("agent-{}", Uuid::new_v4());
+        // Agent-created channels are stored as server-sourced with an owner.
+        crate::channels::db::insert_channel(&db, &id, &ChannelSource::Server, Some("sess"))
+            .await
+            .unwrap();
+
+        let publisher = registry::register(&id);
+        let mut events = subscribe(&db, "/tmp/ignored", &id).await.unwrap();
+        tokio::spawn(async move {
+            let s = stream! {
+                yield "hello".to_string();
+                std::future::pending::<()>().await;
+            };
+            let _ = publisher.serve(Box::pin(s)).await;
+        });
+
+        let event = tokio::time::timeout(Duration::from_secs(5), events.next())
+            .await
+            .expect("timed out waiting for event")
+            .unwrap();
+        assert_eq!(event, "hello");
     }
 
     #[tokio::test]

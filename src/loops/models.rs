@@ -8,14 +8,3 @@ pub struct Loop {
     pub tools: Vec<String>,
     pub created_at: String,
 }
-
-/// An event source that loops can subscribe to.
-#[derive(Debug, Clone, Serialize)]
-pub struct Channel {
-    pub id: String,
-    /// Where events come from: 'socket', 'server', or 'webhook'.
-    pub source: String,
-    /// Debounce window (ms) coalescing a channel's line burst into one event.
-    pub debounce_ms: i64,
-    pub created_at: String,
-}

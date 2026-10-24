@@ -8,9 +8,9 @@ use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
 use super::{assets, routes};
 use crate::ai::skills::SkillRegistry;
 use crate::api::state::AppState;
+use crate::channels::default::{register_agent_channels, start_default_channels};
 use crate::core::{AppConfig, db::async_db};
 use crate::jobs::{DailyAgenda, GenerateSessionTitles, GitSync, spawn_periodic_job};
-use crate::loops::channels::start_default_channels;
 use crate::loops::supervisor::{self as loops, LoopSupervisorConfig};
 
 pub fn app(shared_state: Arc<RwLock<AppState>>) -> Router {
@@ -72,6 +72,12 @@ pub async fn serve(host: String, port: String, config: AppConfig) {
     // and skipped.
     if let Err(e) = start_default_channels(&db).await {
         tracing::warn!("failed to start default channels: {}", e);
+    }
+
+    // Agent-created server channels lose their in-memory publisher on restart;
+    // re-register them so loops subscribed to them can respawn below.
+    if let Err(e) = register_agent_channels(&db).await {
+        tracing::warn!("failed to register agent channels: {}", e);
     }
 
     // Respawn persisted channel loops before the periodic jobs (which move

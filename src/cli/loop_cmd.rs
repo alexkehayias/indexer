@@ -37,10 +37,11 @@ use crate::ai::chat::{
     ChatBuilder, InfiniteLoopDetector, InvisibleCharFilter, ToolSecurityMiddleware,
 };
 use crate::ai::tools::{ToolConfig, ToolRegistry};
+use crate::channels::models::ChannelSource;
+use crate::channels::subscribe::channel_meta;
 use crate::cli::channel::{event_stream_from_reader, sigterm, socket_path};
 use crate::core::markdown_render;
 use crate::loops::prompt::build_system_prompt;
-use crate::loops::subscribe::{ChannelSource, channel_meta};
 use crate::loops::tools::resolve_loop_tools;
 use crate::openai::{Message, Role};
 use tokio_rusqlite::Connection;
@@ -96,7 +97,7 @@ pub async fn run(db: Connection, config: LoopConfig<'_>) -> Result<()> {
 
     for channel_id in channels {
         let (source, _) = channel_meta(&db, channel_id).await?;
-        if source == ChannelSource::Server {
+        if source != ChannelSource::Socket {
             return Err(anyhow!(
                 "channel '{}' is a server channel — only loops running inside the server can subscribe to it",
                 channel_id

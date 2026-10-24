@@ -11,7 +11,7 @@ use axum::{
 use super::public::{ChannelListResponse, ChannelSummaryResponse};
 use crate::api::public::ApiError;
 use crate::api::state::AppState;
-use crate::loops::db::find_all_channels;
+use crate::channels::db::find_all_channels;
 
 type SharedState = Arc<RwLock<AppState>>;
 
@@ -28,7 +28,8 @@ async fn list_channels(State(state): State<SharedState>) -> Result<impl IntoResp
         .into_iter()
         .map(|channel| ChannelSummaryResponse {
             id: channel.id,
-            source: channel.source,
+            source: channel.source.as_str().to_string(),
+            created_by: channel.created_by,
             debounce_ms: channel.debounce_ms,
             created_at: channel.created_at,
         })

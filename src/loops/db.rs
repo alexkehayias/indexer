@@ -3,7 +3,7 @@ use std::collections::HashMap;
 use anyhow::Result;
 use tokio_rusqlite::Connection;
 
-use super::models::{Channel, Loop};
+use super::models::Loop;
 
 pub async fn find_all_loops(db: &Connection) -> Result<Vec<Loop>> {
     let loops = db.call(|conn| {
@@ -40,27 +40,6 @@ pub async fn find_all_loops(db: &Connection) -> Result<Vec<Loop>> {
         Ok(loops)
     });
     Ok(loops.await?)
-}
-
-/// List every channel, ordered by id.
-pub async fn find_all_channels(db: &Connection) -> Result<Vec<Channel>> {
-    let channels = db.call(|conn| {
-        let mut stmt =
-            conn.prepare("SELECT id, source, debounce_ms, created_at FROM channel ORDER BY id")?;
-        let channels = stmt
-            .query_map([], |i| {
-                Ok(Channel {
-                    id: i.get(0)?,
-                    source: i.get(1)?,
-                    debounce_ms: i.get(2)?,
-                    created_at: i.get(3)?,
-                })
-            })?
-            .filter_map(Result::ok)
-            .collect::<Vec<Channel>>();
-        Ok(channels)
-    });
-    Ok(channels.await?)
 }
 
 pub async fn find_loop(db: &Connection, id: &str) -> Result<Option<Loop>> {
@@ -135,39 +114,6 @@ pub async fn delete_loop(db: &Connection, id: &str) -> Result<usize> {
     Ok(deleted.await?)
 }
 
-/// Ensure a `channel` row exists for each id with the given source so a loop's
-/// `loop_channel` links satisfy the foreign key. Existing rows are left
-/// untouched, preserving a channel's registered source and debounce.
-///
-/// Uses `ON CONFLICT(id) DO NOTHING` rather than `INSERT OR IGNORE` so only
-/// the duplicate-id conflict is suppressed; any other constraint failure
-/// still surfaces as an error.
-pub async fn ensure_channels_with_source(
-    db: &Connection,
-    channels: &[String],
-    source: &str,
-) -> Result<()> {
-    let channels = channels.to_vec();
-    let source = source.to_string();
-    let inserted = db.call(move |conn| {
-        let mut stmt = conn.prepare(
-            "INSERT INTO channel (id, source) VALUES (?1, ?2)
-             ON CONFLICT(id) DO NOTHING",
-        )?;
-        for channel in &channels {
-            stmt.execute(rusqlite::params![channel, source])?;
-        }
-        Ok(())
-    });
-    Ok(inserted.await?)
-}
-
-/// Ensure a `channel` row exists for each id as a `socket` channel (the default
-/// for a loop's own subscriptions). See [`ensure_channels_with_source`].
-pub async fn ensure_channels(db: &Connection, channels: &[String]) -> Result<()> {
-    ensure_channels_with_source(db, channels, "socket").await
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -185,8 +131,8 @@ mod tests {
         (dir, db)
     }
 
-    /// Insert a channel row directly; channel helpers land in a later PR.
-    async fn insert_channel(db: &Connection, id: &str, source: &str) {
+    /// Insert a channel row directly, bypassing the helpers.
+    async fn insert_raw_channel(db: &Connection, id: &str, source: &str) {
         let id = id.to_string();
         let source = source.to_string();
         db.call(move |conn| {
@@ -235,8 +181,8 @@ mod tests {
     #[tokio::test]
     async fn insert_find_and_delete_round_trip() {
         let (_dir, db) = setup_db().await;
-        insert_channel(&db, "alpha", "socket").await;
-        insert_channel(&db, "beta", "server").await;
+        insert_raw_channel(&db, "alpha", "socket").await;
+        insert_raw_channel(&db, "beta", "server").await;
         let record = sample_loop();
 
         insert_loop(&db, &record).await.unwrap();
@@ -260,8 +206,8 @@ mod tests {
     #[tokio::test]
     async fn delete_loop_removes_channel_links() {
         let (_dir, db) = setup_db().await;
-        insert_channel(&db, "alpha", "socket").await;
-        insert_channel(&db, "beta", "server").await;
+        insert_raw_channel(&db, "alpha", "socket").await;
+        insert_raw_channel(&db, "beta", "server").await;
         insert_loop(&db, &sample_loop()).await.unwrap();
 
         delete_loop(&db, "loop-1").await.unwrap();
@@ -281,32 +227,10 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn find_all_channels_returns_rows_ordered_by_id() {
-        let (_dir, db) = setup_db().await;
-        insert_channel(&db, "beta", "server").await;
-        insert_channel(&db, "alpha", "socket").await;
-
-        let channels = find_all_channels(&db).await.unwrap();
-
-        let ids: Vec<&str> = channels.iter().map(|c| c.id.as_str()).collect();
-        assert_eq!(ids, vec!["alpha", "beta"]);
-        assert_eq!(channels[0].source, "socket");
-        assert_eq!(channels[0].debounce_ms, 250);
-        assert!(!channels[0].created_at.is_empty());
-        assert_eq!(channels[1].source, "server");
-    }
-
-    #[tokio::test]
-    async fn find_all_channels_empty_table_returns_empty() {
-        let (_dir, db) = setup_db().await;
-        assert!(find_all_channels(&db).await.unwrap().is_empty());
-    }
-
-    #[tokio::test]
     async fn find_loop_returns_some_for_present_and_none_for_missing() {
         let (_dir, db) = setup_db().await;
-        insert_channel(&db, "alpha", "socket").await;
-        insert_channel(&db, "beta", "server").await;
+        insert_raw_channel(&db, "alpha", "socket").await;
+        insert_raw_channel(&db, "beta", "server").await;
         let record = sample_loop();
         insert_loop(&db, &record).await.unwrap();
 
@@ -325,41 +249,5 @@ mod tests {
         let (_dir, db) = setup_db().await;
         let deleted = delete_loop(&db, "does-not-exist").await.unwrap();
         assert_eq!(deleted, 0);
-    }
-
-    #[tokio::test]
-    async fn ensure_channels_creates_rows_and_preserves_existing() {
-        let (_dir, db) = setup_db().await;
-
-        // A channel that already exists with a non-socket source.
-        insert_channel(&db, "gamma", "server").await;
-
-        ensure_channels(
-            &db,
-            &["alpha".to_string(), "beta".to_string(), "gamma".to_string()],
-        )
-        .await
-        .unwrap();
-
-        let rows = db
-            .call(|conn| {
-                let mut stmt = conn.prepare("SELECT id, source FROM channel ORDER BY id")?;
-                let rows = stmt
-                    .query_map([], |i| Ok((i.get::<_, String>(0)?, i.get::<_, String>(1)?)))?
-                    .filter_map(Result::ok)
-                    .collect::<Vec<(String, String)>>();
-                Ok(rows)
-            })
-            .await
-            .unwrap();
-
-        assert_eq!(
-            rows,
-            vec![
-                ("alpha".to_string(), "socket".to_string()),
-                ("beta".to_string(), "socket".to_string()),
-                ("gamma".to_string(), "server".to_string()),
-            ]
-        );
     }
 }

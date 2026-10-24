@@ -147,7 +147,10 @@ function channelCard(channel) {
        class="flex flex-col rounded-card border border-line bg-card p-4 transition-shadow hover:shadow-lg/5 md:p-[22px]">
       <div class="flex items-start justify-between gap-3">
         <h3 class="min-w-0 truncate font-mono font-semibold text-ink">${channel.id}</h3>
-        <hq-badge tone="${sourceTone(channel.source)}">${channel.source}</hq-badge>
+        <div class="flex shrink-0 items-center gap-1.5">
+          ${channel.created_by ? html`<hq-badge tone="amber">agent</hq-badge>` : ''}
+          <hq-badge tone="${sourceTone(channel.source)}">${channel.source}</hq-badge>
+        </div>
       </div>
       <p class="mt-3 text-sm text-muted">${count} loop${count === 1 ? '' : 's'} subscribed</p>
     </a>
@@ -246,9 +249,9 @@ async function showChannelDetail(id) {
     return;
   }
 
-  document
-    .getElementById('channel-detail-badges')
-    .appendChild(badge(channel.source, sourceTone(channel.source)));
+  const badges = document.getElementById('channel-detail-badges');
+  if (channel.created_by) badges.appendChild(badge('agent', 'amber'));
+  badges.appendChild(badge(channel.source, sourceTone(channel.source)));
 
   const subscribers = subscribersOf(channel.id);
   body.innerHTML = html`<div class="flex flex-col gap-6">
@@ -256,6 +259,11 @@ async function showChannelDetail(id) {
       'Details',
       html`<dl class="grid grid-cols-[7rem_1fr] gap-y-2 text-sm">
         <dt class="text-muted">Source</dt><dd class="text-body">${channel.source}</dd>
+        ${
+          channel.created_by
+            ? html`<dt class="text-muted">Owner</dt><dd class="font-mono text-body">${channel.created_by}</dd>`
+            : ''
+        }
         <dt class="text-muted">Debounce</dt><dd class="text-body">${channel.debounce_ms} ms</dd>
         <dt class="text-muted">Created</dt><dd class="text-body">${channel.created_at}</dd>
       </dl>`,

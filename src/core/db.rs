@@ -217,10 +217,14 @@ embedding float[384]
         "CREATE TABLE IF NOT EXISTS channel (
     -- Channel ID (alphanumeric with dashes/underscores)
     id TEXT PRIMARY KEY,
-    -- Where events for this channel come from: 'socket', 'server', or 'webhook'
+    -- How the channel is served: 'socket' (external Unix-socket publisher) or
+    -- 'server' (in-process publisher, e.g. timer channels and webhooks)
     source TEXT NOT NULL,
     -- Debounce window (ms) for coalescing a channel's line burst into one event
     debounce_ms INTEGER NOT NULL DEFAULT 250,
+    -- Session/agent that created the channel, if any; NULL for server- and
+    -- socket-defined channels. Only this owner may emit to the channel.
+    created_by TEXT,
     -- Creation timestamp
     created_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))
 );",
@@ -602,10 +606,14 @@ COMMIT;",
         "CREATE TABLE IF NOT EXISTS channel (
     -- Channel ID (alphanumeric with dashes/underscores)
     id TEXT PRIMARY KEY,
-    -- Where events for this channel come from: 'socket', 'server', or 'webhook'
+    -- How the channel is served: 'socket' (external Unix-socket publisher) or
+    -- 'server' (in-process publisher, e.g. timer channels and webhooks)
     source TEXT NOT NULL,
     -- Debounce window (ms) for coalescing a channel's line burst into one event
     debounce_ms INTEGER NOT NULL DEFAULT 250,
+    -- Session/agent that created the channel, if any; NULL for server- and
+    -- socket-defined channels. Only this owner may emit to the channel.
+    created_by TEXT,
     -- Creation timestamp
     created_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))
 );",
@@ -715,6 +723,24 @@ COMMIT;",
         match migrated_loop_table {
             Ok(_) => (),
             Err(e) => println!("Migrate loop table failed: {}", e),
+        }
+    }
+
+    // 2026-10-18 Add channel.created_by: the session/agent that created an
+    // agent-owned channel. NULL for externally published (socket) and default
+    // server channels. SQLite can add a nullable column in place.
+    let has_created_by: bool = db
+        .query_row(
+            "SELECT COUNT(*) > 0 FROM pragma_table_info('channel') WHERE name = 'created_by'",
+            [],
+            |row| row.get(0),
+        )
+        .unwrap_or(false);
+
+    if !has_created_by {
+        match db.execute("ALTER TABLE channel ADD COLUMN created_by TEXT", []) {
+            Ok(_) => (),
+            Err(e) => println!("Add channel.created_by failed: {}", e),
         }
     }
 

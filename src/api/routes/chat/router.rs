@@ -31,16 +31,16 @@ use crate::ai::chat::{
     user_message_with_attachments,
 };
 use crate::ai::tools::{
-    BashTool, CalendarTool, CreateLoopTool, DateTimeTool, DeleteLoopTool, EmailSearchTool,
-    EmailUnreadTool, IterateTool, ListLoopsTool, MeetingSearchTool, MemoryTool, NoteSearchTool,
-    NotifyTool, PythonTool, TasksDueTodayTool, TasksScheduledTodayTool, WebSearchTool,
-    WebsiteViewTool, run_in_sandbox,
+    BashTool, CalendarTool, CreateChannelTool, CreateLoopTool, DateTimeTool, DeleteLoopTool,
+    EmailSearchTool, EmailUnreadTool, EmitChannelTool, IterateTool, ListLoopsTool,
+    MeetingSearchTool, MemoryTool, NoteSearchTool, NotifyTool, PythonTool, TasksDueTodayTool,
+    TasksScheduledTodayTool, WebSearchTool, WebsiteViewTool, run_in_sandbox,
 };
 use crate::anthropic::claude::{ClaudeCodeSession, Delta, StreamEvent};
 use crate::api::state::AppState;
 use crate::api::utils::DetectDisconnect;
+use crate::channels::prompt::system_prompt_section;
 use crate::core::AppConfig;
-use crate::loops::channels::system_prompt_section;
 use crate::loops::supervisor::LoopSupervisorConfig;
 use crate::notify::{
     PushNotificationPayload, broadcast_push_notification, find_all_notification_subscriptions,
@@ -291,6 +291,8 @@ async fn chat_handler(
         create_loop_tool,
         list_loops_tool,
         delete_loop_tool,
+        create_channel_tool,
+        emit_channel_tool,
         skill_registry,
         openai_api_hostname,
         openai_api_key,
@@ -340,6 +342,8 @@ async fn chat_handler(
             CreateLoopTool::new(loop_config.clone()),
             ListLoopsTool::new(loop_config.clone()),
             DeleteLoopTool::new(loop_config),
+            CreateChannelTool::new(db.clone(), &session_id),
+            EmitChannelTool::new(db.clone(), &session_id),
             shared_state.skill_registry.clone(),
             openai_api_hostname.clone(),
             openai_api_key.clone(),
@@ -370,6 +374,8 @@ async fn chat_handler(
         Box::new(create_loop_tool),
         Box::new(list_loops_tool),
         Box::new(delete_loop_tool),
+        Box::new(create_channel_tool),
+        Box::new(emit_channel_tool),
     ];
 
     let tools = all_tools;
